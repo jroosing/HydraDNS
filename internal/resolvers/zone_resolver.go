@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sort"
 	"strings"
 
 	"github.com/jroosing/hydradns/internal/dns"
@@ -18,7 +19,13 @@ type ZoneResolver struct {
 
 // NewZoneResolver creates a ZoneResolver for the given zones.
 func NewZoneResolver(zones []*zone.Zone) *ZoneResolver {
-	return &ZoneResolver{Zones: zones}
+	// Sort zones by origin length descending to ensure most specific match
+	sorted := make([]*zone.Zone, len(zones))
+	copy(sorted, zones)
+	sort.Slice(sorted, func(i, j int) bool {
+		return len(sorted[i].Origin) > len(sorted[j].Origin)
+	})
+	return &ZoneResolver{Zones: sorted}
 }
 
 // Close is a no-op for ZoneResolver (satisfies Resolver interface).

@@ -77,54 +77,54 @@ func (s *UDPServer) RunOnConn(ctx context.Context, conn *net.UDPConn) error {
 			break
 		}
 
-		packet, remote, ok := s.receivePacket(ctx, conn)
+		bufPtr, n, remote, ok := s.receivePacket(ctx, conn)
 		if !ok {
 			continue
 		}
 
 		// Apply rate limiting
 		if s.Limiter != nil && !s.Limiter.Allow(remote.IP.String()) {
+			bufferPool.Put(bufPtr)
 			continue
 		}
 
 		// Try to acquire semaphore (non-blocking)
 		if !s.tryAcquireSemaphore() {
+			bufferPool.Put(bufPtr)
 			continue // at max concurrency, drop request
 		}
 
 		s.wg.Add(1)
-		go s.handleRequest(ctx, conn, packet, remote)
+		go s.handleRequest(ctx, conn, bufPtr, n, remote)
 	}
 
 	return nil
 }
 
 // receivePacket reads a UDP packet using a pooled buffer.
-// Returns the packet data and source address, or ok=false if no packet was received.
-func (s *UDPServer) receivePacket(ctx context.Context, conn *net.UDPConn) ([]byte, *net.UDPAddr, bool) {
+// Returns the buffer pointer, length, source address, or ok=false if no packet was received.
+func (s *UDPServer) receivePacket(ctx context.Context, conn *net.UDPConn) (*[]byte, int, *net.UDPAddr, bool) {
 	bufPtr := bufferPool.Get().(*[]byte)
 	buf := *bufPtr
-	defer bufferPool.Put(bufPtr)
 
 	_ = conn.SetReadDeadline(time.Now().Add(1 * time.Second))
 	n, remote, err := conn.ReadFromUDP(buf)
 	if err != nil {
+		bufferPool.Put(bufPtr)
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
-			return nil, nil, false // timeout, check context and retry
+			return nil, 0, nil, false // timeout, check context and retry
 		}
 		if ctx.Err() != nil {
-			return nil, nil, false // server shutting down
+			return nil, 0, nil, false // server shutting down
 		}
-		return nil, nil, false
+		return nil, 0, nil, false
 	}
 	if remote == nil {
-		return nil, nil, false
+		bufferPool.Put(bufPtr)
+		return nil, 0, nil, false
 	}
 
-	// Copy data out of pooled buffer
-	data := make([]byte, n)
-	copy(data, buf[:n])
-	return data, remote, true
+	return bufPtr, n, remote, true
 }
 
 // tryAcquireSemaphore attempts to acquire a concurrency slot.
@@ -139,14 +139,16 @@ func (s *UDPServer) tryAcquireSemaphore() bool {
 }
 
 // handleRequest processes a single DNS request.
-func (s *UDPServer) handleRequest(ctx context.Context, conn *net.UDPConn, payload []byte, peer *net.UDPAddr) {
+func (s *UDPServer) handleRequest(ctx context.Context, conn *net.UDPConn, bufPtr *[]byte, n int, peer *net.UDPAddr) {
 	defer s.wg.Done()
 	defer func() { <-s.sem }()
+	defer bufferPool.Put(bufPtr)
 
 	if s.Handler == nil {
 		return
 	}
 
+	payload := (*bufPtr)[:n]
 	res := s.Handler.Handle(ctx, "udp", peer.String(), payload)
 	if len(res.ResponseBytes) == 0 {
 		return

@@ -65,7 +65,17 @@ func ParsePacket(msg []byte) (Packet, error) {
 	}
 
 	p := Packet{Header: h}
-	p.Questions = make([]Question, 0, h.QDCount)
+	
+	// Cap initial allocation to avoid DoS with large counts in header
+	// but small actual packet size.
+	limitCount := func(count uint16, limit int) int {
+		if int(count) > limit {
+			return limit
+		}
+		return int(count)
+	}
+
+	p.Questions = make([]Question, 0, limitCount(h.QDCount, MaxQuestions))
 	for i := 0; i < int(h.QDCount); i++ {
 		q, err := ParseQuestion(msg, &off)
 		if err != nil {
@@ -73,7 +83,7 @@ func ParsePacket(msg []byte) (Packet, error) {
 		}
 		p.Questions = append(p.Questions, q)
 	}
-	p.Answers = make([]Record, 0, h.ANCount)
+	p.Answers = make([]Record, 0, limitCount(h.ANCount, MaxRRPerSection))
 	for i := 0; i < int(h.ANCount); i++ {
 		rr, err := ParseRecord(msg, &off)
 		if err != nil {
@@ -81,7 +91,7 @@ func ParsePacket(msg []byte) (Packet, error) {
 		}
 		p.Answers = append(p.Answers, rr)
 	}
-	p.Authorities = make([]Record, 0, h.NSCount)
+	p.Authorities = make([]Record, 0, limitCount(h.NSCount, MaxRRPerSection))
 	for i := 0; i < int(h.NSCount); i++ {
 		rr, err := ParseRecord(msg, &off)
 		if err != nil {
@@ -89,7 +99,7 @@ func ParsePacket(msg []byte) (Packet, error) {
 		}
 		p.Authorities = append(p.Authorities, rr)
 	}
-	p.Additionals = make([]Record, 0, h.ARCount)
+	p.Additionals = make([]Record, 0, limitCount(h.ARCount, MaxRRPerSection))
 	for i := 0; i < int(h.ARCount); i++ {
 		rr, err := ParseRecord(msg, &off)
 		if err != nil {

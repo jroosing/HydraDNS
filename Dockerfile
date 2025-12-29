@@ -13,7 +13,6 @@ COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 COPY zones/ ./zones/
 COPY docker/ ./docker/
-COPY hydradns.example.yaml ./
 
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/hydradns ./cmd/hydradns
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/dnsquery ./cmd/dnsquery

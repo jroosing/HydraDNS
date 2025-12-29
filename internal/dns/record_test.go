@@ -270,12 +270,12 @@ func TestParseRecord(t *testing.T) {
 	msg := []byte{
 		7, 'e', 'x', 'a', 'm', 'p', 'l', 'e',
 		3, 'c', 'o', 'm',
-		0,          // End of name
-		0, 1,       // Type A
-		0, 1,       // Class IN
+		0,    // End of name
+		0, 1, // Type A
+		0, 1, // Class IN
 		0, 0, 1, 44, // TTL 300
-		0, 4,             // RDLEN
-		192, 0, 2, 1,     // RDATA
+		0, 4, // RDLEN
+		192, 0, 2, 1, // RDATA
 	}
 
 	off := 0
@@ -345,12 +345,12 @@ func TestParseRecordMX(t *testing.T) {
 	msg := []byte{
 		7, 'e', 'x', 'a', 'm', 'p', 'l', 'e',
 		3, 'c', 'o', 'm',
-		0,          // End of name
-		0, 15,      // Type MX
-		0, 1,       // Class IN
+		0,     // End of name
+		0, 15, // Type MX
+		0, 1, // Class IN
 		0, 0, 14, 16, // TTL 3600
-		0, 20,      // RDLEN
-		0, 10,      // Preference
+		0, 20, // RDLEN
+		0, 10, // Preference
 		4, 'm', 'a', 'i', 'l',
 		7, 'e', 'x', 'a', 'm', 'p', 'l', 'e',
 		3, 'c', 'o', 'm',
@@ -384,11 +384,11 @@ func TestParseRecordTruncated(t *testing.T) {
 	msg := []byte{
 		7, 'e', 'x', 'a', 'm', 'p', 'l', 'e',
 		3, 'c', 'o', 'm',
-		0,          // End of name
-		0, 1,       // Type A
-		0, 1,       // Class IN
+		0,    // End of name
+		0, 1, // Type A
+		0, 1, // Class IN
 		0, 0, 1, 44, // TTL 300
-		0, 4,       // RDLEN says 4 bytes
+		0, 4, // RDLEN says 4 bytes
 		// But no RDATA follows
 	}
 

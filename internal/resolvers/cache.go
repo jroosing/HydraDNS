@@ -10,10 +10,10 @@ import (
 type CacheEntryType int
 
 const (
-	CachePositive  CacheEntryType = iota // Successful response with answers
-	CacheNXDOMAIN                        // Non-existent domain (RCODE=3)
-	CacheNODATA                          // Name exists but no data for query type
-	CacheSERVFAIL                        // Server failure (RCODE=2)
+	CachePositive CacheEntryType = iota // Successful response with answers
+	CacheNXDOMAIN                       // Non-existent domain (RCODE=3)
+	CacheNODATA                         // Name exists but no data for query type
+	CacheSERVFAIL                       // Server failure (RCODE=2)
 )
 
 // cacheEntry holds a cached value with expiration and LRU tracking.
@@ -43,7 +43,7 @@ type TTLCache[K comparable, V any] struct {
 	servfailTTL     time.Duration // TTL for SERVFAIL responses
 	maxNegativeTTL  time.Duration // Maximum TTL cap for negative entries
 
-	lru  *list.List          // LRU list (front = oldest, back = newest)
+	lru  *list.List           // LRU list (front = oldest, back = newest)
 	data map[K]*cacheEntry[V] // Key -> entry mapping
 
 	hits         int // Cache hit count

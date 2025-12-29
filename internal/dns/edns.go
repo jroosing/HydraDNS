@@ -136,9 +136,9 @@ func ExtractOPT(additionals []Record) *OPTRecord {
 func unpackOPT(rr Record) OPTRecord {
 	return OPTRecord{
 		UDPPayloadSize: rr.Class,
-		ExtendedRCode:  uint8(rr.TTL >> 24),          // Bits 31-24
-		Version:        uint8(rr.TTL >> 16),          // Bits 23-16
-		DNSSECOk:       ((rr.TTL >> 15) & 0x1) == 1,  // Bit 15
+		ExtendedRCode:  uint8(rr.TTL >> 24),         // Bits 31-24
+		Version:        uint8(rr.TTL >> 16),         // Bits 23-16
+		DNSSECOk:       ((rr.TTL >> 15) & 0x1) == 1, // Bit 15
 		Options:        nil,
 	}
 }

@@ -9,16 +9,16 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/jroosing/hydradns/internal/pool"
 )
 
 // lenBufPool reduces allocations for TCP length prefix reads/writes.
 // Each buffer is exactly 2 bytes for the DNS-over-TCP length field.
-var lenBufPool = sync.Pool{
-	New: func() any {
-		buf := make([]byte, 2)
-		return &buf
-	},
-}
+var lenBufPool = pool.New(func() *[]byte {
+	buf := make([]byte, 2)
+	return &buf
+})
 
 // TCP server configuration constants.
 const (
@@ -153,7 +153,7 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn, ip stri
 func (s *TCPServer) readMessage(conn net.Conn) ([]byte, bool) {
 	// Read 2-byte length prefix using pooled buffer
 	_ = conn.SetReadDeadline(time.Now().Add(tcpReadTimeout))
-	lenBufPtr := lenBufPool.Get().(*[]byte)
+	lenBufPtr := lenBufPool.Get()
 	lenBuf := *lenBufPtr
 	_, err := io.ReadFull(conn, lenBuf)
 	if err != nil {
@@ -192,7 +192,7 @@ func (s *TCPServer) writeMessage(conn net.Conn, response []byte) bool {
 	_ = conn.SetWriteDeadline(time.Now().Add(tcpReadTimeout))
 
 	// Write length prefix and message body using writev (net.Buffers)
-	lenBufPtr := lenBufPool.Get().(*[]byte)
+	lenBufPtr := lenBufPool.Get()
 	lenBuf := *lenBufPtr
 	binary.BigEndian.PutUint16(lenBuf, uint16(respLen))
 

@@ -9,16 +9,15 @@ import (
 	"time"
 
 	"github.com/jroosing/hydradns/internal/dns"
+	"github.com/jroosing/hydradns/internal/pool"
 )
 
 // bufferPool reduces allocations for incoming UDP packets.
 // Each buffer is sized for the maximum expected DNS message.
-var bufferPool = sync.Pool{
-	New: func() any {
-		buf := make([]byte, dns.MaxIncomingDNSMessageSize)
-		return &buf
-	},
-}
+var bufferPool = pool.New(func() *[]byte {
+	buf := make([]byte, dns.MaxIncomingDNSMessageSize)
+	return &buf
+})
 
 // UDPServer handles DNS queries over UDP.
 //
@@ -104,7 +103,7 @@ func (s *UDPServer) RunOnConn(ctx context.Context, conn *net.UDPConn) error {
 // receivePacket reads a UDP packet using a pooled buffer.
 // Returns the buffer pointer, length, source address, or ok=false if no packet was received.
 func (s *UDPServer) receivePacket(ctx context.Context, conn *net.UDPConn) (*[]byte, int, *net.UDPAddr, bool) {
-	bufPtr := bufferPool.Get().(*[]byte)
+	bufPtr := bufferPool.Get()
 	buf := *bufPtr
 
 	_ = conn.SetReadDeadline(time.Now().Add(1 * time.Second))

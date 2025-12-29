@@ -1,0 +1,93 @@
+# =============================================================================
+# HydraDNS Docker Compose - Production Configuration
+# =============================================================================
+# Security-hardened deployment with proper resource limits and isolation
+
+services:
+  dns-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hydradns:latest
+    container_name: hydradns
+
+    # Port mappings (UDP and TCP)
+    ports:
+      - "1053:1053/udp"
+      - "1053:1053/tcp"
+
+    # Environment variables (override config file settings)
+    environment:
+      - HYDRADNS_CONFIG=/app/config/hydradns.yaml
+      - LOG_LEVEL=DEBUG
+      # Uncomment to override specific settings:
+      # - HYDRADNS_WORKERS=4
+      # - HYDRADNS_UPSTREAM_SERVERS=1.1.1.1,8.8.8.8
+
+    # Volume mounts
+    volumes:
+      # Mount zones directory for easy editing
+      - ./zones:/app/zones:ro
+      # Optional: Mount custom config file
+      # - ./docker/hydradns.yaml:/app/config/hydradns.yaml:ro
+
+    # Restart policy
+    restart: unless-stopped
+
+    # =========================================================================
+    # Security Hardening
+    # =========================================================================
+
+    # Run as non-root user (matches Dockerfile USER)
+    user: "1000:1000"
+
+    # Security options
+    security_opt:
+      # Disable privilege escalation
+      - no-new-privileges:true
+
+    # Drop all capabilities, add only what's needed
+    cap_drop:
+      - ALL
+    # Uncomment if binding to port < 1024:
+    # cap_add:
+    #   - NET_BIND_SERVICE
+
+    # Read-only root filesystem (defense in depth)
+    read_only: true
+
+    # Tmpfs for writable directories (if needed)
+    # noexec,nosuid prevents execution from /tmp and setuid binaries
+    tmpfs:
+      - /tmp:size=10M,mode=1777,noexec,nosuid
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 64M
+
+    # Healthcheck is baked into the Dockerfile using /app/dnsquery.
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Network mode (optional: use custom network for isolation)
+    # networks:
+    #   - dns-network
+
+# Optional: Custom network for isolation
+# networks:
+#   dns-network:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 172.20.0.0/24

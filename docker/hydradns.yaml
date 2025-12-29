@@ -1,0 +1,71 @@
+# =============================================================================
+# HydraDNS Docker Configuration
+# =============================================================================
+# This configuration is optimized for containerized deployment.
+# Override settings via environment variables or mount a custom config.
+
+server:
+  # Bind to all interfaces (required for Docker networking)
+  host: "0.0.0.0"
+
+  # DNS port (standard is 53, using 1053 for non-root)
+  # Note: To use port 53, either:
+  #   1. Run as root (not recommended)
+  #   2. Use Docker port mapping: -p 53:1053/udp -p 53:1053/tcp
+  #   3. Use Linux capabilities: --cap-add=NET_BIND_SERVICE
+  port: 1053
+
+  # Concurrency
+  # - "auto": Use the default Go runtime parallelism (`GOMAXPROCS`)
+  # - number: Clamp `GOMAXPROCS` (can only reduce)
+  workers: auto
+
+  # Maximum concurrent requests per worker
+  # Adjust based on expected load and available memory
+  # max_concurrency: 2048
+
+  # Upstream socket pool size per worker
+  # upstream_socket_pool_size: 256
+
+  # Enable TCP server (recommended for large responses)
+  enable_tcp: true
+
+  # Enable TCP fallback for truncated upstream responses
+  tcp_fallback: true
+
+# Upstream DNS servers for forwarding (strict-order failover)
+# Primary is tried first; fallbacks used only if primary fails.
+# Failed servers are retried after 1 hour.
+upstream:
+  servers:
+    - "9.9.9.9"   # Primary: Quad9 (privacy-focused, malware blocking)
+    - "1.1.1.1"   # Fallback 1: Cloudflare (fast, privacy-focused)
+    - "8.8.8.8"   # Fallback 2: Google (reliable)
+
+# Zone file configuration
+zones:
+  # Directory containing zone files (relative to /app in container)
+  directory: "zones"
+
+  # Specific zone files (if set, directory is ignored)
+  # files:
+  #   - "/app/zones/example.zone"
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  # Use INFO for production, DEBUG for troubleshooting
+  level: "DEBUG"
+
+  # Structured logging (recommended for containers)
+  # Enable JSON logs for log aggregation (ELK, Splunk, Datadog, CloudWatch, etc.)
+  structured: true
+  structured_format: "json"
+
+  # Include process ID
+  include_pid: true
+
+  # Extra fields for log aggregation
+  extra_fields:
+    service: "hydradns"
+    # Add your own fields like environment, datacenter, etc.

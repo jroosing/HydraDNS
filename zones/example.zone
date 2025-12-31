@@ -1,29 +1,33 @@
-; base zone file for example.com
-$TTL 2d    ; default TTL for zone
-$ORIGIN example.com. ; base domain-name
-; Start of Authority RR defining the key characteristics of the zone (domain)
-@         IN      SOA   ns1.example.com. hostmaster.example.com. (
-                                2003080800 ; serial number
-                                12h        ; refresh
-                                15m        ; update retry
-                                3w         ; expiry
-                                2h         ; minimum
-                                )
-; name server RR for the domain
-           IN      NS      ns1.example.com.
-; the second name server is external to this zone (domain)
-           IN      NS      ns2.example.net.
-; mail server RRs for the zone (domain)
-        3w IN      MX  10  mail.example.com.
-; the second  mail servers is  external to the zone (domain)
-           IN      MX  20  mail.example.net.
-; domain hosts includes NS and MX records defined above
-; plus any others required
-; for instance a user query for the A RR of joe.example.com will
-; return the IPv4 address 192.168.254.6 from this zone file
-ns1        IN      A       192.168.254.2
-mail       IN      A       192.168.254.4
-joe        IN      A       192.168.254.6
-www        IN      A       192.168.254.7
-; aliases ftp (ftp server) to an external domain
-ftp        IN      CNAME   ftp.example.net.
+; Internal zone file for example.com
+; Private IP addresses are intentional
+
+$TTL 2d
+$ORIGIN example.com.
+
+@   IN  SOA ns1.example.com. hostmaster.example.com. (
+        2025123001 ; serial (YYYYMMDDnn)
+        12h        ; refresh
+        15m        ; retry
+        3w         ; expire
+        2h         ; negative caching TTL
+)
+
+; Authoritative name servers for this zone
+@   IN  NS  ns1.example.com.
+@   IN  NS  ns2.example.net.
+
+; Mail exchangers for internal mail routing
+@   IN  MX  10 mail.example.com.
+@   IN  MX  20 mail.example.net.
+
+; Glue and host records (internal network)
+ns1     IN  A   192.168.254.2
+mail    IN  A   192.168.254.4
+joe     IN  A   192.168.254.6
+www     IN  A   192.168.254.7
+
+; Optional apex record for convenience
+@       IN  A   192.168.254.1
+
+; Aliases
+ftp     IN  CNAME ftp.example.net.

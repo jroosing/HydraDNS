@@ -65,7 +65,7 @@ func ParsePacket(msg []byte) (Packet, error) {
 	}
 
 	p := Packet{Header: h}
-	
+
 	// Cap initial allocation to avoid DoS with large counts in header
 	// but small actual packet size.
 	limitCount := func(count uint16, limit int) int {

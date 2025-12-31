@@ -35,23 +35,23 @@ type RateLimiter struct {
 //   - HYDRADNS_RL_CLEANUP_SECONDS: Stale entry cleanup interval (default: 60)
 //   - HYDRADNS_RL_MAX_IP_ENTRIES: Max tracked IPs (default: 65536)
 //   - HYDRADNS_RL_MAX_PREFIX_ENTRIES: Max tracked prefixes (default: 16384)
-//   - HYDRADNS_RL_GLOBAL_QPS: Global queries per second (default: 50000)
-//   - HYDRADNS_RL_GLOBAL_BURST: Global burst size (default: 50000)
-//   - HYDRADNS_RL_PREFIX_QPS: Per-prefix QPS (default: 2000)
-//   - HYDRADNS_RL_PREFIX_BURST: Per-prefix burst (default: 4000)
-//   - HYDRADNS_RL_IP_QPS: Per-IP QPS (default: 200)
-//   - HYDRADNS_RL_IP_BURST: Per-IP burst (default: 400)
+//   - HYDRADNS_RL_GLOBAL_QPS: Global queries per second (default: 100000)
+//   - HYDRADNS_RL_GLOBAL_BURST: Global burst size (default: 100000)
+//   - HYDRADNS_RL_PREFIX_QPS: Per-prefix QPS (default: 10000)
+//   - HYDRADNS_RL_PREFIX_BURST: Per-prefix burst (default: 20000)
+//   - HYDRADNS_RL_IP_QPS: Per-IP QPS (default: 3000)
+//   - HYDRADNS_RL_IP_BURST: Per-IP burst (default: 6000)
 func NewRateLimiterFromEnv() *RateLimiter {
 	cleanupSeconds := envFloat("HYDRADNS_RL_CLEANUP_SECONDS", 60.0)
 	maxIP := envInt("HYDRADNS_RL_MAX_IP_ENTRIES", 65_536)
 	maxPrefix := envInt("HYDRADNS_RL_MAX_PREFIX_ENTRIES", 16_384)
 
-	globalQPS := envFloat("HYDRADNS_RL_GLOBAL_QPS", 50_000.0)
-	globalBurst := envInt("HYDRADNS_RL_GLOBAL_BURST", 50_000)
-	prefixQPS := envFloat("HYDRADNS_RL_PREFIX_QPS", 2_000.0)
-	prefixBurst := envInt("HYDRADNS_RL_PREFIX_BURST", 4_000)
-	ipQPS := envFloat("HYDRADNS_RL_IP_QPS", 200.0)
-	ipBurst := envInt("HYDRADNS_RL_IP_BURST", 400)
+	globalQPS := envFloat("HYDRADNS_RL_GLOBAL_QPS", 100_000.0)
+	globalBurst := envInt("HYDRADNS_RL_GLOBAL_BURST", 100_000)
+	prefixQPS := envFloat("HYDRADNS_RL_PREFIX_QPS", 10_000.0)
+	prefixBurst := envInt("HYDRADNS_RL_PREFIX_BURST", 20_000)
+	ipQPS := envFloat("HYDRADNS_RL_IP_QPS", 3_000)
+	ipBurst := envInt("HYDRADNS_RL_IP_BURST", 6_000)
 
 	cleanupInterval := time.Duration(math.Max(0.0, cleanupSeconds) * float64(time.Second))
 	if cleanupInterval <= 0 {
@@ -85,18 +85,52 @@ func (r *RateLimiter) Allow(srcIP string) bool {
 	return true
 }
 
+// AllowAddr checks if a request from the given netip.Addr should be allowed.
+// This is a faster path that avoids string allocation for the IP address.
+func (r *RateLimiter) AllowAddr(ip netip.Addr) bool {
+	if r == nil {
+		return true
+	}
+	// Check in order: global -> prefix -> IP
+	if !r.global.Allow("*") {
+		return false
+	}
+	// For prefix, extract the prefix key without string allocation
+	prefixKey := prefixKeyFromAddr(ip)
+	if !r.prefix.Allow(prefixKey) {
+		return false
+	}
+	// For IP, use the string representation (unavoidable for map key)
+	ipKey := ip.String()
+	if !r.ip.Allow(ipKey) {
+		return false
+	}
+	return true
+}
+
+// prefixKeyFromAddr returns the prefix key for a netip.Addr.
+// Uses /24 for IPv4 and /64 for IPv6.
+func prefixKeyFromAddr(ip netip.Addr) string {
+	if ip.Is4() {
+		prefix, _ := ip.Prefix(24)
+		return prefix.String()
+	}
+	prefix, _ := ip.Prefix(64)
+	return prefix.String()
+}
+
 // RateLimitsStartupLog returns a human-readable summary of rate limit configuration.
 func RateLimitsStartupLog() string {
 	cleanupSeconds := envFloat("HYDRADNS_RL_CLEANUP_SECONDS", 60.0)
 	maxIP := envInt("HYDRADNS_RL_MAX_IP_ENTRIES", 65_536)
 	maxPrefix := envInt("HYDRADNS_RL_MAX_PREFIX_ENTRIES", 16_384)
 
-	globalQPS := envFloat("HYDRADNS_RL_GLOBAL_QPS", 50_000.0)
-	globalBurst := envInt("HYDRADNS_RL_GLOBAL_BURST", 50_000)
-	prefixQPS := envFloat("HYDRADNS_RL_PREFIX_QPS", 2_000.0)
-	prefixBurst := envInt("HYDRADNS_RL_PREFIX_BURST", 4_000)
-	ipQPS := envFloat("HYDRADNS_RL_IP_QPS", 200.0)
-	ipBurst := envInt("HYDRADNS_RL_IP_BURST", 400)
+	globalQPS := envFloat("HYDRADNS_RL_GLOBAL_QPS", 100_000.0)
+	globalBurst := envInt("HYDRADNS_RL_GLOBAL_BURST", 100_000)
+	prefixQPS := envFloat("HYDRADNS_RL_PREFIX_QPS", 10_000.0)
+	prefixBurst := envInt("HYDRADNS_RL_PREFIX_BURST", 20_000)
+	ipQPS := envFloat("HYDRADNS_RL_IP_QPS", 3_000.0)
+	ipBurst := envInt("HYDRADNS_RL_IP_BURST", 6_000)
 
 	fmtLimiter := func(name string, rate float64, burst int) string {
 		if rate <= 0.0 || burst <= 0 {

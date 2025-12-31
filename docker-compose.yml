@@ -19,7 +19,11 @@ services:
     # Environment variables (override config file settings)
     environment:
       - HYDRADNS_CONFIG=/app/config/hydradns.yaml
-      - LOG_LEVEL=DEBUG
+      - LOG_LEVEL=WARN
+      # Disable rate limiting for benchmarking
+      - HYDRADNS_RL_QPS=0
+      - HYDRADNS_RL_IP_QPS=0
+      - HYDRADNS_RL_PREFIX_QPS=0
       # Uncomment to override specific settings:
       # - HYDRADNS_WORKERS=4
       # - HYDRADNS_UPSTREAM_SERVERS=1.1.1.1,8.8.8.8
@@ -65,11 +69,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 512M
+          cpus: "6"
+          memory: 1024M
         reservations:
-          cpus: "0.25"
-          memory: 64M
+          cpus: "6"
+          memory: 1024M
 
     # Healthcheck is baked into the Dockerfile using /app/dnsquery.
 

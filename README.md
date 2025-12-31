@@ -245,6 +245,86 @@ HydraDNS includes several performance optimizations for high-throughput DNS serv
 
 ---
 
+## Rate Limiting
+
+HydraDNS implements 3-tier token bucket rate limiting to protect against abuse while allowing legitimate high-volume traffic. Rate limiting is applied **before** query parsing, minimizing CPU overhead for dropped requests.
+
+### How It Works
+
+Each incoming query must pass all three rate limit tiers:
+
+1. **Global** — Total queries per second across all clients
+2. **Prefix** — Queries per second from each /24 subnet (IPv4) or /48 (IPv6)
+3. **Per-IP** — Queries per second from each individual IP address
+
+The token bucket algorithm allows sustained throughput at the configured QPS rate, with burst capacity to absorb short spikes.
+
+### Default Limits
+
+| Tier | QPS | Burst | Purpose |
+|------|-----|-------|--------|
+| **Global** | 100,000 | 100,000 | Total server capacity |
+| **Prefix** (/24) | 10,000 | 20,000 | Limit per subnet |
+| **Per-IP** | 3,000 | 6,000 | Limit per client |
+
+The default per-IP limit of **3,000 QPS** is suitable for home/small office use. Your actual measured throughput will be slightly lower than the configured QPS due to rate limiter overhead.
+
+### Tuning for Higher Throughput
+
+HydraDNS can handle significantly higher QPS with adjusted rate limits. For high-performance deployments:
+
+```bash
+# High-performance configuration (10k+ QPS per client)
+export HYDRADNS_RL_IP_QPS=10000
+export HYDRADNS_RL_IP_BURST=20000
+
+# Or disable rate limiting entirely for internal/trusted networks
+export HYDRADNS_RL_IP_QPS=0
+```
+
+**Recommended settings by use case:**
+
+| Use Case | IP QPS | IP Burst | Notes |
+|----------|--------|----------|-------|
+| Home/Small Office | 3,000 | 6,000 | Default, good protection |
+| Enterprise/Internal | 10,000 | 20,000 | Higher for trusted clients |
+| Behind Load Balancer | 50,000+ | 100,000 | Single source IP for many clients |
+| Development/Testing | 0 (disabled) | — | No limits for benchmarking |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HYDRADNS_RL_GLOBAL_QPS` | 100000 | Global queries per second limit |
+| `HYDRADNS_RL_GLOBAL_BURST` | 100000 | Global burst capacity |
+| `HYDRADNS_RL_PREFIX_QPS` | 10000 | Per /24 subnet QPS limit |
+| `HYDRADNS_RL_PREFIX_BURST` | 20000 | Per /24 subnet burst capacity |
+| `HYDRADNS_RL_IP_QPS` | 3000 | Per-IP QPS limit (0 = disabled) |
+| `HYDRADNS_RL_IP_BURST` | 6000 | Per-IP burst capacity |
+| `HYDRADNS_RL_MAX_IP_ENTRIES` | 65536 | Max tracked IP addresses |
+| `HYDRADNS_RL_MAX_PREFIX_ENTRIES` | 16384 | Max tracked /24 prefixes |
+| `HYDRADNS_RL_CLEANUP_SECONDS` | 60 | Stale entry cleanup interval |
+
+### Docker Configuration
+
+```yaml
+# docker-compose.yml
+services:
+  hydradns:
+    environment:
+      - HYDRADNS_RL_IP_QPS=10000    # Increase for higher throughput
+      - HYDRADNS_RL_IP_BURST=20000
+```
+
+### Performance Notes
+
+- Rate limiting uses `netip.Addr` internally to avoid string allocations
+- Token buckets are per-tier with O(1) lookup via map
+- Stale entries are cleaned up periodically to bound memory usage
+- When rate limited, queries are dropped before parsing (minimal CPU impact)
+
+---
+
 ## License
 
 See [LICENSE](LICENSE) for details.

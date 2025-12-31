@@ -30,7 +30,7 @@ func TestUDPServer_ZoneAnswer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srv := &UDPServer{Handler: h, MaxConcurrency: 8}
+	srv := &UDPServer{Handler: h, WorkersPerSocket: 8}
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.RunOnConn(ctx, conn) }()
 	defer func() {

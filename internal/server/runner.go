@@ -65,7 +65,7 @@ func (r *Runner) Run(cfg *config.Config) error {
 	r.logStartup(cfg, addr, maxConc, upPool)
 
 	// Start servers
-	udp := &UDPServer{Logger: r.logger, Handler: h, Limiter: limiter, MaxConcurrency: maxConc}
+	udp := &UDPServer{Logger: r.logger, Handler: h, Limiter: limiter, WorkersPerSocket: maxConc}
 	var tcp *TCPServer
 	if cfg.Server.EnableTCP {
 		tcp = &TCPServer{Logger: r.logger, Handler: h}

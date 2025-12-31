@@ -454,22 +454,29 @@ func parseSOARData(rdata, origin string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid SOA serial")
 	}
-	refresh, err := parseUint32(parts[3])
+	refreshInt, err := parseTTL(parts[3])
 	if err != nil {
 		return nil, fmt.Errorf("invalid SOA refresh")
 	}
-	retryV, err := parseUint32(parts[4])
+	refresh := uint32(refreshInt)
+
+	retryInt, err := parseTTL(parts[4])
 	if err != nil {
 		return nil, fmt.Errorf("invalid SOA retry")
 	}
-	expire, err := parseUint32(parts[5])
+	retryV := uint32(retryInt)
+
+	expireInt, err := parseTTL(parts[5])
 	if err != nil {
 		return nil, fmt.Errorf("invalid SOA expire")
 	}
-	minimum, err := parseUint32(parts[6])
+	expire := uint32(expireInt)
+
+	minimumInt, err := parseTTL(parts[6])
 	if err != nil {
 		return nil, fmt.Errorf("invalid SOA minimum")
 	}
+	minimum := uint32(minimumInt)
 
 	mwire, err := dns.EncodeName(mname)
 	if err != nil {

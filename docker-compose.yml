@@ -17,16 +17,21 @@ services:
       - "1053:1053/tcp"
 
     # Environment variables (override config file settings)
+    # Naming pattern: HYDRADNS_<SECTION>_<KEY>
+    # e.g., server.host -> HYDRADNS_SERVER_HOST
     environment:
       - HYDRADNS_CONFIG=/app/config/hydradns.yaml
-      - LOG_LEVEL=WARN
-      # Disable rate limiting for benchmarking
-      - HYDRADNS_RL_QPS=0
-      - HYDRADNS_RL_IP_QPS=0
-      - HYDRADNS_RL_PREFIX_QPS=0
+      - HYDRADNS_LOGGING_LEVEL=WARN
       # Uncomment to override specific settings:
-      # - HYDRADNS_WORKERS=4
+      # - HYDRADNS_SERVER_WORKERS=4
+      # - HYDRADNS_SERVER_HOST=0.0.0.0
+      # - HYDRADNS_SERVER_PORT=1053
       # - HYDRADNS_UPSTREAM_SERVERS=1.1.1.1,8.8.8.8
+      # - HYDRADNS_FILTERING_ENABLED=true
+      # Rate limiting (set QPS to 0 to disable for benchmarking):
+      # - HYDRADNS_RATE_LIMIT_GLOBAL_QPS=0
+      # - HYDRADNS_RATE_LIMIT_PREFIX_QPS=0
+      # - HYDRADNS_RATE_LIMIT_IP_QPS=0
 
     # Volume mounts
     volumes:
@@ -34,7 +39,6 @@ services:
       - ./zones:/app/zones:ro
       # Optional: Mount custom config file
       # - ./docker/hydradns.yaml:/app/config/hydradns.yaml:ro
-
     # Restart policy
     restart: unless-stopped
 

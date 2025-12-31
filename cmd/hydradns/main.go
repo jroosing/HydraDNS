@@ -61,7 +61,17 @@ func main() {
 		"workers", cfg.Server.Workers.String(),
 		"tcp", cfg.Server.EnableTCP,
 	)
-	logger.Info("rate limits", "effective", server.RateLimitsStartupLog())
+	logger.Info("rate limits", "effective", server.FormatRateLimitsLog(server.RateLimitSettings{
+		CleanupSeconds:   cfg.RateLimit.CleanupSeconds,
+		MaxIPEntries:     cfg.RateLimit.MaxIPEntries,
+		MaxPrefixEntries: cfg.RateLimit.MaxPrefixEntries,
+		GlobalQPS:        cfg.RateLimit.GlobalQPS,
+		GlobalBurst:      cfg.RateLimit.GlobalBurst,
+		PrefixQPS:        cfg.RateLimit.PrefixQPS,
+		PrefixBurst:      cfg.RateLimit.PrefixBurst,
+		IPQPS:            cfg.RateLimit.IPQPS,
+		IPBurst:          cfg.RateLimit.IPBurst,
+	}))
 
 	runner := server.NewRunner(logger)
 	if err := runner.Run(cfg); err != nil {

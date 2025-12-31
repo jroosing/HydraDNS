@@ -3,6 +3,11 @@
 # =============================================================================
 # This configuration is optimized for containerized deployment.
 # Override settings via environment variables or mount a custom config.
+#
+# Environment variable naming pattern: HYDRADNS_<SECTION>_<KEY>
+# Examples:
+#   HYDRADNS_SERVER_HOST, HYDRADNS_SERVER_PORT, HYDRADNS_LOGGING_LEVEL
+#   HYDRADNS_UPSTREAM_SERVERS, HYDRADNS_FILTERING_ENABLED
 
 server:
   # Bind to all interfaces (required for Docker networking)
@@ -69,3 +74,13 @@ logging:
   extra_fields:
     service: "hydradns"
     # Add your own fields like environment, datacenter, etc.
+
+# Rate limiting (3-tier token bucket)
+# Set QPS values to 0 to disable rate limiting for benchmarking
+rate_limit:
+  global_qps: 100000
+  global_burst: 100000
+  prefix_qps: 10000
+  prefix_burst: 20000
+  ip_qps: 3000
+  ip_burst: 6000

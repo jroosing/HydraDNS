@@ -28,7 +28,7 @@ RUN addgroup -g ${GID} hydradns && \
     rm -rf /var/cache/apk/* /tmp/*
 
 ENV HYDRADNS_CONFIG=/app/config/hydradns.yaml \
-    LOG_LEVEL=INFO
+    HYDRADNS_LOGGING_LEVEL=INFO
 
 WORKDIR /app
 

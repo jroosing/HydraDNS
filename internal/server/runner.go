@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jroosing/hydradns/internal/config"
+	"github.com/jroosing/hydradns/internal/filtering"
 	"github.com/jroosing/hydradns/internal/resolvers"
 	"github.com/jroosing/hydradns/internal/zone"
 )
@@ -59,7 +60,17 @@ func (r *Runner) Run(cfg *config.Config) error {
 
 	// Create server components
 	h := &QueryHandler{Logger: r.logger, Resolver: resolver, Timeout: 4 * time.Second}
-	limiter := NewRateLimiterFromEnv()
+	limiter := NewRateLimiter(RateLimitSettings{
+		CleanupSeconds:   cfg.RateLimit.CleanupSeconds,
+		MaxIPEntries:     cfg.RateLimit.MaxIPEntries,
+		MaxPrefixEntries: cfg.RateLimit.MaxPrefixEntries,
+		GlobalQPS:        cfg.RateLimit.GlobalQPS,
+		GlobalBurst:      cfg.RateLimit.GlobalBurst,
+		PrefixQPS:        cfg.RateLimit.PrefixQPS,
+		PrefixBurst:      cfg.RateLimit.PrefixBurst,
+		IPQPS:            cfg.RateLimit.IPQPS,
+		IPBurst:          cfg.RateLimit.IPBurst,
+	})
 
 	addr := net.JoinHostPort(cfg.Server.Host, strconv.Itoa(cfg.Server.Port))
 	r.logStartup(cfg, addr, maxConc, upPool)
@@ -180,8 +191,8 @@ func (r *Runner) loadZones(cfg *config.Config) []*zone.Zone {
 	return zones
 }
 
-// buildResolverChain creates the resolver chain: zones (if any) -> forwarding.
-func (r *Runner) buildResolverChain(cfg *config.Config, zones []*zone.Zone, upPool int) *resolvers.Chained {
+// buildResolverChain creates the resolver chain: filtering -> zones (if any) -> forwarding.
+func (r *Runner) buildResolverChain(cfg *config.Config, zones []*zone.Zone, upPool int) resolvers.Resolver {
 	resList := make([]resolvers.Resolver, 0, 2)
 
 	if len(zones) > 0 {
@@ -191,7 +202,63 @@ func (r *Runner) buildResolverChain(cfg *config.Config, zones []*zone.Zone, upPo
 	fwd := resolvers.NewForwardingResolver(cfg.Upstream.Servers, upPool, 0, cfg.Server.TCPFallback)
 	resList = append(resList, fwd)
 
-	return &resolvers.Chained{Resolvers: resList}
+	var chain resolvers.Resolver = &resolvers.Chained{Resolvers: resList}
+
+	// Wrap with filtering if enabled
+	if cfg.Filtering.Enabled {
+		policy := r.buildFilteringPolicy(cfg)
+		chain = resolvers.NewFilteringResolver(policy, chain)
+		if r.logger != nil {
+			r.logger.Info("filtering enabled",
+				"whitelist_count", len(cfg.Filtering.WhitelistDomains),
+				"blacklist_count", len(cfg.Filtering.BlacklistDomains),
+				"blocklists", len(cfg.Filtering.Blocklists),
+			)
+		}
+	}
+
+	return chain
+}
+
+// buildFilteringPolicy creates a PolicyEngine from the configuration.
+func (r *Runner) buildFilteringPolicy(cfg *config.Config) *filtering.PolicyEngine {
+	// Convert blocklist configs to BlocklistURLs
+	blocklists := make([]filtering.BlocklistURL, 0, len(cfg.Filtering.Blocklists))
+	for _, bl := range cfg.Filtering.Blocklists {
+		format := filtering.FormatAuto
+		switch bl.Format {
+		case "adblock":
+			format = filtering.FormatAdblock
+		case "hosts":
+			format = filtering.FormatHosts
+		case "domains":
+			format = filtering.FormatDomains
+		}
+		blocklists = append(blocklists, filtering.BlocklistURL{
+			Name:   bl.Name,
+			URL:    bl.URL,
+			Format: format,
+		})
+	}
+
+	// Parse refresh interval
+	refreshInterval := 24 * time.Hour
+	if cfg.Filtering.RefreshInterval != "" {
+		if d, err := time.ParseDuration(cfg.Filtering.RefreshInterval); err == nil {
+			refreshInterval = d
+		}
+	}
+
+	return filtering.NewPolicyEngine(filtering.PolicyEngineConfig{
+		Enabled:          cfg.Filtering.Enabled,
+		BlockAction:      filtering.ActionBlock,
+		LogBlocked:       cfg.Filtering.LogBlocked,
+		LogAllowed:       cfg.Filtering.LogAllowed,
+		WhitelistDomains: cfg.Filtering.WhitelistDomains,
+		BlacklistDomains: cfg.Filtering.BlacklistDomains,
+		BlocklistURLs:    blocklists,
+		RefreshInterval:  refreshInterval,
+	})
 }
 
 // logStartup logs server configuration at startup.

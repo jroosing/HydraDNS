@@ -3,214 +3,252 @@ package config
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"github.com/spf13/viper"
 )
 
-type WorkersMode int
+// initConfig sets up the config loader with defaults, env binding, and config file.
+func initConfig(configPath string) (*viper.Viper, error) {
+	v := viper.New()
 
-const (
-	WorkersAuto WorkersMode = iota
-	WorkersFixed
-)
+	// Set default values
+	setDefaults(v)
 
-type WorkerSetting struct {
-	Mode  WorkersMode
-	Value int
-}
+	// Environment variable binding
+	// Uses HYDRADNS_ prefix: HYDRADNS_SERVER_HOST -> server.host
+	v.SetEnvPrefix("HYDRADNS")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
 
-func (w WorkerSetting) String() string {
-	if w.Mode == WorkersAuto {
-		return "auto"
-	}
-	return strconv.Itoa(w.Value)
-}
-
-type ServerConfig struct {
-	Host                   string        `yaml:"host"`
-	Port                   int           `yaml:"port"`
-	Workers                WorkerSetting `yaml:"-"`
-	WorkersRaw             string        `yaml:"workers"`
-	MaxConcurrency         int           `yaml:"max_concurrency"`
-	UpstreamSocketPoolSize int           `yaml:"upstream_socket_pool_size"`
-	EnableTCP              bool          `yaml:"enable_tcp"`
-	TCPFallback            bool          `yaml:"tcp_fallback"`
-}
-
-type UpstreamConfig struct {
-	Servers []string `yaml:"servers"`
-}
-
-type ZonesConfig struct {
-	Directory string   `yaml:"directory"`
-	Files     []string `yaml:"files"`
-}
-
-type LoggingConfig struct {
-	Level            string            `yaml:"level"`
-	Structured       bool              `yaml:"structured"`
-	StructuredFormat string            `yaml:"structured_format"`
-	IncludePID       bool              `yaml:"include_pid"`
-	ExtraFields      map[string]string `yaml:"extra_fields"`
-}
-
-type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Upstream UpstreamConfig `yaml:"upstream"`
-	Zones    ZonesConfig    `yaml:"zones"`
-	Logging  LoggingConfig  `yaml:"logging"`
-}
-
-func ResolveConfigPath(flagValue string) string {
-	if strings.TrimSpace(flagValue) != "" {
-		return flagValue
-	}
-	if v := strings.TrimSpace(os.Getenv("HYDRADNS_CONFIG")); v != "" {
-		return v
-	}
-	return ""
-}
-
-func Load(path string) (*Config, error) {
-	cfg := defaultConfig()
-	if strings.TrimSpace(path) != "" {
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return nil, err
-		}
-		if err := yaml.Unmarshal(b, cfg); err != nil {
-			return nil, err
+	// Load config file if provided
+	if configPath != "" {
+		v.SetConfigFile(configPath)
+		if err := v.ReadInConfig(); err != nil {
+			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
 
-	applyEnvOverrides(cfg)
-	if err := normalize(cfg); err != nil {
+	return v, nil
+}
+
+// setDefaults configures all default values.
+func setDefaults(v *viper.Viper) {
+	// Server defaults
+	v.SetDefault("server.host", "0.0.0.0")
+	v.SetDefault("server.port", 1053)
+	v.SetDefault("server.workers", "auto")
+	v.SetDefault("server.max_concurrency", 0)
+	v.SetDefault("server.upstream_socket_pool_size", 0)
+	v.SetDefault("server.enable_tcp", true)
+	v.SetDefault("server.tcp_fallback", true)
+
+	// Upstream defaults
+	v.SetDefault("upstream.servers", []string{"8.8.8.8"})
+
+	// Zones defaults
+	v.SetDefault("zones.directory", "zones")
+	v.SetDefault("zones.files", []string{})
+
+	// Logging defaults
+	v.SetDefault("logging.level", "INFO")
+	v.SetDefault("logging.structured", false)
+	v.SetDefault("logging.structured_format", "json")
+	v.SetDefault("logging.include_pid", false)
+	v.SetDefault("logging.extra_fields", map[string]string{})
+
+	// Filtering defaults
+	v.SetDefault("filtering.enabled", false)
+	v.SetDefault("filtering.log_blocked", true)
+	v.SetDefault("filtering.log_allowed", false)
+	v.SetDefault("filtering.whitelist_domains", []string{})
+	v.SetDefault("filtering.blacklist_domains", []string{})
+	v.SetDefault("filtering.blocklists", []BlocklistConfig{})
+	v.SetDefault("filtering.refresh_interval", "24h")
+
+	// Rate limiting defaults
+	v.SetDefault("rate_limit.cleanup_seconds", 60.0)
+	v.SetDefault("rate_limit.max_ip_entries", 65536)
+	v.SetDefault("rate_limit.max_prefix_entries", 16384)
+	v.SetDefault("rate_limit.global_qps", 100000.0)
+	v.SetDefault("rate_limit.global_burst", 100000)
+	v.SetDefault("rate_limit.prefix_qps", 10000.0)
+	v.SetDefault("rate_limit.prefix_burst", 20000)
+	v.SetDefault("rate_limit.ip_qps", 3000.0)
+	v.SetDefault("rate_limit.ip_burst", 6000)
+}
+
+// loadFromSource loads configuration from file and environment.
+func loadFromSource(configPath string) (*Config, error) {
+	v, err := initConfig(configPath)
+	if err != nil {
 		return nil, err
 	}
+
+	cfg := &Config{}
+
+	// Server config
+	cfg.Server.Host = v.GetString("server.host")
+	cfg.Server.Port = v.GetInt("server.port")
+	cfg.Server.MaxConcurrency = v.GetInt("server.max_concurrency")
+	cfg.Server.UpstreamSocketPoolSize = v.GetInt("server.upstream_socket_pool_size")
+	cfg.Server.EnableTCP = v.GetBool("server.enable_tcp")
+	cfg.Server.TCPFallback = v.GetBool("server.tcp_fallback")
+	cfg.Server.WorkersRaw = v.GetString("server.workers")
+
+	// Parse workers setting
+	cfg.Server.Workers = parseWorkers(cfg.Server.WorkersRaw)
+
+	// Upstream config
+	cfg.Upstream.Servers = parseServerList(v.GetStringSlice("upstream.servers"))
+	if len(cfg.Upstream.Servers) == 0 {
+		// Handle comma-separated string from env
+		if s := v.GetString("upstream.servers"); s != "" {
+			cfg.Upstream.Servers = parseServerList(strings.Split(s, ","))
+		}
+	}
+
+	// Zones config
+	cfg.Zones.Directory = v.GetString("zones.directory")
+	cfg.Zones.Files = v.GetStringSlice("zones.files")
+
+	// Logging config
+	cfg.Logging.Level = strings.ToUpper(v.GetString("logging.level"))
+	cfg.Logging.Structured = v.GetBool("logging.structured")
+	cfg.Logging.StructuredFormat = v.GetString("logging.structured_format")
+	cfg.Logging.IncludePID = v.GetBool("logging.include_pid")
+	cfg.Logging.ExtraFields = v.GetStringMapString("logging.extra_fields")
+
+	// Filtering config
+	cfg.Filtering.Enabled = v.GetBool("filtering.enabled")
+	cfg.Filtering.LogBlocked = v.GetBool("filtering.log_blocked")
+	cfg.Filtering.LogAllowed = v.GetBool("filtering.log_allowed")
+	cfg.Filtering.RefreshInterval = v.GetString("filtering.refresh_interval")
+
+	// Handle whitelist/blacklist (can be slice or comma-separated string)
+	cfg.Filtering.WhitelistDomains = getStringSliceOrSplit(v, "filtering.whitelist_domains")
+	cfg.Filtering.BlacklistDomains = getStringSliceOrSplit(v, "filtering.blacklist_domains")
+
+	// Parse blocklists
+	if err := v.UnmarshalKey("filtering.blocklists", &cfg.Filtering.Blocklists); err != nil {
+		// Ignore unmarshal errors for blocklists, use empty slice
+		cfg.Filtering.Blocklists = []BlocklistConfig{}
+	}
+
+	// Handle single blocklist URL from env
+	if url := v.GetString("filtering.blocklist_url"); url != "" {
+		cfg.Filtering.Blocklists = append(cfg.Filtering.Blocklists, BlocklistConfig{
+			Name:   "env-blocklist",
+			URL:    url,
+			Format: "auto",
+		})
+	}
+
+	// Normalize and validate
+	if err := normalizeConfig(cfg); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
-func defaultConfig() *Config {
-	return &Config{
-		Server: ServerConfig{
-			Host:                   "0.0.0.0",
-			Port:                   1053,
-			Workers:                WorkerSetting{Mode: WorkersAuto},
-			MaxConcurrency:         0,
-			UpstreamSocketPoolSize: 0,
-			EnableTCP:              true,
-			TCPFallback:            true,
-		},
-		Upstream: UpstreamConfig{Servers: []string{"8.8.8.8"}},
-		Zones: ZonesConfig{
-			Directory: "zones",
-			Files:     nil,
-		},
-		Logging: LoggingConfig{
-			Level:            "INFO",
-			Structured:       false,
-			StructuredFormat: "json",
-			IncludePID:       false,
-			ExtraFields:      map[string]string{},
-		},
+// parseWorkers converts the workers string to WorkerSetting.
+func parseWorkers(raw string) WorkerSetting {
+	raw = strings.TrimSpace(strings.ToLower(raw))
+	if raw == "" || raw == "auto" {
+		return WorkerSetting{Mode: WorkersAuto}
 	}
+	if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+		return WorkerSetting{Mode: WorkersFixed, Value: n}
+	}
+	return WorkerSetting{Mode: WorkersAuto}
 }
 
-func applyEnvOverrides(cfg *Config) {
-	if v := strings.TrimSpace(os.Getenv("HYDRADNS_HOST")); v != "" {
-		cfg.Server.Host = v
-	}
-	if v := strings.TrimSpace(os.Getenv("HYDRADNS_PORT")); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			cfg.Server.Port = n
+// parseServerList cleans up a list of server addresses.
+func parseServerList(servers []string) []string {
+	result := make([]string, 0, len(servers))
+	for _, s := range servers {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
 		}
-	}
-	if v := strings.TrimSpace(os.Getenv("HYDRADNS_WORKERS")); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			cfg.Server.Workers = WorkerSetting{Mode: WorkersFixed, Value: n}
+		// Strip port if present (always use port 53)
+		if h, _, ok := strings.Cut(s, ":"); ok {
+			s = h
 		}
+		result = append(result, s)
 	}
-	if v := strings.TrimSpace(os.Getenv("HYDRADNS_UPSTREAM_SERVERS")); v != "" {
-		parts := strings.Split(v, ",")
-		servers := make([]string, 0, len(parts))
+	return result
+}
+
+// getStringSliceOrSplit handles both slice and comma-separated string values.
+func getStringSliceOrSplit(v *viper.Viper, key string) []string {
+	if slice := v.GetStringSlice(key); len(slice) > 0 {
+		// Filter empty entries
+		result := make([]string, 0, len(slice))
+		for _, s := range slice {
+			s = strings.TrimSpace(s)
+			if s != "" {
+				result = append(result, s)
+			}
+		}
+		return result
+	}
+	// Try as comma-separated string
+	if s := v.GetString(key); s != "" {
+		parts := strings.Split(s, ",")
+		result := make([]string, 0, len(parts))
 		for _, p := range parts {
 			p = strings.TrimSpace(p)
-			if p == "" {
-				continue
+			if p != "" {
+				result = append(result, p)
 			}
-			// allow host:port but ignore port (python forces 53)
-			host := p
-			if h, _, ok := strings.Cut(p, ":"); ok {
-				host = h
-			}
-			servers = append(servers, host)
 		}
-		if len(servers) > 0 {
-			cfg.Upstream.Servers = servers
-		}
+		return result
 	}
-	if v := strings.TrimSpace(os.Getenv("HYDRADNS_ZONES_DIR")); v != "" {
-		cfg.Zones.Directory = v
-	}
-	if v := strings.TrimSpace(os.Getenv("HYDRADNS_ENABLE_TCP")); v != "" {
-		cfg.Server.EnableTCP = envBool(v, cfg.Server.EnableTCP)
-	}
-	if v := strings.TrimSpace(os.Getenv("HYDRADNS_TCP_FALLBACK")); v != "" {
-		cfg.Server.TCPFallback = envBool(v, cfg.Server.TCPFallback)
-	}
-	if v := strings.TrimSpace(os.Getenv("LOG_LEVEL")); v != "" {
-		cfg.Logging.Level = strings.ToUpper(v)
-	}
+	return nil
 }
 
-func normalize(cfg *Config) error {
-	if strings.TrimSpace(cfg.Server.WorkersRaw) != "" && cfg.Server.Workers.Mode == WorkersAuto {
-		w := strings.TrimSpace(cfg.Server.WorkersRaw)
-		if w == "auto" {
-			cfg.Server.Workers = WorkerSetting{Mode: WorkersAuto}
-		} else {
-			n, err := strconv.Atoi(w)
-			if err != nil {
-				return fmt.Errorf("invalid server.workers: %q", w)
-			}
-			cfg.Server.Workers = WorkerSetting{Mode: WorkersFixed, Value: n}
-		}
-	}
+// normalizeConfig validates and normalizes the configuration.
+func normalizeConfig(cfg *Config) error {
+	// Validate port
 	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
 		return errors.New("server.port must be 1..65535")
 	}
+
+	// Default upstream servers
 	if len(cfg.Upstream.Servers) == 0 {
 		cfg.Upstream.Servers = []string{"8.8.8.8"}
 	}
-	// match python: max 3 strict-order failover
+
+	// Limit to 3 upstream servers (strict-order failover)
 	if len(cfg.Upstream.Servers) > 3 {
 		cfg.Upstream.Servers = cfg.Upstream.Servers[:3]
 	}
+
+	// Normalize zones directory
 	if cfg.Zones.Directory == "" {
 		cfg.Zones.Directory = "zones"
 	}
 	cfg.Zones.Directory = filepath.Clean(cfg.Zones.Directory)
+
+	// Normalize logging
 	if cfg.Logging.Level == "" {
 		cfg.Logging.Level = "INFO"
 	}
 	if cfg.Logging.StructuredFormat == "" {
 		cfg.Logging.StructuredFormat = "json"
 	}
-	return nil
-}
-
-func envBool(raw string, def bool) bool {
-	s := strings.ToLower(strings.TrimSpace(raw))
-	switch s {
-	case "1", "true", "yes", "y", "on":
-		return true
-	case "0", "false", "no", "n", "off":
-		return false
-	default:
-		return def
+	if cfg.Logging.ExtraFields == nil {
+		cfg.Logging.ExtraFields = map[string]string{}
 	}
+
+	// Normalize filtering
+	if cfg.Filtering.RefreshInterval == "" {
+		cfg.Filtering.RefreshInterval = "24h"
+	}
+
+	return nil
 }

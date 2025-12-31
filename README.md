@@ -25,6 +25,7 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 
 ### Security
 - **3-tier rate limiting** — Global, per-prefix (/24), and per-IP token buckets
+- **Domain filtering** — Trie-based whitelist/blacklist with remote blocklist support
 - **Response validation** — Verifies upstream responses match requests
 - **Hardened Docker deployment** — Non-root user, minimal attack surface
 
@@ -62,6 +63,7 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 │         ┌────────────────┐                                      │
 │         │ Chained        │          Resolver Chain              │
 │         │ Resolver       │                                      │
+│         │  ├─ Filtering  │◄─── Domain whitelist/blacklist       │
 │         │  ├─ Zone       │◄─── Local authoritative zones        │
 │         │  └─ Forwarding │◄─── Upstream DNS servers             │
 │         └───────┬────────┘                                      │
@@ -84,7 +86,8 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 | **TCP Server** | `internal/server/tcp_server.go` | Handles TCP queries with connection pipelining and per-IP limits |
 | **Rate Limiter** | `internal/server/rate_limit.go` | 3-tier token bucket rate limiting (global → /24 prefix → IP) |
 | **Query Handler** | `internal/server/query_handler.go` | Parses requests, dispatches to resolvers, handles timeouts |
-| **Chained Resolver** | `internal/resolvers/chained.go` | Tries resolvers in order (zone → forwarding) |
+| **Chained Resolver** | `internal/resolvers/chained.go` | Tries resolvers in order (filtering → zone → forwarding) |
+| **Filtering Resolver** | `internal/resolvers/filtering_resolver.go` | Domain filtering with whitelist/blacklist support |
 | **Zone Resolver** | `internal/resolvers/zone_resolver.go` | Serves authoritative responses from loaded zones |
 | **Forwarding Resolver** | `internal/resolvers/forwarding_resolver.go` | Forwards to upstream servers with caching and failover |
 | **Cache** | `internal/resolvers/cache.go` | TTL-aware LRU cache with negative caching support |
@@ -322,6 +325,101 @@ services:
 - Token buckets are per-tier with O(1) lookup via map
 - Stale entries are cleaned up periodically to bound memory usage
 - When rate limited, queries are dropped before parsing (minimal CPU impact)
+
+---
+
+## Domain Filtering
+
+HydraDNS includes a high-performance domain filtering system for ad blocking, malware protection, and custom access control. Filtering uses a trie-based data structure for O(k) lookups where k is the number of domain labels.
+
+### Features
+
+- **Whitelist priority** — Whitelisted domains always allowed, even if on blacklist
+- **Wildcard subdomains** — Blocking `ads.example.com` also blocks `tracker.ads.example.com`
+- **Multiple blocklist formats** — Adblock Plus, hosts file, and plain domain lists
+- **Remote blocklists** — Fetch from URLs with automatic periodic refresh
+- **~86ns lookups** — High-performance trie with 10,000+ domains
+
+### Quick Start
+
+Enable filtering with environment variables:
+
+```bash
+# Enable filtering with Hagezi blocklist
+export HYDRADNS_FILTERING_ENABLED=true
+export HYDRADNS_FILTERING_BLOCKLIST_URL="https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt"
+
+go run ./cmd/hydradns
+```
+
+### Configuration
+
+```yaml
+filtering:
+  # Enable domain filtering (default: false)
+  enabled: true
+
+  # Log blocked queries (default: true)
+  log_blocked: true
+
+  # Custom whitelist (always allowed)
+  whitelist_domains:
+    - "safe.example.com"
+
+  # Custom blacklist (always blocked)
+  blacklist_domains:
+    - "ads.example.com"
+    - "tracker.example.com"
+
+  # Remote blocklists
+  blocklists:
+    - name: "hagezi-light"
+      url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt"
+      format: "adblock"
+    - name: "stevenblack"
+      url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+      format: "hosts"
+
+  # Refresh interval for remote blocklists (default: 24h)
+  refresh_interval: "24h"
+```
+
+### Supported Blocklist Formats
+
+| Format | Description | Example |
+|--------|-------------|---------|
+| `adblock` | Adblock Plus format | `\|\|ads.example.com^` |
+| `hosts` | Hosts file format | `0.0.0.0 ads.example.com` |
+| `domains` | Plain domain list | `ads.example.com` |
+| `auto` | Auto-detect format | — |
+
+### Popular Blocklists
+
+| List | Format | Description |
+|------|--------|-------------|
+| [Hagezi Light](https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt) | adblock | Balanced blocking, minimal false positives |
+| [Hagezi Normal](https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/multi.txt) | adblock | More aggressive blocking |
+| [StevenBlack](https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts) | hosts | Ads + malware |
+| [OISD](https://abp.oisd.nl/) | adblock | Comprehensive blocking |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HYDRADNS_FILTERING_ENABLED` | `false` | Enable/disable filtering |
+| `HYDRADNS_FILTERING_LOG_BLOCKED` | `true` | Log blocked queries |
+| `HYDRADNS_FILTERING_WHITELIST` | — | Comma-separated whitelist domains |
+| `HYDRADNS_FILTERING_BLACKLIST` | — | Comma-separated blacklist domains |
+| `HYDRADNS_FILTERING_BLOCKLIST_URL` | — | Single blocklist URL (auto-detect format) |
+
+### How It Works
+
+1. **Query received** — Domain extracted from DNS question
+2. **Whitelist check** — If domain matches whitelist, allow immediately
+3. **Blacklist check** — If domain matches blacklist/blocklists, return NXDOMAIN
+4. **Default allow** — Unmatched domains pass to resolver chain
+
+The filtering resolver sits at the front of the resolver chain, before zone and forwarding resolvers.
 
 ---
 

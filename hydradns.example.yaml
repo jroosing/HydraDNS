@@ -5,9 +5,18 @@
 #
 # Configuration priority:
 #   1. Command-line arguments (--port, --host, etc.)
-#   2. YAML config file
-#   3. Environment variables
+#   2. Environment variables
+#   3. YAML config file
 #   4. Default values
+#
+# Environment variable naming pattern: HYDRADNS_<SECTION>_<KEY>
+# Examples:
+#   server.host        -> HYDRADNS_SERVER_HOST
+#   server.port        -> HYDRADNS_SERVER_PORT
+#   server.enable_tcp  -> HYDRADNS_SERVER_ENABLE_TCP
+#   upstream.servers   -> HYDRADNS_UPSTREAM_SERVERS
+#   logging.level      -> HYDRADNS_LOGGING_LEVEL
+#   filtering.enabled  -> HYDRADNS_FILTERING_ENABLED
 
 # Server configuration
 server:
@@ -85,3 +94,65 @@ logging:
   #   service: "hydradns"
   #   environment: "production"
   #   datacenter: "us-east-1"
+
+# Domain filtering configuration (ad blocking, malware protection)
+filtering:
+  # Enable domain filtering (default: false)
+  enabled: false
+
+  # Log blocked queries (default: true)
+  log_blocked: true
+
+  # Log allowed queries (verbose, default: false)
+  log_allowed: false
+
+  # Custom whitelist domains (always allowed, takes priority over blacklist)
+  # Wildcards all subdomains automatically
+  whitelist_domains:
+    - "safe.example.com"
+    - "allowed.ads.com"
+
+  # Custom blacklist domains (always blocked)
+  # Wildcards all subdomains automatically
+  blacklist_domains:
+    - "ads.example.com"
+    - "tracker.example.com"
+
+  # Remote blocklists to fetch and merge (loaded on startup, refreshed periodically)
+  # Supports multiple formats: adblock, hosts, domains, or auto-detect
+  blocklists:
+    # Hagezi Light - balanced ad blocking with minimal false positives
+    - name: "hagezi-light"
+      url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt"
+      format: "adblock"
+    # StevenBlack hosts file - ads + malware
+    # - name: "stevenblack"
+    #   url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+    #   format: "hosts"
+
+  # How often to refresh remote blocklists (default: 24h)
+  refresh_interval: "24h"
+
+# Rate limiting configuration (3-tier token bucket)
+# Rate limiting is applied before query parsing to minimize CPU overhead.
+# Requests must pass all three tiers: global -> prefix (/24 IPv4, /64 IPv6) -> IP
+# Set QPS values to 0 to disable that tier.
+rate_limit:
+  # Stale entry cleanup interval in seconds (default: 60)
+  cleanup_seconds: 60
+
+  # Maximum tracked entries (memory usage control)
+  max_ip_entries: 65536      # Max tracked IP addresses
+  max_prefix_entries: 16384  # Max tracked network prefixes
+
+  # Global rate limit (server-wide)
+  global_qps: 100000   # Queries per second (0 = disabled)
+  global_burst: 100000 # Burst allowance
+
+  # Per-prefix rate limit (/24 for IPv4, /64 for IPv6)
+  prefix_qps: 10000    # Queries per second per prefix
+  prefix_burst: 20000  # Burst allowance
+
+  # Per-IP rate limit
+  ip_qps: 3000         # Queries per second per IP
+  ip_burst: 6000       # Burst allowance

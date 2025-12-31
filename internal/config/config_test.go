@@ -193,9 +193,13 @@ server:
 		t.Fatal(err)
 	}
 
-	_, err := Load(path)
-	if err == nil {
-		t.Error("expected error for invalid workers")
+	// With Viper, invalid workers gracefully defaults to "auto"
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Server.Workers.Mode != WorkersAuto {
+		t.Errorf("expected workers auto for invalid value, got %v", cfg.Server.Workers)
 	}
 }
 
@@ -227,10 +231,13 @@ upstream:
 
 func TestEnvOverrides(t *testing.T) {
 	// Save and restore env
+	// Standard naming pattern: HYDRADNS_<SECTION>_<KEY>
+	// Note: underscores in key names are preserved, dots become underscores
+	// e.g., server.enable_tcp -> HYDRADNS_SERVER_ENABLE_TCP
 	envVars := []string{
-		"HYDRADNS_HOST", "HYDRADNS_PORT", "HYDRADNS_WORKERS",
-		"HYDRADNS_UPSTREAM_SERVERS", "HYDRADNS_ZONES_DIR",
-		"HYDRADNS_ENABLE_TCP", "HYDRADNS_TCP_FALLBACK", "LOG_LEVEL",
+		"HYDRADNS_SERVER_HOST", "HYDRADNS_SERVER_PORT", "HYDRADNS_SERVER_WORKERS",
+		"HYDRADNS_UPSTREAM_SERVERS", "HYDRADNS_ZONES_DIRECTORY",
+		"HYDRADNS_SERVER_ENABLE_TCP", "HYDRADNS_SERVER_TCP_FALLBACK", "HYDRADNS_LOGGING_LEVEL",
 	}
 	origValues := make(map[string]string)
 	for _, k := range envVars {
@@ -242,15 +249,15 @@ func TestEnvOverrides(t *testing.T) {
 		}
 	}()
 
-	// Set overrides
-	os.Setenv("HYDRADNS_HOST", "192.168.1.1")
-	os.Setenv("HYDRADNS_PORT", "8053")
-	os.Setenv("HYDRADNS_WORKERS", "8")
+	// Set overrides using standard naming
+	os.Setenv("HYDRADNS_SERVER_HOST", "192.168.1.1")
+	os.Setenv("HYDRADNS_SERVER_PORT", "8053")
+	os.Setenv("HYDRADNS_SERVER_WORKERS", "8")
 	os.Setenv("HYDRADNS_UPSTREAM_SERVERS", "1.1.1.1, 8.8.8.8:53")
-	os.Setenv("HYDRADNS_ZONES_DIR", "/custom/zones")
-	os.Setenv("HYDRADNS_ENABLE_TCP", "false")
-	os.Setenv("HYDRADNS_TCP_FALLBACK", "no")
-	os.Setenv("LOG_LEVEL", "debug")
+	os.Setenv("HYDRADNS_ZONES_DIRECTORY", "/custom/zones")
+	os.Setenv("HYDRADNS_SERVER_ENABLE_TCP", "false")
+	os.Setenv("HYDRADNS_SERVER_TCP_FALLBACK", "no")
+	os.Setenv("HYDRADNS_LOGGING_LEVEL", "debug")
 
 	cfg, err := Load("")
 	if err != nil {
@@ -280,38 +287,5 @@ func TestEnvOverrides(t *testing.T) {
 	}
 	if cfg.Logging.Level != "DEBUG" {
 		t.Errorf("expected log level DEBUG, got %s", cfg.Logging.Level)
-	}
-}
-
-func TestEnvBool(t *testing.T) {
-	tests := []struct {
-		raw  string
-		def  bool
-		want bool
-	}{
-		{"1", false, true},
-		{"true", false, true},
-		{"yes", false, true},
-		{"y", false, true},
-		{"on", false, true},
-		{"TRUE", false, true},
-		{"0", true, false},
-		{"false", true, false},
-		{"no", true, false},
-		{"n", true, false},
-		{"off", true, false},
-		{"FALSE", true, false},
-		{"invalid", true, true},
-		{"invalid", false, false},
-		{"", true, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.raw, func(t *testing.T) {
-			got := envBool(tt.raw, tt.def)
-			if got != tt.want {
-				t.Errorf("envBool(%q, %v) = %v, want %v", tt.raw, tt.def, got, tt.want)
-			}
-		})
 	}
 }

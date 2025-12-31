@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"math"
 	"net/netip"
-	"os"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -29,39 +26,31 @@ type RateLimiter struct {
 	ip     *TokenBucketRateLimiter // Per source IP rate limit
 }
 
-// NewRateLimiterFromEnv creates a RateLimiter configured via environment variables.
-//
-// Environment variables:
-//   - HYDRADNS_RL_CLEANUP_SECONDS: Stale entry cleanup interval (default: 60)
-//   - HYDRADNS_RL_MAX_IP_ENTRIES: Max tracked IPs (default: 65536)
-//   - HYDRADNS_RL_MAX_PREFIX_ENTRIES: Max tracked prefixes (default: 16384)
-//   - HYDRADNS_RL_GLOBAL_QPS: Global queries per second (default: 100000)
-//   - HYDRADNS_RL_GLOBAL_BURST: Global burst size (default: 100000)
-//   - HYDRADNS_RL_PREFIX_QPS: Per-prefix QPS (default: 10000)
-//   - HYDRADNS_RL_PREFIX_BURST: Per-prefix burst (default: 20000)
-//   - HYDRADNS_RL_IP_QPS: Per-IP QPS (default: 3000)
-//   - HYDRADNS_RL_IP_BURST: Per-IP burst (default: 6000)
-func NewRateLimiterFromEnv() *RateLimiter {
-	cleanupSeconds := envFloat("HYDRADNS_RL_CLEANUP_SECONDS", 60.0)
-	maxIP := envInt("HYDRADNS_RL_MAX_IP_ENTRIES", 65_536)
-	maxPrefix := envInt("HYDRADNS_RL_MAX_PREFIX_ENTRIES", 16_384)
+// RateLimitSettings contains rate limiting configuration values.
+// This is used to create a RateLimiter from configuration.
+type RateLimitSettings struct {
+	CleanupSeconds   float64
+	MaxIPEntries     int
+	MaxPrefixEntries int
+	GlobalQPS        float64
+	GlobalBurst      int
+	PrefixQPS        float64
+	PrefixBurst      int
+	IPQPS            float64
+	IPBurst          int
+}
 
-	globalQPS := envFloat("HYDRADNS_RL_GLOBAL_QPS", 100_000.0)
-	globalBurst := envInt("HYDRADNS_RL_GLOBAL_BURST", 100_000)
-	prefixQPS := envFloat("HYDRADNS_RL_PREFIX_QPS", 10_000.0)
-	prefixBurst := envInt("HYDRADNS_RL_PREFIX_BURST", 20_000)
-	ipQPS := envFloat("HYDRADNS_RL_IP_QPS", 3_000)
-	ipBurst := envInt("HYDRADNS_RL_IP_BURST", 6_000)
-
-	cleanupInterval := time.Duration(math.Max(0.0, cleanupSeconds) * float64(time.Second))
+// NewRateLimiter creates a RateLimiter from the provided settings.
+func NewRateLimiter(s RateLimitSettings) *RateLimiter {
+	cleanupInterval := time.Duration(math.Max(0.0, s.CleanupSeconds) * float64(time.Second))
 	if cleanupInterval <= 0 {
 		cleanupInterval = 60 * time.Second
 	}
 
 	return &RateLimiter{
-		global: NewTokenBucketRateLimiter(TokenBucketConfig{Rate: globalQPS, Burst: globalBurst, CleanupInterval: cleanupInterval, MaxEntries: 1}),
-		prefix: NewTokenBucketRateLimiter(TokenBucketConfig{Rate: prefixQPS, Burst: prefixBurst, CleanupInterval: cleanupInterval, MaxEntries: maxPrefix}),
-		ip:     NewTokenBucketRateLimiter(TokenBucketConfig{Rate: ipQPS, Burst: ipBurst, CleanupInterval: cleanupInterval, MaxEntries: maxIP}),
+		global: NewTokenBucketRateLimiter(TokenBucketConfig{Rate: s.GlobalQPS, Burst: s.GlobalBurst, CleanupInterval: cleanupInterval, MaxEntries: 1}),
+		prefix: NewTokenBucketRateLimiter(TokenBucketConfig{Rate: s.PrefixQPS, Burst: s.PrefixBurst, CleanupInterval: cleanupInterval, MaxEntries: s.MaxPrefixEntries}),
+		ip:     NewTokenBucketRateLimiter(TokenBucketConfig{Rate: s.IPQPS, Burst: s.IPBurst, CleanupInterval: cleanupInterval, MaxEntries: s.MaxIPEntries}),
 	}
 }
 
@@ -119,19 +108,8 @@ func prefixKeyFromAddr(ip netip.Addr) string {
 	return prefix.String()
 }
 
-// RateLimitsStartupLog returns a human-readable summary of rate limit configuration.
-func RateLimitsStartupLog() string {
-	cleanupSeconds := envFloat("HYDRADNS_RL_CLEANUP_SECONDS", 60.0)
-	maxIP := envInt("HYDRADNS_RL_MAX_IP_ENTRIES", 65_536)
-	maxPrefix := envInt("HYDRADNS_RL_MAX_PREFIX_ENTRIES", 16_384)
-
-	globalQPS := envFloat("HYDRADNS_RL_GLOBAL_QPS", 100_000.0)
-	globalBurst := envInt("HYDRADNS_RL_GLOBAL_BURST", 100_000)
-	prefixQPS := envFloat("HYDRADNS_RL_PREFIX_QPS", 10_000.0)
-	prefixBurst := envInt("HYDRADNS_RL_PREFIX_BURST", 20_000)
-	ipQPS := envFloat("HYDRADNS_RL_IP_QPS", 3_000.0)
-	ipBurst := envInt("HYDRADNS_RL_IP_BURST", 6_000)
-
+// FormatRateLimitsLog returns a human-readable summary of rate limit configuration.
+func FormatRateLimitsLog(s RateLimitSettings) string {
 	fmtLimiter := func(name string, rate float64, burst int) string {
 		if rate <= 0.0 || burst <= 0 {
 			return name + "=disabled"
@@ -141,12 +119,12 @@ func RateLimitsStartupLog() string {
 
 	return fmt.Sprintf(
 		"%s %s %s cleanup_s=%g max_ip=%d max_prefix=%d",
-		fmtLimiter("global", globalQPS, globalBurst),
-		fmtLimiter("prefix", prefixQPS, prefixBurst),
-		fmtLimiter("ip", ipQPS, ipBurst),
-		cleanupSeconds,
-		maxIP,
-		maxPrefix,
+		fmtLimiter("global", s.GlobalQPS, s.GlobalBurst),
+		fmtLimiter("prefix", s.PrefixQPS, s.PrefixBurst),
+		fmtLimiter("ip", s.IPQPS, s.IPBurst),
+		s.CleanupSeconds,
+		s.MaxIPEntries,
+		s.MaxPrefixEntries,
 	)
 }
 
@@ -317,28 +295,3 @@ func prefixKey(ip string) string {
 	return "ip:" + ip
 }
 
-// envFloat reads a float64 from an environment variable with a default value.
-func envFloat(name string, def float64) float64 {
-	raw := strings.TrimSpace(os.Getenv(name))
-	if raw == "" {
-		return def
-	}
-	v, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		return def
-	}
-	return v
-}
-
-// envInt reads an int from an environment variable with a default value.
-func envInt(name string, def int) int {
-	raw := strings.TrimSpace(os.Getenv(name))
-	if raw == "" {
-		return def
-	}
-	v, err := strconv.Atoi(raw)
-	if err != nil {
-		return def
-	}
-	return v
-}

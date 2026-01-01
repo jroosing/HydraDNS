@@ -189,7 +189,7 @@ func TestListenReusePort_MultipleOnSamePort(t *testing.T) {
 	}
 }
 
-// itoa converts an int to a string without importing strconv
+// itoa converts an int to a string without importing strconv.
 func itoa(n int) string {
 	if n == 0 {
 		return "0"

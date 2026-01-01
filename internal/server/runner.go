@@ -150,13 +150,7 @@ func (r *Runner) calculateMaxConcurrency(cfg *config.Config, procs int) int {
 		if c <= 0 {
 			c = 1
 		}
-		maxConc = c * 256
-		if maxConc > 2048 {
-			maxConc = 2048
-		}
-		if maxConc < 1 {
-			maxConc = 1
-		}
+		maxConc = max(min(c*256, 2048), 1)
 	}
 	return maxConc
 }
@@ -165,13 +159,7 @@ func (r *Runner) calculateMaxConcurrency(cfg *config.Config, procs int) int {
 func (r *Runner) calculateUpstreamPoolSize(cfg *config.Config, maxConc int) int {
 	upPool := cfg.Server.UpstreamSocketPoolSize
 	if upPool <= 0 {
-		upPool = maxConc
-		if upPool < 64 {
-			upPool = 64
-		}
-		if upPool > 1024 {
-			upPool = 1024
-		}
+		upPool = min(max(maxConc, 64), 1024)
 	}
 	return upPool
 }

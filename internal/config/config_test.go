@@ -30,9 +30,6 @@ func TestWorkerSettingString(t *testing.T) {
 
 func TestResolveConfigPath(t *testing.T) {
 	// Save and restore env
-	orig := os.Getenv("HYDRADNS_CONFIG")
-	defer os.Setenv("HYDRADNS_CONFIG", orig)
-
 	tests := []struct {
 		name     string
 		flag     string
@@ -47,7 +44,7 @@ func TestResolveConfigPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("HYDRADNS_CONFIG", tt.envValue)
+			t.Setenv("HYDRADNS_CONFIG", tt.envValue)
 			got := ResolveConfigPath(tt.flag)
 			assert.Equal(t, tt.want, got)
 		})
@@ -170,31 +167,15 @@ upstream:
 }
 
 func TestEnvOverrides(t *testing.T) {
-	// Save and restore env
-	envVars := []string{
-		"HYDRADNS_SERVER_HOST", "HYDRADNS_SERVER_PORT", "HYDRADNS_SERVER_WORKERS",
-		"HYDRADNS_UPSTREAM_SERVERS", "HYDRADNS_ZONES_DIRECTORY",
-		"HYDRADNS_SERVER_ENABLE_TCP", "HYDRADNS_SERVER_TCP_FALLBACK", "HYDRADNS_LOGGING_LEVEL",
-	}
-	origValues := make(map[string]string)
-	for _, k := range envVars {
-		origValues[k] = os.Getenv(k)
-	}
-	defer func() {
-		for k, v := range origValues {
-			os.Setenv(k, v)
-		}
-	}()
-
 	// Set overrides using standard naming
-	os.Setenv("HYDRADNS_SERVER_HOST", "192.168.1.1")
-	os.Setenv("HYDRADNS_SERVER_PORT", "8053")
-	os.Setenv("HYDRADNS_SERVER_WORKERS", "8")
-	os.Setenv("HYDRADNS_UPSTREAM_SERVERS", "1.1.1.1, 8.8.8.8:53")
-	os.Setenv("HYDRADNS_ZONES_DIRECTORY", "/custom/zones")
-	os.Setenv("HYDRADNS_SERVER_ENABLE_TCP", "false")
-	os.Setenv("HYDRADNS_SERVER_TCP_FALLBACK", "no")
-	os.Setenv("HYDRADNS_LOGGING_LEVEL", "debug")
+	t.Setenv("HYDRADNS_SERVER_HOST", "192.168.1.1")
+	t.Setenv("HYDRADNS_SERVER_PORT", "8053")
+	t.Setenv("HYDRADNS_SERVER_WORKERS", "8")
+	t.Setenv("HYDRADNS_UPSTREAM_SERVERS", "1.1.1.1, 8.8.8.8:53")
+	t.Setenv("HYDRADNS_ZONES_DIRECTORY", "/custom/zones")
+	t.Setenv("HYDRADNS_SERVER_ENABLE_TCP", "false")
+	t.Setenv("HYDRADNS_SERVER_TCP_FALLBACK", "no")
+	t.Setenv("HYDRADNS_LOGGING_LEVEL", "debug")
 
 	cfg, err := Load("")
 	require.NoError(t, err)

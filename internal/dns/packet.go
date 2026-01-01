@@ -76,7 +76,7 @@ func ParsePacket(msg []byte) (Packet, error) {
 	}
 
 	p.Questions = make([]Question, 0, limitCount(h.QDCount, MaxQuestions))
-	for i := 0; i < int(h.QDCount); i++ {
+	for range h.QDCount {
 		q, err := ParseQuestion(msg, &off)
 		if err != nil {
 			return Packet{}, err
@@ -84,7 +84,7 @@ func ParsePacket(msg []byte) (Packet, error) {
 		p.Questions = append(p.Questions, q)
 	}
 	p.Answers = make([]Record, 0, limitCount(h.ANCount, MaxRRPerSection))
-	for i := 0; i < int(h.ANCount); i++ {
+	for range h.ANCount {
 		rr, err := ParseRecord(msg, &off)
 		if err != nil {
 			return Packet{}, err
@@ -92,7 +92,7 @@ func ParsePacket(msg []byte) (Packet, error) {
 		p.Answers = append(p.Answers, rr)
 	}
 	p.Authorities = make([]Record, 0, limitCount(h.NSCount, MaxRRPerSection))
-	for i := 0; i < int(h.NSCount); i++ {
+	for range h.NSCount {
 		rr, err := ParseRecord(msg, &off)
 		if err != nil {
 			return Packet{}, err
@@ -100,7 +100,7 @@ func ParsePacket(msg []byte) (Packet, error) {
 		p.Authorities = append(p.Authorities, rr)
 	}
 	p.Additionals = make([]Record, 0, limitCount(h.ARCount, MaxRRPerSection))
-	for i := 0; i < int(h.ARCount); i++ {
+	for range h.ARCount {
 		rr, err := ParseRecord(msg, &off)
 		if err != nil {
 			return Packet{}, err

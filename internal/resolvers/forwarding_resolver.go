@@ -208,7 +208,7 @@ func (f *ForwardingResolver) queryAndCache(
 	startIdx := f.findUpstreamIndex(key.up)
 	lastErr := error(nil)
 
-	for j := 0; j < len(f.upstreams); j++ {
+	for j := range len(f.upstreams) {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
@@ -357,7 +357,7 @@ func (f *ForwardingResolver) ensurePool(up string) (chan *net.UDPConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i := 0; i < f.poolSize; i++ {
+	for range f.poolSize {
 		c, err := net.DialUDP("udp", nil, addr)
 		if err != nil {
 			break // partial pool is acceptable
@@ -384,7 +384,7 @@ func (f *ForwardingResolver) queryOne(ctx context.Context, up string, req []byte
 	}
 
 	var lastErr error
-	for attempt := 0; attempt < f.maxRetries; attempt++ {
+	for range f.maxRetries {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
@@ -408,7 +408,8 @@ func isTimeoutError(err error) bool {
 	if err == nil {
 		return false
 	}
-	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
 		return true
 	}
 	return false
@@ -421,7 +422,6 @@ func (f *ForwardingResolver) queryOneAttempt(
 	up string,
 	req []byte,
 ) ([]byte, error) {
-
 	c, fromPool, err := f.acquireConnection(ctx, pool, up)
 	if err != nil {
 		return nil, err
@@ -569,7 +569,7 @@ func validateResponse(req dns.Packet, respBytes []byte) error {
 		return nil // unparseable responses are handled by cache decision
 	}
 	if len(resp.Questions) == 0 {
-		return fmt.Errorf("response has no question section")
+		return errors.New("response has no question section")
 	}
 
 	reqQ := req.Questions[0]

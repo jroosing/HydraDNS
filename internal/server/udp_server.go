@@ -17,7 +17,7 @@ import (
 	"github.com/jroosing/hydradns/internal/pool"
 )
 
-// Socket buffer sizes for high throughput (4MB each)
+// Socket buffer sizes for high throughput (4MB each).
 const (
 	socketRecvBufferSize = 4 * 1024 * 1024
 	socketSendBufferSize = 4 * 1024 * 1024
@@ -68,7 +68,7 @@ func (s *UDPServer) Run(ctx context.Context, addr string) error {
 	socketCount := runtime.NumCPU()
 	s.conns = make([]*net.UDPConn, 0, socketCount)
 
-	for i := 0; i < socketCount; i++ {
+	for range socketCount {
 		conn, err := listenReusePort(addr)
 		if err != nil {
 			// Close any already-opened sockets
@@ -92,7 +92,7 @@ func (s *UDPServer) Run(ctx context.Context, addr string) error {
 		go s.recvLoop(ctx, conn, packetCh)
 
 		// Fixed worker pool for this socket
-		for w := 0; w < s.WorkersPerSocket; w++ {
+		for range s.WorkersPerSocket {
 			s.wg.Add(1)
 			go s.workerLoop(ctx, conn, packetCh)
 		}
@@ -115,7 +115,7 @@ func (s *UDPServer) RunOnConn(ctx context.Context, conn *net.UDPConn) error {
 	s.wg.Add(1)
 	go s.recvLoop(ctx, conn, packetCh)
 
-	for w := 0; w < s.WorkersPerSocket; w++ {
+	for range s.WorkersPerSocket {
 		s.wg.Add(1)
 		go s.workerLoop(ctx, conn, packetCh)
 	}
@@ -198,10 +198,7 @@ func (s *UDPServer) handlePacket(ctx context.Context, conn *net.UDPConn, p packe
 	// Apply EDNS-aware truncation if we have EDNS info
 	resp := res.ResponseBytes
 	if res.ParsedOK {
-		maxSize := dns.ClientMaxUDPSize(res.Parsed)
-		if maxSize > dns.EDNSMaxUDPPayloadSize {
-			maxSize = dns.EDNSMaxUDPPayloadSize
-		}
+		maxSize := min(dns.ClientMaxUDPSize(res.Parsed), dns.EDNSMaxUDPPayloadSize)
 		resp = truncateUDPResponse(resp, maxSize)
 	}
 

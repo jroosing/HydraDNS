@@ -264,7 +264,7 @@ func BenchmarkPolicyEngine_Evaluate(b *testing.B) {
 	}
 
 	// Generate 10k blocked domains
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		cfg.BlacklistDomains[i] = fmt.Sprintf("blocked%d.example.com", i)
 	}
 
@@ -278,8 +278,7 @@ func BenchmarkPolicyEngine_Evaluate(b *testing.B) {
 		"blocked9999.example.com", // hit at end
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		pe.Evaluate(domains[i%len(domains)])
 	}
 }
@@ -291,7 +290,7 @@ func BenchmarkPolicyEngine_Evaluate_Parallel(b *testing.B) {
 		BlacklistDomains: make([]string, 10000),
 	}
 
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		cfg.BlacklistDomains[i] = fmt.Sprintf("blocked%d.example.com", i)
 	}
 

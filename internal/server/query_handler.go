@@ -77,7 +77,7 @@ func extractQuestionInfo(parsed dns.Packet) (qname string, qtype int) {
 		qname = parsed.Questions[0].Name
 		qtype = int(parsed.Questions[0].Type)
 	}
-	return
+	return qname, qtype
 }
 
 // resolveWithTimeout runs the resolver in a goroutine and waits for the result

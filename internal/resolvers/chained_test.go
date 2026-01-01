@@ -100,9 +100,10 @@ func TestChainedClose(t *testing.T) {
 	assert.True(t, r2.closed)
 }
 
-// mockFailingCloser returns an error on Close
+// mockFailingCloser returns an error on Close.
 type mockFailingCloser struct {
 	mockResolver
+
 	closeErr error
 }
 

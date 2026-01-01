@@ -109,7 +109,7 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn, ip stri
 	// Set initial idle timeout
 	_ = conn.SetDeadline(time.Now().Add(tcpConnectionIdleTimeout))
 
-	for queryNum := 0; queryNum < maxQueriesPerConnection; queryNum++ {
+	for range maxQueriesPerConnection {
 		if ctx.Err() != nil {
 			return
 		}

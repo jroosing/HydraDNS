@@ -61,7 +61,7 @@ func TestTruncateUDPResponseSmallEnough(t *testing.T) {
 	require.NoError(t, err, "Marshal failed")
 
 	truncated := truncateUDPResponse(respBytes, 4096)
-	assert.Equal(t, len(respBytes), len(truncated), "expected unchanged response")
+	assert.Len(t, truncated, len(respBytes), "expected unchanged response")
 }
 
 func TestTruncateUDPResponseZeroMaxSize(t *testing.T) {
@@ -78,7 +78,7 @@ func TestTruncateUDPResponseZeroMaxSize(t *testing.T) {
 func TestTruncateUDPResponseTooShort(t *testing.T) {
 	shortResp := []byte{0x12, 0x34, 0x81, 0x80}
 	result := truncateUDPResponse(shortResp, 512)
-	assert.Equal(t, len(shortResp), len(result), "expected unchanged short response")
+	assert.Len(t, result, len(shortResp), "expected unchanged short response")
 }
 
 func TestExtractQuestionCount(t *testing.T) {

@@ -87,7 +87,7 @@ func TestRateLimiter_Allow(t *testing.T) {
 	rl := NewRateLimiter(settings)
 
 	// First 10 requests should be allowed (burst)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		assert.True(t, rl.Allow("192.168.1.100"), "request %d should be allowed (within burst)", i)
 	}
 
@@ -118,7 +118,7 @@ func TestRateLimiter_AllowAddr(t *testing.T) {
 	addr := netip.MustParseAddr("10.0.0.1")
 
 	// First 5 requests should be allowed
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		assert.True(t, rl.AllowAddr(addr), "request %d should be allowed (within burst)", i)
 	}
 }
@@ -138,7 +138,7 @@ func TestTokenBucketRateLimiter_Allow(t *testing.T) {
 	})
 
 	// Burst of 5 should be allowed
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		assert.True(t, limiter.Allow("key1"), "request %d should be allowed", i)
 	}
 
@@ -153,7 +153,7 @@ func TestTokenBucketRateLimiter_DisabledRate(t *testing.T) {
 	})
 
 	// Should always allow when rate is 0
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		assert.True(t, limiter.Allow("key"), "should always allow when rate is 0")
 	}
 }
@@ -165,7 +165,7 @@ func TestTokenBucketRateLimiter_DisabledBurst(t *testing.T) {
 	})
 
 	// Should always allow when burst is 0
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		assert.True(t, limiter.Allow("key"), "should always allow when burst is 0")
 	}
 }

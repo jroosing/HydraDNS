@@ -2,14 +2,14 @@ package models
 
 import "github.com/jroosing/hydradns/internal/config"
 
-// APIConfigResponse is a redacted version of APIConfig (no api_key exposed)
+// APIConfigResponse is a redacted version of APIConfig (no api_key exposed).
 type APIConfigResponse struct {
 	Enabled bool   `json:"enabled"`
 	Host    string `json:"host"`
 	Port    int    `json:"port"`
 }
 
-// ServerConfigResponse wraps ServerConfig with workers as string
+// ServerConfigResponse wraps ServerConfig with workers as string.
 type ServerConfigResponse struct {
 	Host                   string `json:"host"`
 	Port                   int    `json:"port"`
@@ -20,7 +20,7 @@ type ServerConfigResponse struct {
 	TCPFallback            bool   `json:"tcp_fallback"`
 }
 
-// ConfigResponse is the API response for GET /config
+// ConfigResponse is the API response for GET /config.
 type ConfigResponse struct {
 	Server    ServerConfigResponse   `json:"server"`
 	Upstream  config.UpstreamConfig  `json:"upstream"`

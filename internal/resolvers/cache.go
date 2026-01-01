@@ -18,7 +18,6 @@ const (
 
 // cacheEntry holds a cached value with expiration and LRU tracking.
 type cacheEntry[V any] struct {
-	key       any
 	value     V
 	expiresAt time.Time
 	type_     CacheEntryType

@@ -172,7 +172,7 @@ func (p *Parser) parseLine(line string, format ListFormat) (string, bool) {
 
 // parseAdblockLine parses an Adblock Plus format line.
 // Format: ||domain^ or ||domain^$options
-// Also handles: ||domain (without ^)
+// Also handles: ||domain (without ^).
 func (p *Parser) parseAdblockLine(line string) (string, bool) {
 	// Skip non-blocking rules
 	if strings.HasPrefix(line, "@@") {
@@ -218,7 +218,7 @@ func (p *Parser) parseAdblockLine(line string) (string, bool) {
 }
 
 // parseHostsLine parses a hosts file format line.
-// Format: 0.0.0.0 domain or 127.0.0.1 domain
+// Format: 0.0.0.0 domain or 127.0.0.1 domain.
 func (p *Parser) parseHostsLine(line string) (string, bool) {
 	// Remove inline comments
 	if idx := strings.Index(line, "#"); idx >= 0 {
@@ -258,7 +258,7 @@ func (p *Parser) parseHostsLine(line string) (string, bool) {
 }
 
 // parseDomainsLine parses a simple domains list format.
-// Format: one domain per line
+// Format: one domain per line.
 func (p *Parser) parseDomainsLine(line string) (string, bool) {
 	// Remove inline comments
 	if idx := strings.Index(line, "#"); idx >= 0 {
@@ -286,8 +286,8 @@ func isValidDomain(domain string) bool {
 	}
 
 	// Check each label
-	labels := strings.Split(domain, ".")
-	for _, label := range labels {
+	labels := strings.SplitSeq(domain, ".")
+	for label := range labels {
 		if label == "" || len(label) > 63 {
 			return false
 		}

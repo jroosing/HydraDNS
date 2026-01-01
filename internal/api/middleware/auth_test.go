@@ -34,7 +34,7 @@ func TestRequireAPIKey_WrongKey(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("X-API-Key", "wrong-key")
+	req.Header.Set("X-Api-Key", "wrong-key")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -50,7 +50,7 @@ func TestRequireAPIKey_CorrectKey(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("X-API-Key", "secret-key")
+	req.Header.Set("X-Api-Key", "secret-key")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

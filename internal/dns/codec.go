@@ -48,7 +48,7 @@ func EncodeName(domain string) ([]byte, error) {
 			label := domain[labelStart:i]
 
 			// Validate ASCII
-			for j := 0; j < len(label); j++ {
+			for j := range len(label) {
 				if label[j] > 0x7F {
 					return nil, fmt.Errorf("%w: domain_name must be ASCII", ErrDNSError)
 				}

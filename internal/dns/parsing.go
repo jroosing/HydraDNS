@@ -1,6 +1,9 @@
 package dns
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Limits for incoming DNS messages to prevent resource exhaustion attacks.
 const (
@@ -21,7 +24,7 @@ const (
 //   - Question or RR counts exceed limits
 func ParseRequestBounded(msg []byte) (Packet, error) {
 	if len(msg) > MaxIncomingDNSMessageSize {
-		return Packet{}, fmt.Errorf("DNS message too large")
+		return Packet{}, errors.New("DNS message too large")
 	}
 	p, err := ParsePacket(msg)
 	if err != nil {
@@ -31,7 +34,7 @@ func ParseRequestBounded(msg []byte) (Packet, error) {
 	// Validate QR flag: must be 0 for queries
 	// QR is bit 15 of flags (0x8000)
 	if isResponse(p.Header.Flags) {
-		return Packet{}, fmt.Errorf("Invalid packet: QR flag set (response packet received)")
+		return Packet{}, errors.New("Invalid packet: QR flag set (response packet received)")
 	}
 
 	// Extract and validate opcode (bits 14-11)
@@ -66,16 +69,16 @@ func validateSectionCounts(h Header) error {
 	ar := int(h.ARCount)
 
 	if qd > MaxQuestions {
-		return fmt.Errorf("too many questions")
+		return errors.New("too many questions")
 	}
 	if qd != 1 {
-		return fmt.Errorf("unsupported question count")
+		return errors.New("unsupported question count")
 	}
 	if an > MaxRRPerSection || ns > MaxRRPerSection || ar > MaxRRPerSection {
-		return fmt.Errorf("too many resource records")
+		return errors.New("too many resource records")
 	}
 	if (an + ns + ar) > MaxTotalRR {
-		return fmt.Errorf("too many total resource records")
+		return errors.New("too many total resource records")
 	}
 	return nil
 }

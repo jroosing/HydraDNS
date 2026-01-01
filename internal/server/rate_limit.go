@@ -277,7 +277,7 @@ func prefixKey(ip string) string {
 	dotCount := 0
 	hasColon := false
 
-	for i := 0; i < len(ip); i++ {
+	for i := range len(ip) {
 		switch ip[i] {
 		case '.':
 			if dotCount < 3 {

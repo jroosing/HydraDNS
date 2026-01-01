@@ -201,7 +201,7 @@ func TestReversedLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.domain, func(t *testing.T) {
 			got := reversedLabels(tt.domain)
-			assert.Equal(t, len(tt.want), len(got), "length mismatch")
+			assert.Len(t, got, len(tt.want), "length mismatch")
 			for i, label := range got {
 				assert.Equal(t, tt.want[i], label, "label[%d] mismatch", i)
 			}
@@ -250,8 +250,7 @@ func BenchmarkDomainTrie_Add(b *testing.B) {
 	trie := NewDomainTrie()
 	domains := generateTestDomains(10000)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		trie.Add(domains[i%len(domains)], true)
 	}
 }
@@ -263,8 +262,7 @@ func BenchmarkDomainTrie_Contains(b *testing.B) {
 		trie.Add(d, true)
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		trie.Contains(domains[i%len(domains)])
 	}
 }
@@ -282,8 +280,7 @@ func BenchmarkDomainTrie_Contains_Miss(b *testing.B) {
 		missDomains[i] = strings.ReplaceAll(domains[i], ".com", ".xyz")
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		trie.Contains(missDomains[i%len(missDomains)])
 	}
 }
@@ -301,8 +298,7 @@ func BenchmarkDomainTrie_Contains_Subdomain(b *testing.B) {
 		subdomains[i] = "sub." + domains[i]
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		trie.Contains(subdomains[i%len(subdomains)])
 	}
 }
@@ -310,7 +306,7 @@ func BenchmarkDomainTrie_Contains_Subdomain(b *testing.B) {
 func generateTestDomains(n int) []string {
 	domains := make([]string, n)
 	tlds := []string{"com", "org", "net", "io", "co"}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		domains[i] = strings.ToLower(strings.ReplaceAll(
 			strings.ReplaceAll(
 				strings.ReplaceAll(

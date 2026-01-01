@@ -169,7 +169,7 @@ func TestRCodeFromFlags(t *testing.T) {
 	}
 }
 
-// buildValidQueryHeader creates a minimal valid DNS query header
+// buildValidQueryHeader creates a minimal valid DNS query header.
 func buildValidQueryHeader() []byte {
 	// Standard query with QDCount=1
 	return []byte{

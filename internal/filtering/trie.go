@@ -184,11 +184,11 @@ func normalizeDomain(domain string) string {
 }
 
 // reversedLabels splits a domain into labels in reverse order.
-// "ads.example.com" -> ["com", "example", "ads"]
+// "ads.example.com" -> ["com", "example", "ads"].
 func reversedLabels(domain string) []string {
 	labels := strings.Split(domain, ".")
 	n := len(labels)
-	for i := 0; i < n/2; i++ {
+	for i := range n / 2 {
 		labels[i], labels[n-1-i] = labels[n-1-i], labels[i]
 	}
 	return labels

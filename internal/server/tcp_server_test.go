@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"io"
 	"net"
@@ -52,7 +51,7 @@ func TestTCPServer_tryAcquireConn(t *testing.T) {
 	ip := "192.168.1.1"
 
 	// Should be able to acquire up to max connections
-	for i := 0; i < maxTCPConnectionsPerIP; i++ {
+	for i := range maxTCPConnectionsPerIP {
 		assert.True(t, s.tryAcquireConn(ip), "should be able to acquire connection %d", i+1)
 	}
 
@@ -72,7 +71,7 @@ func TestTCPServer_releaseConn(t *testing.T) {
 	assert.Equal(t, 4, s.connPerIP[ip], "expected 4 connections after release")
 
 	// Release all
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		s.releaseConn(ip)
 	}
 
@@ -199,8 +198,7 @@ func TestTCPServer_Stop_ZeroTimeout(t *testing.T) {
 func TestTCPServer_Run_InvalidAddress(t *testing.T) {
 	s := &TCPServer{}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// Invalid address should fail
 	err := s.Run(ctx, "invalid:address:format::")

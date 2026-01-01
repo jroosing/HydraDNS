@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockResolver implements resolvers.Resolver for testing
+// mockResolver implements resolvers.Resolver for testing.
 type mockResolver struct {
 	response  []byte
 	err       error
@@ -39,7 +39,7 @@ func (m *mockResolver) Resolve(ctx context.Context, req dns.Packet, reqBytes []b
 
 func (m *mockResolver) Close() error { return nil }
 
-// buildTestQuery creates a valid DNS query for testing
+// buildTestQuery creates a valid DNS query for testing.
 func buildTestQuery(t *testing.T, qname string, qtype dns.RecordType) []byte {
 	t.Helper()
 	p := dns.Packet{
@@ -53,7 +53,7 @@ func buildTestQuery(t *testing.T, qname string, qtype dns.RecordType) []byte {
 	return b
 }
 
-// buildTestResponse creates a valid DNS response for testing
+// buildTestResponse creates a valid DNS response for testing.
 func buildTestResponse(t *testing.T, qname string, qtype dns.RecordType) []byte {
 	t.Helper()
 	p := dns.Packet{

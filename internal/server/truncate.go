@@ -88,7 +88,7 @@ func buildTruncatedHeader(respBytes []byte, qdcount uint16) []byte {
 func findQuestionSectionEnd(msg []byte, qdcount int) int {
 	pos := dns.HeaderSize // Start after 12-byte header
 
-	for i := 0; i < qdcount; i++ {
+	for range qdcount {
 		pos = skipQNAME(msg, pos)
 		if pos > len(msg) {
 			return len(msg)

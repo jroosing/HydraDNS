@@ -3,7 +3,7 @@ package zone
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	"errors"
 	"net/netip"
 	"os"
 	"regexp"
@@ -67,7 +67,7 @@ func ParseText(text string) (*Zone, error) {
 		if strings.HasPrefix(upper, "$ORIGIN") {
 			parts := strings.Fields(line)
 			if len(parts) != 2 {
-				return nil, fmt.Errorf("invalid $ORIGIN directive")
+				return nil, errors.New("invalid $ORIGIN directive")
 			}
 			origin = normalizeFQDN(parts[1], "")
 			continue
@@ -75,7 +75,7 @@ func ParseText(text string) (*Zone, error) {
 		if strings.HasPrefix(upper, "$TTL") {
 			parts := strings.Fields(line)
 			if len(parts) != 2 {
-				return nil, fmt.Errorf("invalid $TTL directive")
+				return nil, errors.New("invalid $TTL directive")
 			}
 			ttl, err := parseTTL(parts[1])
 			if err != nil {
@@ -85,7 +85,7 @@ func ParseText(text string) (*Zone, error) {
 			continue
 		}
 		if origin == "" {
-			return nil, fmt.Errorf("zone file missing $ORIGIN")
+			return nil, errors.New("zone file missing $ORIGIN")
 		}
 
 		tokens := strings.Fields(line)
@@ -274,12 +274,12 @@ func looksLikeTTL(tok string) bool { return ttlRE.MatchString(strings.TrimSpace(
 func parseTTL(tok string) (int, error) {
 	tok = strings.TrimSpace(tok)
 	if !ttlRE.MatchString(tok) {
-		return 0, fmt.Errorf("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+		return 0, errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
 	}
 	// parse repeated number+unit
 	total := 0
 	num := ""
-	for i := 0; i < len(tok); i++ {
+	for i := range len(tok) {
 		c := tok[i]
 		if c >= '0' && c <= '9' {
 			num += string(c)
@@ -306,7 +306,7 @@ func parseTTL(tok string) (int, error) {
 		case 'w':
 			total += n * 604800
 		default:
-			return 0, fmt.Errorf("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+			return 0, errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
 		}
 	}
 	if num != "" {
@@ -314,7 +314,7 @@ func parseTTL(tok string) (int, error) {
 		total += n
 	}
 	if total < 0 {
-		return 0, fmt.Errorf("TTL must be >= 0")
+		return 0, errors.New("TTL must be >= 0")
 	}
 	return total, nil
 }
@@ -333,12 +333,12 @@ func looksLikeType(tok string) bool {
 
 func parseOwner(tokens []string, origin, lastOwner string) (string, []string, error) {
 	if len(tokens) == 0 {
-		return "", nil, fmt.Errorf("invalid empty RR")
+		return "", nil, errors.New("invalid empty RR")
 	}
 	first := tokens[0]
 	if looksLikeTTL(first) || looksLikeClass(first) || looksLikeType(first) {
 		if lastOwner == "" {
-			return "", nil, fmt.Errorf("owner name omitted on first RR")
+			return "", nil, errors.New("owner name omitted on first RR")
 		}
 		return lastOwner, tokens, nil
 	}
@@ -374,12 +374,12 @@ func parseRRFields(rest []string, defaultTTL uint32) (ttl uint32, class uint16, 
 		break
 	}
 	if idx >= len(rest) {
-		return 0, 0, "", "", fmt.Errorf("missing RR type")
+		return 0, 0, "", "", errors.New("missing RR type")
 	}
 	typ = strings.ToUpper(rest[idx])
 	idx++
 	if idx >= len(rest) {
-		return 0, 0, "", "", fmt.Errorf("missing RR rdata")
+		return 0, 0, "", "", errors.New("missing RR rdata")
 	}
 	rdata = strings.Join(rest[idx:], " ")
 	return ttl, class, typ, rdata, nil
@@ -412,22 +412,22 @@ func transformRData(typeCode uint16, rdata, origin string) (any, error) {
 	switch dns.RecordType(typeCode) {
 	case dns.TypeA:
 		if _, err := netip.ParseAddr(strings.TrimSpace(rdata)); err != nil {
-			return nil, fmt.Errorf("invalid IPv4 address")
+			return nil, errors.New("invalid IPv4 address")
 		}
 		return strings.TrimSpace(rdata), nil
 	case dns.TypeAAAA:
 		if _, err := netip.ParseAddr(strings.TrimSpace(rdata)); err != nil {
-			return nil, fmt.Errorf("invalid IPv6 address")
+			return nil, errors.New("invalid IPv6 address")
 		}
 		return strings.TrimSpace(rdata), nil
 	case dns.TypeMX:
 		parts := strings.Fields(rdata)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("MX rdata must be: <preference> <exchange>")
+			return nil, errors.New("MX rdata must be: <preference> <exchange>")
 		}
 		pref, err := strconv.Atoi(parts[0])
 		if err != nil || pref < 0 || pref > 65535 {
-			return nil, fmt.Errorf("MX preference must be 0..65535")
+			return nil, errors.New("MX preference must be 0..65535")
 		}
 		ex := normalizeFQDN(parts[1], origin)
 		return MX{Preference: uint16(pref), Exchange: ex}, nil
@@ -446,35 +446,35 @@ func parseSOARData(rdata, origin string) ([]byte, error) {
 	// MNAME RNAME SERIAL REFRESH RETRY EXPIRE MINIMUM
 	parts := strings.Fields(rdata)
 	if len(parts) != 7 {
-		return nil, fmt.Errorf("SOA rdata must be: MNAME RNAME SERIAL REFRESH RETRY EXPIRE MINIMUM")
+		return nil, errors.New("SOA rdata must be: MNAME RNAME SERIAL REFRESH RETRY EXPIRE MINIMUM")
 	}
 	mname := normalizeFQDN(parts[0], origin)
 	rname := normalizeFQDN(parts[1], origin)
 	serial, err := parseUint32(parts[2])
 	if err != nil {
-		return nil, fmt.Errorf("invalid SOA serial")
+		return nil, errors.New("invalid SOA serial")
 	}
 	refreshInt, err := parseTTL(parts[3])
 	if err != nil {
-		return nil, fmt.Errorf("invalid SOA refresh")
+		return nil, errors.New("invalid SOA refresh")
 	}
 	refresh := uint32(refreshInt)
 
 	retryInt, err := parseTTL(parts[4])
 	if err != nil {
-		return nil, fmt.Errorf("invalid SOA retry")
+		return nil, errors.New("invalid SOA retry")
 	}
 	retryV := uint32(retryInt)
 
 	expireInt, err := parseTTL(parts[5])
 	if err != nil {
-		return nil, fmt.Errorf("invalid SOA expire")
+		return nil, errors.New("invalid SOA expire")
 	}
 	expire := uint32(expireInt)
 
 	minimumInt, err := parseTTL(parts[6])
 	if err != nil {
-		return nil, fmt.Errorf("invalid SOA minimum")
+		return nil, errors.New("invalid SOA minimum")
 	}
 	minimum := uint32(minimumInt)
 

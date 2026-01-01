@@ -47,7 +47,7 @@ func (o EDNSOption) Marshal() []byte {
 // Bits 31-24: Extended RCODE (upper 8 bits)
 // Bits 23-16: EDNS version
 // Bit 15: DO (DNSSEC OK) flag
-// Bits 14-0: Reserved (must be zero)
+// Bits 14-0: Reserved (must be zero).
 type OPTRecord struct {
 	UDPPayloadSize uint16       // Sender's maximum UDP payload size
 	ExtendedRCode  uint8        // Upper 8 bits of RCODE

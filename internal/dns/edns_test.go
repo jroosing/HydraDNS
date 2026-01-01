@@ -216,5 +216,5 @@ func TestAddEDNSToRequestBytes(t *testing.T) {
 	}
 	reqBytes2, _ := req.Marshal()
 	newBytes2 := AddEDNSToRequestBytes(req, reqBytes2, 4096)
-	assert.Equal(t, len(reqBytes2), len(newBytes2), "should not add EDNS when already present")
+	assert.Len(t, newBytes2, len(reqBytes2), "should not add EDNS when already present")
 }

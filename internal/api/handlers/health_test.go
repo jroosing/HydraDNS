@@ -46,7 +46,7 @@ func TestStats(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 	assert.NotEmpty(t, resp.Uptime)
-	assert.Greater(t, resp.GoRoutines, 0)
+	assert.Positive(t, resp.GoRoutines)
 }
 
 func TestStats_WithFilteringEngine(t *testing.T) {

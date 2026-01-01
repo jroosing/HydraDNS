@@ -38,11 +38,11 @@ func TestPool_ConcurrentAccess(t *testing.T) {
 	const goroutines = 100
 	const iterations = 100
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
+			for j := range iterations {
 				buf := p.Get()
 				assert.Len(t, buf, 1024)
 				// Simulate some work

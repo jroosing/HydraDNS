@@ -165,3 +165,22 @@ rate_limit:
   # Per-IP rate limit
   ip_qps: 3000         # Queries per second per IP
   ip_burst: 6000       # Burst allowance
+
+# REST API configuration
+# The API provides runtime management and monitoring via HTTP.
+# Swagger UI available at http://<host>:<port>/swagger/index.html
+api:
+  # Enable the REST API (default: false)
+  enabled: false
+
+  # Address to bind the API server to (default: 127.0.0.1)
+  # Use 0.0.0.0 to allow external access (not recommended without api_key)
+  host: "127.0.0.1"
+
+  # Port for the API server (default: 8080)
+  port: 8080
+
+  # API key for authentication (optional)
+  # If set, all API requests must include X-API-Key header
+  # Leave empty to disable authentication (only for trusted networks)
+  api_key: ""

@@ -81,6 +81,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.prefix_burst", 20000)
 	v.SetDefault("rate_limit.ip_qps", 3000.0)
 	v.SetDefault("rate_limit.ip_burst", 6000)
+
+	// Management API defaults
+	// Default to disabled and bound to localhost for safety.
+	v.SetDefault("api.enabled", false)
+	v.SetDefault("api.host", "127.0.0.1")
+	v.SetDefault("api.port", 8080)
+	v.SetDefault("api.api_key", "")
 }
 
 // loadFromSource loads configuration from file and environment.
@@ -112,6 +119,9 @@ func loadFromSource(configPath string) (*Config, error) {
 			cfg.Upstream.Servers = parseServerList(strings.Split(s, ","))
 		}
 	}
+	cfg.Upstream.UDPTimeout = v.GetString("upstream.udp_timeout")
+	cfg.Upstream.TCPTimeout = v.GetString("upstream.tcp_timeout")
+	cfg.Upstream.MaxRetries = v.GetInt("upstream.max_retries")
 
 	// Zones config
 	cfg.Zones.Directory = v.GetString("zones.directory")
@@ -148,6 +158,23 @@ func loadFromSource(configPath string) (*Config, error) {
 			Format: "auto",
 		})
 	}
+
+	// Management API config
+	cfg.API.Enabled = v.GetBool("api.enabled")
+	cfg.API.Host = v.GetString("api.host")
+	cfg.API.Port = v.GetInt("api.port")
+	cfg.API.APIKey = v.GetString("api.api_key")
+
+	// Rate limiting config
+	cfg.RateLimit.CleanupSeconds = v.GetFloat64("rate_limit.cleanup_seconds")
+	cfg.RateLimit.MaxIPEntries = v.GetInt("rate_limit.max_ip_entries")
+	cfg.RateLimit.MaxPrefixEntries = v.GetInt("rate_limit.max_prefix_entries")
+	cfg.RateLimit.GlobalQPS = v.GetFloat64("rate_limit.global_qps")
+	cfg.RateLimit.GlobalBurst = v.GetInt("rate_limit.global_burst")
+	cfg.RateLimit.PrefixQPS = v.GetFloat64("rate_limit.prefix_qps")
+	cfg.RateLimit.PrefixBurst = v.GetInt("rate_limit.prefix_burst")
+	cfg.RateLimit.IPQPS = v.GetFloat64("rate_limit.ip_qps")
+	cfg.RateLimit.IPBurst = v.GetInt("rate_limit.ip_burst")
 
 	// Normalize and validate
 	if err := normalizeConfig(cfg); err != nil {
@@ -251,6 +278,16 @@ func normalizeConfig(cfg *Config) error {
 	// Normalize filtering
 	if cfg.Filtering.RefreshInterval == "" {
 		cfg.Filtering.RefreshInterval = "24h"
+	}
+
+	// Normalize management API
+	if cfg.API.Host == "" {
+		cfg.API.Host = "127.0.0.1"
+	}
+	if cfg.API.Enabled {
+		if cfg.API.Port <= 0 || cfg.API.Port > 65535 {
+			return errors.New("api.port must be 1..65535")
+		}
 	}
 
 	return nil

@@ -41,6 +41,13 @@ func NewRunner(logger *slog.Logger) *Runner {
 func (r *Runner) Run(cfg *config.Config) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	return r.RunWithContext(ctx, cfg)
+}
+
+// RunWithContext starts the DNS server and blocks until ctx is canceled or a server error occurs.
+//
+// This enables callers (e.g. a management API) to share the same shutdown signal.
+func (r *Runner) RunWithContext(ctx context.Context, cfg *config.Config) error {
 	ctx, cancelRun := context.WithCancel(ctx)
 	defer cancelRun()
 

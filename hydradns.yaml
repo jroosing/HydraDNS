@@ -1,87 +1,58 @@
-# HydraDNS Configuration File
-#
-# This is an example configuration file for HydraDNS.
-# Copy this file to hydradns.yaml and customize as needed.
-#
-# Configuration priority:
-#   1. Command-line arguments (--port, --host, etc.)
-#   2. YAML config file
-#   3. Environment variables
-#   4. Default values
-
-# Server configuration
 server:
-  # Address to bind to (default: 0.0.0.0)
   host: "0.0.0.0"
-
-  # Port to listen on for both UDP and TCP (default: 1053)
   port: 1053
-
-  # Number of worker processes
-  # - "auto" or omit: auto-detect based on available CPUs
-  # - number: specific number of workers
   workers: auto
+  enable_tcp: true
+  tcp_fallback: true
 
-  # Maximum concurrent requests per worker (default: auto-calculated)
-  # max_concurrency: 2048
-
-  # Size of upstream socket pool per worker (default: auto-calculated)
-  # upstream_socket_pool_size: 256
-
-  # Enable TCP server alongside UDP (default: true)
-  # TCP is used for:
-  #   - Responses larger than 512 bytes
-  #   - Clients that prefer TCP
-  #   - Zone transfers (future)
-  enable_tcp: false
-
-  # Enable automatic TCP fallback for truncated upstream responses (default: true)
-  # When a UDP response from upstream has the TC (truncated) bit set,
-  # automatically retry the query over TCP
-  tcp_fallback: false
-
-# Upstream DNS servers for forwarding (strict-order failover)
-# Primary is always tried first. Fallbacks used only if primary fails.
-# Failed servers are automatically retried after 1 hour.
-# Maximum 3 servers. Port is always 53.
 upstream:
   servers:
-    - "9.9.9.9"   # Primary: Quad9 (privacy-focused, malware blocking)
-    - "1.1.1.1"   # Fallback 1: Cloudflare (fast, privacy-focused)
-    - "8.8.8.8"   # Fallback 2: Google (reliable)
+    - "9.9.9.9"
+    - "1.1.1.1"
+    - "8.8.8.8"
+  udp_timeout: "3s"
+  tcp_timeout: "5s"
+  max_retries: 3
 
-# Zone file configuration
 zones:
-  # Directory to scan for zone files (default: zones)
-  # All files in this directory will be loaded as zone files
   directory: "zones"
 
-  # Specific zone files to load (optional)
-  # If specified, only these files are loaded (directory is ignored)
-  # files:
-  #   - "/etc/hydradns/zones/example.com.zone"
-  #   - "/etc/hydradns/zones/internal.zone"
-
-# Logging configuration
 logging:
-  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
-  level: "CRITICAL"
-
-  # Structured logging (for log aggregation systems like ELK, Splunk, Datadog)
-  # When enabled, logs are output in machine-parseable format
+  level: "INFO"
   structured: false
-
-  # Structured format type: "json" or "keyvalue" (default: json)
-  # - json: Single-line JSON objects {"timestamp": "...", "level": "INFO", ...}
-  # - keyvalue: Space-separated key=value pairs
   structured_format: "json"
-
-  # Include process ID in structured logs (useful for multiprocess deployments)
   include_pid: false
 
-  # Extra static fields to include in every structured log entry
-  # Useful for adding service metadata for log aggregation
-  # extra_fields:
-  #   service: "hydradns"
-  #   environment: "production"
-  #   datacenter: "us-east-1"
+filtering:
+  enabled: false
+  log_blocked: true
+  log_allowed: false
+
+  whitelist_domains:
+    - "safe.example.com"
+    - "allowed.ads.com"
+  blacklist_domains:
+    - "ads.example.com"
+    - "tracker.example.com"
+  blocklists:
+    - name: "hagezi-light"
+      url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt"
+      format: "adblock"
+  refresh_interval: "24h"
+
+rate_limit:
+  cleanup_seconds: 60
+  max_ip_entries: 65536
+  max_prefix_entries: 16384
+  global_qps: 100000
+  global_burst: 100000
+  prefix_qps: 10000
+  prefix_burst: 20000
+  ip_qps: 3000
+  ip_burst: 6000
+
+api:
+  enabled: true
+  host: "127.0.0.1"
+  port: 8080
+  api_key: ""

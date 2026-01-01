@@ -1,10 +1,17 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"github.com/jroosing/hydradns/internal/api"
 	"github.com/jroosing/hydradns/internal/config"
 	"github.com/jroosing/hydradns/internal/logging"
 	"github.com/jroosing/hydradns/internal/server"
@@ -73,8 +80,35 @@ func main() {
 		IPBurst:          cfg.RateLimit.IPBurst,
 	}))
 
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	var apiSrv *api.Server
+	if cfg.API.Enabled {
+		apiSrv = api.New(cfg, logger)
+		logger.Info("management API starting", "addr", apiSrv.Addr())
+
+		go func() {
+			err := apiSrv.ListenAndServe()
+			if err == nil || errors.Is(err, http.ErrServerClosed) {
+				return
+			}
+			logger.Error("management API error", "err", err)
+			cancel()
+		}()
+	}
+
 	runner := server.NewRunner(logger)
-	if err := runner.Run(cfg); err != nil {
+	err = runner.RunWithContext(ctx, cfg)
+
+	if apiSrv != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_ = apiSrv.Shutdown(shutdownCtx)
+		shutdownCancel()
+		logger.Info("management API stopped")
+	}
+
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "server exited with error: %v\n", err)
 		os.Exit(1)
 	}

@@ -11,10 +11,11 @@ services:
     image: hydradns:latest
     container_name: hydradns
 
-    # Port mappings (UDP and TCP)
+    # Port mappings (UDP, TCP, and API)
     ports:
       - "1053:1053/udp"
       - "1053:1053/tcp"
+      - "8080:8080"      # REST API
 
     # Environment variables (override config file settings)
     # Naming pattern: HYDRADNS_<SECTION>_<KEY>
@@ -28,6 +29,11 @@ services:
       # - HYDRADNS_SERVER_PORT=1053
       # - HYDRADNS_UPSTREAM_SERVERS=1.1.1.1,8.8.8.8
       # - HYDRADNS_FILTERING_ENABLED=true
+      # API configuration:
+      - HYDRADNS_API_ENABLED=true
+      - HYDRADNS_API_HOST=0.0.0.0
+      - HYDRADNS_API_PORT=8080
+      # - HYDRADNS_API_KEY=your-secret-key
       # Rate limiting (set QPS to 0 to disable for benchmarking):
       # - HYDRADNS_RATE_LIMIT_GLOBAL_QPS=0
       # - HYDRADNS_RATE_LIMIT_PREFIX_QPS=0

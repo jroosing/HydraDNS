@@ -3,7 +3,7 @@
 # =============================================================================
 # Common development tasks for testing and code quality
 
-.PHONY: help test fmt vet build check clean docker-build docker-run
+.PHONY: help test fmt vet build check clean docker-build docker-run docs
 
 # Default target
 help:
@@ -18,6 +18,9 @@ help:
 	@echo "  make vet           Run go vet"
 	@echo "  make build         Build binaries"
 	@echo "  make check         Run fmt + vet + test"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  make docs          Generate Swagger/OpenAPI docs"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-build  Build Docker image"
@@ -47,6 +50,15 @@ build:
 
 check: fmt vet test
 	@echo "All checks passed!"
+
+# =============================================================================
+# Documentation
+# =============================================================================
+
+docs:
+	@echo "Generating Swagger/OpenAPI documentation..."
+	go run github.com/swaggo/swag/cmd/swag@latest init -g internal/api/handlers/base.go -o internal/api/docs --parseDependency --parseInternal
+	@echo "Docs generated in internal/api/docs/"
 
 # =============================================================================
 # Docker

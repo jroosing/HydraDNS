@@ -87,3 +87,21 @@ rate_limit:
   prefix_burst: 20000
   ip_qps: 3000
   ip_burst: 6000
+
+# REST API configuration
+# Provides runtime management and monitoring via HTTP
+# Swagger UI: http://<host>:<port>/swagger/index.html
+api:
+  # Enable the REST API
+  enabled: true
+
+  # Bind to all interfaces for Docker networking
+  host: "0.0.0.0"
+
+  # API port (expose via Docker: -p 8080:8080)
+  port: 8080
+
+  # API key for authentication
+  # Set via environment: HYDRADNS_API_KEY
+  # Leave empty to disable auth (only for trusted networks)
+  api_key: ""

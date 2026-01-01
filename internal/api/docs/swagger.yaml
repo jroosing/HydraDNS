@@ -1,0 +1,758 @@
+basePath: /api/v1
+definitions:
+  github_com_jroosing_hydradns_internal_api_models.APIConfigResponse:
+    properties:
+      enabled:
+        type: boolean
+      host:
+        type: string
+      port:
+        type: integer
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ConfigResponse:
+    properties:
+      api:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.APIConfigResponse'
+      filtering:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.FilteringConfig'
+      logging:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.LoggingConfig'
+      rate_limit:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.RateLimitConfig'
+      server:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ServerConfigResponse'
+      upstream:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.UpstreamConfig'
+      zones:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.ZonesConfig'
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.DNSStatsResponse:
+    properties:
+      avg_latency_ms:
+        type: number
+      queries_tcp:
+        type: integer
+      queries_total:
+        type: integer
+      queries_udp:
+        type: integer
+      responses_error:
+        type: integer
+      responses_nxdomain:
+        type: integer
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.DomainDeleteRequest:
+    properties:
+      domains:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - domains
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.DomainListResponse:
+    properties:
+      count:
+        type: integer
+      domains:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.DomainRequest:
+    properties:
+      domains:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - domains
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.FilteringEnabledRequest:
+    properties:
+      enabled:
+        type: boolean
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.FilteringStatsResponse:
+    properties:
+      blacklist_size:
+        type: integer
+      enabled:
+        type: boolean
+      queries_allowed:
+        type: integer
+      queries_blocked:
+        type: integer
+      queries_total:
+        type: integer
+      whitelist_size:
+        type: integer
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ServerConfigResponse:
+    properties:
+      enable_tcp:
+        type: boolean
+      host:
+        type: string
+      max_concurrency:
+        type: integer
+      port:
+        type: integer
+      tcp_fallback:
+        type: boolean
+      upstream_socket_pool_size:
+        type: integer
+      workers:
+        type: string
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ServerStatsResponse:
+    properties:
+      dns:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.DNSStatsResponse'
+      filtering:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringStatsResponse'
+      goroutines:
+        type: integer
+      memory_alloc_mb:
+        type: number
+      num_cpu:
+        type: integer
+      start_time:
+        type: string
+      uptime:
+        type: string
+      uptime_seconds:
+        type: integer
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.StatusResponse:
+    properties:
+      status:
+        type: string
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ZoneCreateRequest:
+    properties:
+      name:
+        type: string
+      records:
+        items:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ZoneRecord'
+        type: array
+    required:
+    - name
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ZoneDetailResponse:
+    properties:
+      name:
+        type: string
+      records:
+        items:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ZoneRecord'
+        type: array
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ZoneListResponse:
+    properties:
+      count:
+        type: integer
+      zones:
+        items:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ZoneSummary'
+        type: array
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ZoneRecord:
+    properties:
+      name:
+        type: string
+      ttl:
+        type: integer
+      type:
+        type: string
+      value:
+        type: string
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ZoneSummary:
+    properties:
+      file_path:
+        type: string
+      name:
+        type: string
+      record_count:
+        type: integer
+    type: object
+  github_com_jroosing_hydradns_internal_config.BlocklistConfig:
+    properties:
+      format:
+        description: '"auto", "adblock", "hosts", "domains"'
+        type: string
+      name:
+        type: string
+      url:
+        type: string
+    type: object
+  github_com_jroosing_hydradns_internal_config.FilteringConfig:
+    properties:
+      blacklist_domains:
+        items:
+          type: string
+        type: array
+      blocklists:
+        items:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.BlocklistConfig'
+        type: array
+      enabled:
+        type: boolean
+      log_allowed:
+        type: boolean
+      log_blocked:
+        type: boolean
+      refresh_interval:
+        type: string
+      whitelist_domains:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_jroosing_hydradns_internal_config.LoggingConfig:
+    properties:
+      extra_fields:
+        additionalProperties:
+          type: string
+        type: object
+      include_pid:
+        type: boolean
+      level:
+        type: string
+      structured:
+        type: boolean
+      structured_format:
+        type: string
+    type: object
+  github_com_jroosing_hydradns_internal_config.RateLimitConfig:
+    properties:
+      cleanup_seconds:
+        description: 'CleanupSeconds is how often stale entries are cleaned up (default:
+          60)'
+        type: number
+      global_burst:
+        description: 'GlobalBurst is the global burst size (default: 100000)'
+        type: integer
+      global_qps:
+        description: 'GlobalQPS is the server-wide queries per second limit (default:
+          100000, 0 = disabled)'
+        type: number
+      ip_burst:
+        description: 'IPBurst is the per-IP burst size (default: 6000)'
+        type: integer
+      ip_qps:
+        description: 'IPQPS is the per-IP QPS limit (default: 3000, 0 = disabled)'
+        type: number
+      max_ip_entries:
+        description: 'MaxIPEntries is the maximum number of tracked IPs (default:
+          65536)'
+        type: integer
+      max_prefix_entries:
+        description: 'MaxPrefixEntries is the maximum number of tracked prefixes (default:
+          16384)'
+        type: integer
+      prefix_burst:
+        description: 'PrefixBurst is the per-prefix burst size (default: 20000)'
+        type: integer
+      prefix_qps:
+        description: 'PrefixQPS is the per-prefix QPS limit (default: 10000, 0 = disabled)'
+        type: number
+    type: object
+  github_com_jroosing_hydradns_internal_config.UpstreamConfig:
+    properties:
+      max_retries:
+        description: Max retries per upstream on timeout
+        type: integer
+      servers:
+        items:
+          type: string
+        type: array
+      tcp_timeout:
+        description: Timeout for TCP queries (e.g., "5s")
+        type: string
+      udp_timeout:
+        description: Timeout for UDP queries (e.g., "3s")
+        type: string
+    type: object
+  github_com_jroosing_hydradns_internal_config.ZonesConfig:
+    properties:
+      directory:
+        type: string
+      files:
+        items:
+          type: string
+        type: array
+    type: object
+host: localhost:8080
+info:
+  contact:
+    name: HydraDNS Support
+    url: https://github.com/jroosing/hydradns
+  description: REST API for managing HydraDNS server configuration, zones, and filtering.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: HydraDNS Management API
+  version: "1.0"
+paths:
+  /config:
+    get:
+      description: Returns the current server configuration (sensitive fields redacted)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ConfigResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get current configuration
+      tags:
+      - config
+    put:
+      consumes:
+      - application/json
+      description: Updates server configuration (requires restart for some settings)
+      parameters:
+      - description: Configuration update
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ConfigResponse'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update configuration
+      tags:
+      - config
+  /config/reload:
+    post:
+      description: Triggers a hot reload of configuration from disk
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Reload configuration
+      tags:
+      - config
+  /filtering/blacklist:
+    delete:
+      consumes:
+      - application/json
+      description: Removes one or more domains from the blacklist
+      parameters:
+      - description: Domains to remove
+        in: body
+        name: domains
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Remove domains from blacklist
+      tags:
+      - filtering
+    get:
+      description: Returns all domains in the blacklist
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainListResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get blacklist domains
+      tags:
+      - filtering
+    post:
+      consumes:
+      - application/json
+      description: Adds one or more domains to the blacklist
+      parameters:
+      - description: Domains to add
+        in: body
+        name: domains
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Add domains to blacklist
+      tags:
+      - filtering
+  /filtering/enabled:
+    put:
+      consumes:
+      - application/json
+      description: Toggles the filtering engine on or off
+      parameters:
+      - description: Enable state
+        in: body
+        name: enabled
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringEnabledRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Enable or disable filtering
+      tags:
+      - filtering
+  /filtering/stats:
+    get:
+      description: Returns detailed filtering statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringStatsResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get filtering statistics
+      tags:
+      - filtering
+  /filtering/whitelist:
+    delete:
+      consumes:
+      - application/json
+      description: Removes one or more domains from the whitelist
+      parameters:
+      - description: Domains to remove
+        in: body
+        name: domains
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Remove domains from whitelist
+      tags:
+      - filtering
+    get:
+      description: Returns all domains in the whitelist
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainListResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get whitelist domains
+      tags:
+      - filtering
+    post:
+      consumes:
+      - application/json
+      description: Adds one or more domains to the whitelist
+      parameters:
+      - description: Domains to add
+        in: body
+        name: domains
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Add domains to whitelist
+      tags:
+      - filtering
+  /health:
+    get:
+      description: Returns server health status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+      summary: Health check
+      tags:
+      - system
+  /stats:
+    get:
+      description: Returns runtime statistics including memory, goroutines, and DNS
+        metrics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ServerStatsResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Server statistics
+      tags:
+      - system
+  /zones:
+    get:
+      description: Returns a list of all configured DNS zones
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ZoneListResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List all zones
+      tags:
+      - zones
+    post:
+      consumes:
+      - application/json
+      description: Creates a new DNS zone with the specified records
+      parameters:
+      - description: Zone to create
+        in: body
+        name: zone
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ZoneCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new zone
+      tags:
+      - zones
+  /zones/{name}:
+    delete:
+      description: Deletes an existing DNS zone
+      parameters:
+      - description: Zone name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a zone
+      tags:
+      - zones
+    get:
+      description: Returns detailed information about a specific zone
+      parameters:
+      - description: Zone name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ZoneDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get zone details
+      tags:
+      - zones
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing DNS zone
+      parameters:
+      - description: Zone name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Zone update
+        in: body
+        name: zone
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ZoneCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update a zone
+      tags:
+      - zones
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: X-API-Key
+    type: apiKey
+swagger: "2.0"

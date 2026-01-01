@@ -35,6 +35,12 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 - **Structured logging** — JSON or key-value format for log aggregation
 - **Graceful shutdown** — Drains in-flight requests before stopping
 
+### Management API
+- **REST API** — Gin-based HTTP API for runtime configuration
+- **OpenAPI/Swagger** — Interactive API documentation at `/swagger/`
+- **Runtime control** — Toggle filtering, add domains, view stats without restart
+- **API key auth** — Optional header-based authentication
+
 ---
 
 ## Architecture
@@ -75,6 +81,12 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 │  │ (LRU+TTL)│        │   Groups     │                           │
 │  └──────────┘        └──────────────┘                           │
 │                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                    REST API (Gin)                       │    │
+│  │  /api/v1/health, /config, /zones, /filtering, /stats   │    │
+│  │  Swagger UI: /swagger/                                  │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -93,6 +105,7 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 | **Cache** | `internal/resolvers/cache.go` | TTL-aware LRU cache with negative caching support |
 | **DNS Codec** | `internal/dns/` | Wire format parsing and serialization |
 | **Zone Parser** | `internal/zone/` | RFC 1035 master file format parser |
+| **REST API** | `internal/api/` | HTTP management API with Swagger docs |
 
 ### Request Flow
 
@@ -420,6 +433,91 @@ filtering:
 4. **Default allow** — Unmatched domains pass to resolver chain
 
 The filtering resolver sits at the front of the resolver chain, before zone and forwarding resolvers.
+
+---
+
+## REST API
+
+HydraDNS includes an optional REST API for runtime management and monitoring. The API is built with Gin and includes interactive Swagger documentation.
+
+### Enabling the API
+
+```yaml
+api:
+  enabled: true
+  host: "127.0.0.1"  # Bind address (use 0.0.0.0 for all interfaces)
+  port: 8080
+  api_key: "your-secret-key"  # Optional, leave empty for no auth
+```
+
+Or via environment variables:
+
+```bash
+export HYDRADNS_API_ENABLED=true
+export HYDRADNS_API_HOST=127.0.0.1
+export HYDRADNS_API_PORT=8080
+export HYDRADNS_API_KEY=your-secret-key
+```
+
+### Swagger UI
+
+When the API is enabled, interactive documentation is available at:
+
+```
+http://localhost:8080/swagger/index.html
+```
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/health` | GET | Health check |
+| `/api/v1/stats` | GET | Server statistics (uptime, memory, goroutines) |
+| `/api/v1/config` | GET | Current configuration (sensitive fields redacted) |
+| `/api/v1/zones` | GET | List all loaded zones |
+| `/api/v1/zones/:name` | GET | Get zone details with records |
+| `/api/v1/filtering/stats` | GET | Filtering statistics |
+| `/api/v1/filtering/enabled` | PUT | Enable/disable filtering at runtime |
+| `/api/v1/filtering/whitelist` | GET | List whitelist domains |
+| `/api/v1/filtering/whitelist` | POST | Add domains to whitelist |
+| `/api/v1/filtering/blacklist` | GET | List blacklist domains |
+| `/api/v1/filtering/blacklist` | POST | Add domains to blacklist |
+
+### Authentication
+
+If `api_key` is configured, all requests must include the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: your-secret-key" http://localhost:8080/api/v1/health
+```
+
+### Example Usage
+
+```bash
+# Health check
+curl http://localhost:8080/api/v1/health
+
+# Get server stats
+curl -H "X-API-Key: secret" http://localhost:8080/api/v1/stats
+
+# Add domains to blacklist
+curl -X POST -H "X-API-Key: secret" -H "Content-Type: application/json" \
+  -d '{"domains": ["ads.example.com", "tracker.example.com"]}' \
+  http://localhost:8080/api/v1/filtering/blacklist
+
+# Toggle filtering on/off
+curl -X PUT -H "X-API-Key: secret" -H "Content-Type: application/json" \
+  -d '{"enabled": false}' \
+  http://localhost:8080/api/v1/filtering/enabled
+```
+
+### Generating API Docs
+
+Swagger documentation is generated from source code annotations:
+
+```bash
+make docs
+```
 
 ---
 

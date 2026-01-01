@@ -161,8 +161,8 @@ func TestRoutes_WithAPIKey_ValidKey(t *testing.T) {
 	cfg.API.APIKey = "secret-key"
 	server := api.New(cfg, nil)
 
-	req := httptest.NewRequest("GET", "/api/v1/health", nil)
-	req.Header.Set("X-API-Key", "secret-key")
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
+	req.Header.Set("X-Api-Key", "secret-key")
 	w := httptest.NewRecorder()
 
 	server.Engine().ServeHTTP(w, req)
@@ -175,8 +175,8 @@ func TestRoutes_WithAPIKey_InvalidKey(t *testing.T) {
 	cfg.API.APIKey = "secret-key"
 	server := api.New(cfg, nil)
 
-	req := httptest.NewRequest("GET", "/api/v1/health", nil)
-	req.Header.Set("X-API-Key", "wrong-key")
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
+	req.Header.Set("X-Api-Key", "wrong-key")
 	w := httptest.NewRecorder()
 
 	server.Engine().ServeHTTP(w, req)
@@ -189,7 +189,7 @@ func TestRoutes_WithAPIKey_MissingKey(t *testing.T) {
 	cfg.API.APIKey = "secret-key"
 	server := api.New(cfg, nil)
 
-	req := httptest.NewRequest("GET", "/api/v1/health", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
 	// No X-API-Key header
 	w := httptest.NewRecorder()
 
@@ -203,7 +203,7 @@ func TestRoutes_NoAPIKey_NoAuth(t *testing.T) {
 	cfg.API.APIKey = "" // No API key configured
 	server := api.New(cfg, nil)
 
-	req := httptest.NewRequest("GET", "/api/v1/health", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
 	w := httptest.NewRecorder()
 
 	server.Engine().ServeHTTP(w, req)

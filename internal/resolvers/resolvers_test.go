@@ -352,8 +352,8 @@ func TestZoneResolver_AnswersFromZone(t *testing.T) {
 	resp, err := dns.ParsePacket(result.ResponseBytes)
 	require.NoError(t, err)
 	assert.Equal(t, uint16(0x1234), resp.Header.ID)
-	assert.True(t, resp.Header.Flags&dns.QRFlag != 0, "Should be a response")
-	assert.True(t, resp.Header.Flags&dns.AAFlag != 0, "Should be authoritative")
+	assert.NotEqual(t, resp.Header.Flags&dns.QRFlag, 0, "Should be a response")
+	assert.NotEqual(t, resp.Header.Flags&dns.AAFlag, 0, "Should be authoritative")
 }
 
 func TestZoneResolver_NXDOMAIN(t *testing.T) {
@@ -376,7 +376,7 @@ func TestZoneResolver_NXDOMAIN(t *testing.T) {
 
 	rcode := resp.Header.Flags & dns.RCodeMask
 	assert.Equal(t, uint16(dns.RCodeNXDomain), rcode, "Should return NXDOMAIN")
-	assert.True(t, resp.Header.Flags&dns.AAFlag != 0, "Should be authoritative")
+	assert.NotEqual(t, resp.Header.Flags&dns.AAFlag, 0, "Should be authoritative")
 }
 
 func TestZoneResolver_NameNotInZone(t *testing.T) {
@@ -549,10 +549,10 @@ func TestForwardingResolver_Close(t *testing.T) {
 // ============================================================================
 
 func TestCacheEntryType_Values(t *testing.T) {
-	assert.Equal(t, resolvers.CacheEntryType(0), resolvers.CachePositive)
-	assert.Equal(t, resolvers.CacheEntryType(1), resolvers.CacheNXDOMAIN)
-	assert.Equal(t, resolvers.CacheEntryType(2), resolvers.CacheNODATA)
-	assert.Equal(t, resolvers.CacheEntryType(3), resolvers.CacheSERVFAIL)
+	assert.Equal(t, resolvers.CachePositive, resolvers.CacheEntryType(0))
+	assert.Equal(t, resolvers.CacheNXDOMAIN, resolvers.CacheEntryType(1))
+	assert.Equal(t, resolvers.CacheNODATA, resolvers.CacheEntryType(2))
+	assert.Equal(t, resolvers.CacheSERVFAIL, resolvers.CacheEntryType(3))
 }
 
 // ============================================================================
@@ -595,7 +595,7 @@ func TestZoneResolver_PreservesRDFlag(t *testing.T) {
 	require.NoError(t, err)
 
 	// RD flag should be preserved
-	assert.True(t, resp.Header.Flags&dns.RDFlag != 0, "RD flag should be preserved")
+	assert.NotEqual(t, resp.Header.Flags&dns.RDFlag, 0, "RD flag should be preserved")
 }
 
 func TestChained_ZoneThenForwarding(t *testing.T) {

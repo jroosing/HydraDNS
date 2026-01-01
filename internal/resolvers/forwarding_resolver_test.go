@@ -14,7 +14,15 @@ func TestAnalyzeCacheDecision_PositiveMinTTL(t *testing.T) {
 	resp := dns.Packet{
 		Header:    dns.Header{ID: 0, Flags: uint16(dns.QRFlag)},
 		Questions: []dns.Question{{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)}},
-		Answers:   []dns.Record{{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN), TTL: 10, Data: []byte{1, 2, 3, 4}}},
+		Answers: []dns.Record{
+			{
+				Name:  "example.com",
+				Type:  uint16(dns.TypeA),
+				Class: uint16(dns.ClassIN),
+				TTL:   10,
+				Data:  []byte{1, 2, 3, 4},
+			},
+		},
 	}
 	b, err := resp.Marshal()
 	require.NoError(t, err)
@@ -28,9 +36,27 @@ func TestAnalyzeCacheDecision_MultipleAnswers(t *testing.T) {
 		Header:    dns.Header{ID: 0, Flags: uint16(dns.QRFlag)},
 		Questions: []dns.Question{{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)}},
 		Answers: []dns.Record{
-			{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN), TTL: 300, Data: []byte{1, 2, 3, 4}},
-			{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN), TTL: 100, Data: []byte{5, 6, 7, 8}}, // smallest
-			{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN), TTL: 200, Data: []byte{9, 10, 11, 12}},
+			{
+				Name:  "example.com",
+				Type:  uint16(dns.TypeA),
+				Class: uint16(dns.ClassIN),
+				TTL:   300,
+				Data:  []byte{1, 2, 3, 4},
+			},
+			{
+				Name:  "example.com",
+				Type:  uint16(dns.TypeA),
+				Class: uint16(dns.ClassIN),
+				TTL:   100,
+				Data:  []byte{5, 6, 7, 8},
+			}, // smallest
+			{
+				Name:  "example.com",
+				Type:  uint16(dns.TypeA),
+				Class: uint16(dns.ClassIN),
+				TTL:   200,
+				Data:  []byte{9, 10, 11, 12},
+			},
 		},
 	}
 	b, err := resp.Marshal()
@@ -43,8 +69,10 @@ func TestAnalyzeCacheDecision_MultipleAnswers(t *testing.T) {
 func TestAnalyzeCacheDecision_NXDomain(t *testing.T) {
 	nxdomainFlags := uint16(dns.QRFlag) | uint16(dns.RCodeNXDomain)
 	resp := dns.Packet{
-		Header:    dns.Header{ID: 0, Flags: nxdomainFlags},
-		Questions: []dns.Question{{Name: "nonexistent.example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)}},
+		Header: dns.Header{ID: 0, Flags: nxdomainFlags},
+		Questions: []dns.Question{
+			{Name: "nonexistent.example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)},
+		},
 	}
 	b, err := resp.Marshal()
 	require.NoError(t, err)
@@ -313,7 +341,9 @@ func TestValidateResponse(t *testing.T) {
 			resp: dns.Packet{
 				Header:    dns.Header{Flags: uint16(dns.QRFlag)},
 				Questions: []dns.Question{{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)}},
-				Answers:   []dns.Record{{Name: "example.com", Type: uint16(dns.TypeA), TTL: 300, Data: []byte{1, 2, 3, 4}}},
+				Answers: []dns.Record{
+					{Name: "example.com", Type: uint16(dns.TypeA), TTL: 300, Data: []byte{1, 2, 3, 4}},
+				},
 			},
 			expectError: false,
 		},
@@ -344,8 +374,10 @@ func TestValidateResponse(t *testing.T) {
 		{
 			name: "qtype mismatch",
 			resp: dns.Packet{
-				Header:    dns.Header{Flags: uint16(dns.QRFlag)},
-				Questions: []dns.Question{{Name: "example.com", Type: uint16(dns.TypeAAAA), Class: uint16(dns.ClassIN)}},
+				Header: dns.Header{Flags: uint16(dns.QRFlag)},
+				Questions: []dns.Question{
+					{Name: "example.com", Type: uint16(dns.TypeAAAA), Class: uint16(dns.ClassIN)},
+				},
 			},
 			expectError: true,
 		},

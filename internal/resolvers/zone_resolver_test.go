@@ -11,10 +11,15 @@ import (
 )
 
 func TestZoneResolverNXDomainAddsSOA(t *testing.T) {
-	z, err := zone.ParseText("$ORIGIN example.com.\n$TTL 3600\n@ IN SOA ns.example.com. host.example.com. 1 3600 600 86400 300\n")
+	z, err := zone.ParseText(
+		"$ORIGIN example.com.\n$TTL 3600\n@ IN SOA ns.example.com. host.example.com. 1 3600 600 86400 300\n",
+	)
 	require.NoError(t, err)
 	r := NewZoneResolver([]*zone.Zone{z})
-	req := dns.Packet{Header: dns.Header{ID: 1, Flags: 0}, Questions: []dns.Question{{Name: "nope.example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)}}}
+	req := dns.Packet{
+		Header:    dns.Header{ID: 1, Flags: 0},
+		Questions: []dns.Question{{Name: "nope.example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)}},
+	}
 	b, _ := req.Marshal()
 	res, err := r.Resolve(context.Background(), req, b)
 	require.NoError(t, err)
@@ -191,11 +196,11 @@ www  IN  A     192.0.2.2
 	resolver := NewZoneResolver([]*zone.Zone{z})
 
 	tests := []struct {
-		name     string
-		qname    string
-		qtype    dns.RecordType
-		wantAA   bool
-		wantQR   bool
+		name   string
+		qname  string
+		qtype  dns.RecordType
+		wantAA bool
+		wantQR bool
 	}{
 		{
 			name:   "existing record sets AA flag",

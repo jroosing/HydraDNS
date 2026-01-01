@@ -14,7 +14,9 @@ import (
 )
 
 func TestUDPServer_ZoneAnswer(t *testing.T) {
-	z, err := zone.ParseText("$ORIGIN test.local.\n$TTL 300\n@ IN SOA ns1.test.local. admin.test.local. 1 3600 600 604800 86400\n@ IN A 10.0.0.1\nwww IN A 10.0.0.2\n")
+	z, err := zone.ParseText(
+		"$ORIGIN test.local.\n$TTL 300\n@ IN SOA ns1.test.local. admin.test.local. 1 3600 600 604800 86400\n@ IN A 10.0.0.1\nwww IN A 10.0.0.2\n",
+	)
 	require.NoError(t, err, "zone parse failed")
 
 	resolver := &resolvers.Chained{Resolvers: []resolvers.Resolver{resolvers.NewZoneResolver([]*zone.Zone{z})}}
@@ -42,7 +44,10 @@ func TestUDPServer_ZoneAnswer(t *testing.T) {
 	require.NoError(t, err, "dial udp failed")
 	defer client.Close()
 
-	req := dns.Packet{Header: dns.Header{ID: 0xABCD, Flags: uint16(dns.RDFlag)}, Questions: []dns.Question{{Name: "www.test.local", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)}}}
+	req := dns.Packet{
+		Header:    dns.Header{ID: 0xABCD, Flags: uint16(dns.RDFlag)},
+		Questions: []dns.Question{{Name: "www.test.local", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)}},
+	}
 	b, err := req.Marshal()
 	require.NoError(t, err, "marshal failed")
 

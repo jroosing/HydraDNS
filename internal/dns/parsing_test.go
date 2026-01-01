@@ -138,9 +138,9 @@ func TestExtractOpcode(t *testing.T) {
 		flags      uint16
 		wantOpcode uint16
 	}{
-		{0x0000, 0}, // Standard query
-		{0x0800, 1}, // IQUERY
-		{0x1000, 2}, // STATUS
+		{0x0000, 0},  // Standard query
+		{0x0800, 1},  // IQUERY
+		{0x1000, 2},  // STATUS
 		{0x7800, 15}, // Max opcode
 	}
 

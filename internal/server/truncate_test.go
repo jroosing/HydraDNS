@@ -12,7 +12,15 @@ func TestTruncateUDPResponse_SetsTCAndClearsCounts(t *testing.T) {
 	resp := dns.Packet{
 		Header:    dns.Header{ID: 1, Flags: uint16(dns.QRFlag)},
 		Questions: []dns.Question{{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN)}},
-		Answers:   []dns.Record{{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN), TTL: 60, Data: []byte{1, 2, 3, 4}}},
+		Answers: []dns.Record{
+			{
+				Name:  "example.com",
+				Type:  uint16(dns.TypeA),
+				Class: uint16(dns.ClassIN),
+				TTL:   60,
+				Data:  []byte{1, 2, 3, 4},
+			},
+		},
 	}
 	b, err := resp.Marshal()
 	require.NoError(t, err, "marshal failed")

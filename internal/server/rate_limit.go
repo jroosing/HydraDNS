@@ -48,9 +48,25 @@ func NewRateLimiter(s RateLimitSettings) *RateLimiter {
 	}
 
 	return &RateLimiter{
-		global: NewTokenBucketRateLimiter(TokenBucketConfig{Rate: s.GlobalQPS, Burst: s.GlobalBurst, CleanupInterval: cleanupInterval, MaxEntries: 1}),
-		prefix: NewTokenBucketRateLimiter(TokenBucketConfig{Rate: s.PrefixQPS, Burst: s.PrefixBurst, CleanupInterval: cleanupInterval, MaxEntries: s.MaxPrefixEntries}),
-		ip:     NewTokenBucketRateLimiter(TokenBucketConfig{Rate: s.IPQPS, Burst: s.IPBurst, CleanupInterval: cleanupInterval, MaxEntries: s.MaxIPEntries}),
+		global: NewTokenBucketRateLimiter(
+			TokenBucketConfig{Rate: s.GlobalQPS, Burst: s.GlobalBurst, CleanupInterval: cleanupInterval, MaxEntries: 1},
+		),
+		prefix: NewTokenBucketRateLimiter(
+			TokenBucketConfig{
+				Rate:            s.PrefixQPS,
+				Burst:           s.PrefixBurst,
+				CleanupInterval: cleanupInterval,
+				MaxEntries:      s.MaxPrefixEntries,
+			},
+		),
+		ip: NewTokenBucketRateLimiter(
+			TokenBucketConfig{
+				Rate:            s.IPQPS,
+				Burst:           s.IPBurst,
+				CleanupInterval: cleanupInterval,
+				MaxEntries:      s.MaxIPEntries,
+			},
+		),
 	}
 }
 
@@ -294,4 +310,3 @@ func prefixKey(ip string) string {
 	// Unknown format
 	return "ip:" + ip
 }
-

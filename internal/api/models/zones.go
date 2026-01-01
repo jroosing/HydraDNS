@@ -29,6 +29,6 @@ type ZoneRecord struct {
 
 // ZoneCreateRequest is used to create a new zone.
 type ZoneCreateRequest struct {
-	Name    string       `json:"name" binding:"required"`
+	Name    string       `json:"name"    binding:"required"`
 	Records []ZoneRecord `json:"records"`
 }

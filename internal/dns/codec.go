@@ -163,7 +163,13 @@ func hasReservedBits(b byte) bool {
 
 // followCompressionPointer follows a DNS compression pointer and returns the name at that offset.
 // The pointer is a 14-bit value: the first byte's low 6 bits + the next byte.
-func followCompressionPointer(msg []byte, off *int, firstByte byte, depth int, visited map[int]struct{}) (string, error) {
+func followCompressionPointer(
+	msg []byte,
+	off *int,
+	firstByte byte,
+	depth int,
+	visited map[int]struct{},
+) (string, error) {
 	if *off >= len(msg) {
 		return "", fmt.Errorf("%w: unexpected EOF while decoding compression pointer", ErrDNSError)
 	}

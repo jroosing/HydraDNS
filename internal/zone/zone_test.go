@@ -129,7 +129,11 @@ www  IN  A  192.0.2.2
 
 	assert.True(t, z.NameExists("example.com", uint16(dns.ClassIN)), "expected NameExists to return true for apex")
 	assert.True(t, z.NameExists("www.example.com", uint16(dns.ClassIN)), "expected NameExists to return true for www")
-	assert.False(t, z.NameExists("nonexistent.example.com", uint16(dns.ClassIN)), "expected NameExists to return false for nonexistent")
+	assert.False(
+		t,
+		z.NameExists("nonexistent.example.com", uint16(dns.ClassIN)),
+		"expected NameExists to return false for nonexistent",
+	)
 }
 
 func TestLoadFile(t *testing.T) {

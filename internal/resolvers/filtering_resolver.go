@@ -100,11 +100,11 @@ func buildBlockedResponse(req dns.Packet) dns.Packet {
 func buildBlockedFlags(reqFlags uint16) uint16 {
 	// Set QR (response), copy opcode, set RA (recursion available)
 	// Set RCODE to NXDOMAIN (3)
-	flags := uint16(1 << 15) // QR = 1 (response)
+	flags := uint16(1 << 15)   // QR = 1 (response)
 	flags |= reqFlags & 0x7800 // Copy opcode (bits 11-14)
-	if reqFlags&(1<<8) != 0 { // RD bit was set
-		flags |= 1 << 8  // RD = 1
-		flags |= 1 << 7  // RA = 1 (recursion available)
+	if reqFlags&(1<<8) != 0 {  // RD bit was set
+		flags |= 1 << 8 // RD = 1
+		flags |= 1 << 7 // RA = 1 (recursion available)
 	}
 	flags |= uint16(dns.RCodeNXDomain) // RCODE = NXDOMAIN (3)
 	return flags

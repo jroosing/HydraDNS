@@ -128,7 +128,15 @@ func (h *QueryHandler) resolveWithTimeout(ctx context.Context, parsed dns.Packet
 }
 
 // logRequest logs DNS request details at debug level.
-func (h *QueryHandler) logRequest(ctx context.Context, transport, src string, parsed dns.Packet, qname string, qtype int, reqLen int, source string) {
+func (h *QueryHandler) logRequest(
+	ctx context.Context,
+	transport, src string,
+	parsed dns.Packet,
+	qname string,
+	qtype int,
+	reqLen int,
+	source string,
+) {
 	if h.Logger == nil || !h.Logger.Enabled(ctx, slog.LevelDebug) {
 		return
 	}

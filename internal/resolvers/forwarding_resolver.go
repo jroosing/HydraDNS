@@ -79,7 +79,14 @@ type inflightCall struct {
 //   - udpTimeout: Timeout for each UDP query attempt
 //   - tcpTimeout: Timeout for TCP queries
 //   - maxRetries: Maximum retries per upstream on timeout
-func NewForwardingResolver(upstreams []string, poolSize int, cacheMaxEntries int, tcpFallback bool, udpTimeout, tcpTimeout time.Duration, maxRetries int) *ForwardingResolver {
+func NewForwardingResolver(
+	upstreams []string,
+	poolSize int,
+	cacheMaxEntries int,
+	tcpFallback bool,
+	udpTimeout, tcpTimeout time.Duration,
+	maxRetries int,
+) *ForwardingResolver {
 	if len(upstreams) == 0 {
 		upstreams = []string{"8.8.8.8"}
 	}
@@ -190,7 +197,12 @@ func (f *ForwardingResolver) Resolve(ctx context.Context, req dns.Packet, reqByt
 // The method tries each upstream in order, starting from the preferred one.
 // On success, it validates the response to prevent cache poisoning, normalizes
 // the transaction ID, and stores it in the cache.
-func (f *ForwardingResolver) queryAndCache(ctx context.Context, key cacheKey, req dns.Packet, reqBytes []byte) ([]byte, error) {
+func (f *ForwardingResolver) queryAndCache(
+	ctx context.Context,
+	key cacheKey,
+	req dns.Packet,
+	reqBytes []byte,
+) ([]byte, error) {
 	queryBytes := f.prepareQueryBytes(req, reqBytes)
 
 	startIdx := f.findUpstreamIndex(key.up)
@@ -403,7 +415,12 @@ func isTimeoutError(err error) bool {
 }
 
 // queryOneAttempt sends a single query attempt to an upstream server.
-func (f *ForwardingResolver) queryOneAttempt(ctx context.Context, pool chan *net.UDPConn, up string, req []byte) ([]byte, error) {
+func (f *ForwardingResolver) queryOneAttempt(
+	ctx context.Context,
+	pool chan *net.UDPConn,
+	up string,
+	req []byte,
+) ([]byte, error) {
 
 	c, fromPool, err := f.acquireConnection(ctx, pool, up)
 	if err != nil {
@@ -445,7 +462,11 @@ func (f *ForwardingResolver) queryOneAttempt(ctx context.Context, pool chan *net
 }
 
 // acquireConnection gets a connection from the pool or creates a transient one.
-func (f *ForwardingResolver) acquireConnection(ctx context.Context, pool chan *net.UDPConn, up string) (*net.UDPConn, bool, error) {
+func (f *ForwardingResolver) acquireConnection(
+	ctx context.Context,
+	pool chan *net.UDPConn,
+	up string,
+) (*net.UDPConn, bool, error) {
 	select {
 	case c := <-pool:
 		return c, true, nil // pooled connection

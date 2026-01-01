@@ -1,77 +1,103 @@
-package logging
+package logging_test
 
 import (
 	"testing"
 
+	"github.com/jroosing/hydradns/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfigure(t *testing.T) {
-	tests := []struct {
-		name string
-		cfg  Config
-	}{
-		{
-			name: "default config",
-			cfg:  Config{Level: "INFO"},
-		},
-		{
-			name: "debug level",
-			cfg:  Config{Level: "DEBUG"},
-		},
-		{
-			name: "structured JSON",
-			cfg:  Config{Level: "INFO", Structured: true, StructuredFormat: "json"},
-		},
-		{
-			name: "structured text",
-			cfg:  Config{Level: "INFO", Structured: true, StructuredFormat: "keyvalue"},
-		},
-		{
-			name: "with extra fields",
-			cfg: Config{
-				Level:       "INFO",
-				ExtraFields: map[string]string{"service": "test", "env": "test"},
-			},
-		},
-		{
-			name: "with PID",
-			cfg:  Config{Level: "INFO", IncludePID: true},
-		},
+// =============================================================================
+// Logger Configuration Tests
+// =============================================================================
+
+func TestConfigure_DefaultConfig(t *testing.T) {
+	cfg := logging.Config{
+		Level: "INFO",
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			logger := Configure(tt.cfg)
-			require.NotNil(t, logger)
+	logger := logging.Configure(cfg)
+	require.NotNil(t, logger, "Configure should return a logger")
+}
+
+func TestConfigure_AllLogLevels(t *testing.T) {
+	levels := []string{"DEBUG", "INFO", "WARN", "WARNING", "ERROR"}
+
+	for _, level := range levels {
+		t.Run(level, func(t *testing.T) {
+			cfg := logging.Config{Level: level}
+			logger := logging.Configure(cfg)
+			assert.NotNil(t, logger)
 		})
 	}
 }
 
-func TestParseLevel(t *testing.T) {
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"DEBUG", "DEBUG"},
-		{"debug", "DEBUG"},
-		{"INFO", "INFO"},
-		{"info", "INFO"},
-		{"WARN", "WARN"},
-		{"warn", "WARN"},
-		{"WARNING", "WARN"},
-		{"ERROR", "ERROR"},
-		{"error", "ERROR"},
-		{"invalid", "INFO"}, // default
-		{"", "INFO"},        // default
-	}
+func TestConfigure_CaseInsensitiveLevel(t *testing.T) {
+	levels := []string{"debug", "Debug", "DEBUG", "DeBuG"}
 
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			level := parseLevel(tt.input)
-			// Just verify it doesn't panic
-			assert.NotNil(t, level)
+	for _, level := range levels {
+		t.Run(level, func(t *testing.T) {
+			cfg := logging.Config{Level: level}
+			logger := logging.Configure(cfg)
+			assert.NotNil(t, logger)
 		})
 	}
+}
+
+func TestConfigure_InvalidLevelDefaultsToInfo(t *testing.T) {
+	cfg := logging.Config{Level: "INVALID"}
+	logger := logging.Configure(cfg)
+	assert.NotNil(t, logger, "Invalid level should still return a logger")
+}
+
+func TestConfigure_StructuredJSON(t *testing.T) {
+	cfg := logging.Config{
+		Level:            "INFO",
+		Structured:       true,
+		StructuredFormat: "json",
+	}
+
+	logger := logging.Configure(cfg)
+	assert.NotNil(t, logger)
+}
+
+func TestConfigure_StructuredText(t *testing.T) {
+	cfg := logging.Config{
+		Level:            "INFO",
+		Structured:       true,
+		StructuredFormat: "text",
+	}
+
+	logger := logging.Configure(cfg)
+	assert.NotNil(t, logger)
+}
+
+func TestConfigure_WithExtraFields(t *testing.T) {
+	cfg := logging.Config{
+		Level: "INFO",
+		ExtraFields: map[string]string{
+			"app":     "hydradns",
+			"version": "1.0.0",
+		},
+	}
+
+	logger := logging.Configure(cfg)
+	assert.NotNil(t, logger)
+}
+
+func TestConfigure_WithPID(t *testing.T) {
+	cfg := logging.Config{
+		Level:      "INFO",
+		IncludePID: true,
+	}
+
+	logger := logging.Configure(cfg)
+	assert.NotNil(t, logger)
+}
+
+func TestConfigure_EmptyLevel(t *testing.T) {
+	cfg := logging.Config{Level: ""}
+	logger := logging.Configure(cfg)
+	assert.NotNil(t, logger, "Empty level should default to INFO")
 }

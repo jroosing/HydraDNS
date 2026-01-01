@@ -1,3 +1,6 @@
+// Package logging provides structured logging configuration for HydraDNS.
+// It wraps the standard library slog package with support for JSON and
+// text output formats, configurable log levels, and extra fields.
 package logging
 
 import (

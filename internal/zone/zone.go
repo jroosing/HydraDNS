@@ -1,3 +1,6 @@
+// Package zone provides parsing and querying of DNS zone files.
+// It supports RFC 1035 master file format including common record types
+// (A, AAAA, CNAME, MX, NS, TXT, SOA, PTR) and zone directives ($ORIGIN, $TTL).
 package zone
 
 import (

@@ -30,7 +30,7 @@ func TestRateLimiter_AllowsWithinLimit(t *testing.T) {
 	})
 
 	// Should allow first few requests
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		assert.True(t, limiter.Allow("192.168.1.1"), "Request %d should be allowed", i)
 	}
 }
@@ -96,7 +96,7 @@ func TestRateLimiter_AllowAddr(t *testing.T) {
 
 	ip := netip.MustParseAddr("192.168.1.1")
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		assert.True(t, limiter.AllowAddr(ip), "Request %d should be allowed", i)
 	}
 }
@@ -113,7 +113,7 @@ func TestRateLimiter_IPv6(t *testing.T) {
 
 	ip := netip.MustParseAddr("2001:db8::1")
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		assert.True(t, limiter.AllowAddr(ip), "IPv6 request %d should be allowed", i)
 	}
 }
@@ -166,7 +166,7 @@ func TestTokenBucket_AllowConsumesToken(t *testing.T) {
 	})
 
 	// Should allow up to burst
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		assert.True(t, tb.Allow("key1"), "Request %d should be allowed", i)
 	}
 
@@ -444,16 +444,16 @@ func TestRateLimiter_ConcurrentAccess(t *testing.T) {
 	})
 
 	done := make(chan bool)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				limiter.Allow("192.168.1.1")
 			}
 			done <- true
 		}()
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 }
@@ -475,7 +475,7 @@ func TestQueryHandler_SequentialRequests(t *testing.T) {
 		Timeout:  5 * time.Second,
 	}
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		result := handler.Handle(context.Background(), "udp", "127.0.0.1:12345", createValidDNSRequest(t))
 		assert.True(t, result.ParsedOK)
 		assert.Equal(t, "test", result.Source)
@@ -492,17 +492,17 @@ func TestTokenBucket_ConcurrentAccess(t *testing.T) {
 	})
 
 	done := make(chan bool)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		go func(id int) {
 			key := string(rune('a' + id))
-			for j := 0; j < 50; j++ {
+			for range 50 {
 				tb.Allow(key)
 			}
 			done <- true
 		}(i)
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 }

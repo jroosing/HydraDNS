@@ -197,9 +197,9 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Greater(t, cfg.RateLimit.GlobalQPS, float64(0), "Global QPS should have default")
-	assert.Greater(t, cfg.RateLimit.GlobalBurst, 0, "Global burst should have default")
+	assert.Positive(t, cfg.RateLimit.GlobalBurst, "Global burst should have default")
 	assert.Greater(t, cfg.RateLimit.IPQPS, float64(0), "IP QPS should have default")
-	assert.Greater(t, cfg.RateLimit.IPBurst, 0, "IP burst should have default")
+	assert.Positive(t, cfg.RateLimit.IPBurst, "IP burst should have default")
 }
 
 // =============================================================================

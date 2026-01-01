@@ -36,6 +36,7 @@ type ForwardingResolver struct {
 	recvSize    int           // UDP receive buffer size
 	tcpFallback bool          // Retry with TCP if UDP response is truncated
 	tcpTimeout  time.Duration // Timeout for TCP queries
+	maxRetries  int           // Maximum retries per upstream on timeout
 	ednsUDPSize int           // Advertised EDNS UDP buffer size
 	ednsEnabled bool          // Whether to add EDNS OPT record to queries
 
@@ -75,7 +76,10 @@ type inflightCall struct {
 //   - poolSize: Number of UDP connections to pool per upstream
 //   - cacheMaxEntries: Maximum number of cached responses
 //   - tcpFallback: Whether to retry with TCP on truncated UDP responses
-func NewForwardingResolver(upstreams []string, poolSize int, cacheMaxEntries int, tcpFallback bool) *ForwardingResolver {
+//   - udpTimeout: Timeout for each UDP query attempt
+//   - tcpTimeout: Timeout for TCP queries
+//   - maxRetries: Maximum retries per upstream on timeout
+func NewForwardingResolver(upstreams []string, poolSize int, cacheMaxEntries int, tcpFallback bool, udpTimeout, tcpTimeout time.Duration, maxRetries int) *ForwardingResolver {
 	if len(upstreams) == 0 {
 		upstreams = []string{"8.8.8.8"}
 	}
@@ -88,12 +92,22 @@ func NewForwardingResolver(upstreams []string, poolSize int, cacheMaxEntries int
 	if cacheMaxEntries <= 0 {
 		cacheMaxEntries = 20000
 	}
+	if udpTimeout <= 0 {
+		udpTimeout = 3 * time.Second
+	}
+	if tcpTimeout <= 0 {
+		tcpTimeout = 5 * time.Second
+	}
+	if maxRetries <= 0 {
+		maxRetries = 3
+	}
 	return &ForwardingResolver{
 		upstreams:        upstreams,
-		udpTimeout:       2 * time.Second,
+		udpTimeout:       udpTimeout,
 		recvSize:         4096,
 		tcpFallback:      tcpFallback,
-		tcpTimeout:       5 * time.Second,
+		tcpTimeout:       tcpTimeout,
+		maxRetries:       maxRetries,
 		ednsUDPSize:      dns.EDNSDefaultUDPPayloadSize,
 		ednsEnabled:      true,
 		cache:            NewTTLCache[cacheKey, []byte](cacheMaxEntries),
@@ -341,7 +355,7 @@ func (f *ForwardingResolver) ensurePool(up string) (chan *net.UDPConn, error) {
 	return ch, nil
 }
 
-// queryOne sends a DNS query to a single upstream and returns the response.
+// queryOne sends a DNS query to a single upstream with retries.
 //
 // Connection handling:
 //  1. Try to get a pooled connection
@@ -349,12 +363,47 @@ func (f *ForwardingResolver) ensurePool(up string) (chan *net.UDPConn, error) {
 //  3. Return healthy connections to pool; discard broken ones
 //
 // If the UDP response is truncated and tcpFallback is enabled,
-// automatically retries with TCP.
+// automatically retries with TCP. On timeout errors, retries up to
+// maxRetries times before giving up.
 func (f *ForwardingResolver) queryOne(ctx context.Context, up string, req []byte) ([]byte, error) {
 	pool, err := f.ensurePool(up)
 	if err != nil {
 		return nil, err
 	}
+
+	var lastErr error
+	for attempt := 0; attempt < f.maxRetries; attempt++ {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		resp, err := f.queryOneAttempt(ctx, pool, up, req)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+
+		// Only retry on timeout errors
+		if !isTimeoutError(err) {
+			return nil, err
+		}
+	}
+	return nil, lastErr
+}
+
+// isTimeoutError checks if an error is a timeout error worth retrying.
+func isTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		return true
+	}
+	return false
+}
+
+// queryOneAttempt sends a single query attempt to an upstream server.
+func (f *ForwardingResolver) queryOneAttempt(ctx context.Context, pool chan *net.UDPConn, up string, req []byte) ([]byte, error) {
 
 	c, fromPool, err := f.acquireConnection(ctx, pool, up)
 	if err != nil {

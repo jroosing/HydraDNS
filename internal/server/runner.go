@@ -199,7 +199,19 @@ func (r *Runner) buildResolverChain(cfg *config.Config, zones []*zone.Zone, upPo
 		resList = append(resList, resolvers.NewZoneResolver(zones))
 	}
 
-	fwd := resolvers.NewForwardingResolver(cfg.Upstream.Servers, upPool, 0, cfg.Server.TCPFallback)
+	// Parse upstream timeouts
+	udpTimeout, _ := time.ParseDuration(cfg.Upstream.UDPTimeout)
+	tcpTimeout, _ := time.ParseDuration(cfg.Upstream.TCPTimeout)
+
+	fwd := resolvers.NewForwardingResolver(
+		cfg.Upstream.Servers,
+		upPool,
+		0,
+		cfg.Server.TCPFallback,
+		udpTimeout,
+		tcpTimeout,
+		cfg.Upstream.MaxRetries,
+	)
 	resList = append(resList, fwd)
 
 	var chain resolvers.Resolver = &resolvers.Chained{Resolvers: resList}

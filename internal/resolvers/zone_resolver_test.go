@@ -227,3 +227,87 @@ $TTL 3600
 		t.Errorf("expected 1 answer for example.org, got %d", len(resp.Answers))
 	}
 }
+
+func TestZoneResolverSetsAuthoritativeFlag(t *testing.T) {
+	z, err := zone.ParseText(`
+$ORIGIN example.com.
+$TTL 3600
+@    IN  SOA   ns.example.com. admin.example.com. 1 3600 600 86400 300
+@    IN  A     192.0.2.1
+www  IN  A     192.0.2.2
+`)
+	if err != nil {
+		t.Fatalf("failed to parse zone: %v", err)
+	}
+
+	resolver := NewZoneResolver([]*zone.Zone{z})
+
+	tests := []struct {
+		name     string
+		qname    string
+		qtype    dns.RecordType
+		wantAA   bool
+		wantQR   bool
+	}{
+		{
+			name:   "existing record sets AA flag",
+			qname:  "www.example.com",
+			qtype:  dns.TypeA,
+			wantAA: true,
+			wantQR: true,
+		},
+		{
+			name:   "NXDOMAIN still sets AA flag",
+			qname:  "nonexistent.example.com",
+			qtype:  dns.TypeA,
+			wantAA: true,
+			wantQR: true,
+		},
+		{
+			name:   "NODATA still sets AA flag",
+			qname:  "www.example.com",
+			qtype:  dns.TypeAAAA, // No AAAA record exists
+			wantAA: true,
+			wantQR: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := dns.Packet{
+				Header: dns.Header{ID: 1234, Flags: dns.RDFlag, QDCount: 1},
+				Questions: []dns.Question{
+					{Name: tt.qname, Type: uint16(tt.qtype), Class: uint16(dns.ClassIN)},
+				},
+			}
+
+			result, err := resolver.Resolve(context.Background(), req, nil)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			resp, err := dns.ParsePacket(result.ResponseBytes)
+			if err != nil {
+				t.Fatalf("failed to parse response: %v", err)
+			}
+
+			// Check QR flag (response bit)
+			gotQR := (resp.Header.Flags & dns.QRFlag) != 0
+			if gotQR != tt.wantQR {
+				t.Errorf("QR flag: got %v, want %v", gotQR, tt.wantQR)
+			}
+
+			// Check AA flag (authoritative answer)
+			gotAA := (resp.Header.Flags & dns.AAFlag) != 0
+			if gotAA != tt.wantAA {
+				t.Errorf("AA flag: got %v, want %v (flags=0x%04x)", gotAA, tt.wantAA, resp.Header.Flags)
+			}
+
+			// Verify RD flag is preserved from request
+			gotRD := (resp.Header.Flags & dns.RDFlag) != 0
+			if !gotRD {
+				t.Errorf("RD flag should be preserved from request (flags=0x%04x)", resp.Header.Flags)
+			}
+		})
+	}
+}

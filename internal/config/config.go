@@ -47,6 +47,9 @@ func setDefaults(v *viper.Viper) {
 
 	// Upstream defaults
 	v.SetDefault("upstream.servers", []string{"8.8.8.8"})
+	v.SetDefault("upstream.udp_timeout", "3s")
+	v.SetDefault("upstream.tcp_timeout", "5s")
+	v.SetDefault("upstream.max_retries", 3)
 
 	// Zones defaults
 	v.SetDefault("zones.directory", "zones")

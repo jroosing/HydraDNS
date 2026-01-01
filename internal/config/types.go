@@ -54,7 +54,10 @@ type ServerConfig struct {
 
 // UpstreamConfig contains upstream DNS server settings.
 type UpstreamConfig struct {
-	Servers []string `yaml:"servers" mapstructure:"servers"`
+	Servers    []string `yaml:"servers" mapstructure:"servers"`
+	UDPTimeout string   `yaml:"udp_timeout" mapstructure:"udp_timeout"` // Timeout for UDP queries (e.g., "3s")
+	TCPTimeout string   `yaml:"tcp_timeout" mapstructure:"tcp_timeout"` // Timeout for TCP queries (e.g., "5s")
+	MaxRetries int      `yaml:"max_retries" mapstructure:"max_retries"` // Max retries per upstream on timeout
 }
 
 // ZonesConfig contains zone file settings.

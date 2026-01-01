@@ -46,6 +46,9 @@ upstream:
     - "9.9.9.9"   # Primary: Quad9 (privacy-focused, malware blocking)
     - "1.1.1.1"   # Fallback 1: Cloudflare (fast, privacy-focused)
     - "8.8.8.8"   # Fallback 2: Google (reliable)
+  udp_timeout: "3s"
+  tcp_timeout: "5s"
+  max_retries: 3
 
 # Zone file configuration
 zones:

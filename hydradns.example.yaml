@@ -59,6 +59,15 @@ upstream:
     - "1.1.1.1"   # Fallback 1: Cloudflare (fast, privacy-focused)
     - "8.8.8.8"   # Fallback 2: Google (reliable)
 
+  # Timeout for UDP queries to upstream servers (default: 3s)
+  udp_timeout: "3s"
+
+  # Timeout for TCP queries to upstream servers (default: 5s)
+  tcp_timeout: "5s"
+
+  # Maximum retries per upstream on timeout before failing over (default: 3)
+  max_retries: 3
+
 # Zone file configuration
 zones:
   # Directory to scan for zone files (default: zones)

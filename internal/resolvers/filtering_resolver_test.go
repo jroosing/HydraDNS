@@ -6,6 +6,8 @@ import (
 
 	"github.com/jroosing/hydradns/internal/dns"
 	"github.com/jroosing/hydradns/internal/filtering"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // filteringMockResolver is a test resolver for filtering tests.
@@ -51,23 +53,14 @@ func TestFilteringResolver_BlockedDomain(t *testing.T) {
 	}
 
 	result, err := fr.Resolve(context.Background(), req, nil)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should be blocked, not passed to mock
-	if mock.called {
-		t.Error("Mock resolver should not have been called for blocked domain")
-	}
-
-	if result.Source != "filtered-blocked" {
-		t.Errorf("Expected source 'filtered-blocked', got %q", result.Source)
-	}
+	assert.False(t, mock.called, "Mock resolver should not have been called for blocked domain")
+	assert.Equal(t, "filtered-blocked", result.Source)
 
 	// Response should be valid NXDOMAIN
-	if len(result.ResponseBytes) == 0 {
-		t.Error("Expected non-empty response bytes")
-	}
+	assert.NotEmpty(t, result.ResponseBytes, "Expected non-empty response bytes")
 }
 
 func TestFilteringResolver_AllowedDomain(t *testing.T) {
@@ -94,18 +87,11 @@ func TestFilteringResolver_AllowedDomain(t *testing.T) {
 	}
 
 	result, err := fr.Resolve(context.Background(), req, nil)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should be passed to mock
-	if !mock.called {
-		t.Error("Mock resolver should have been called for allowed domain")
-	}
-
-	if result.Source != "mock" {
-		t.Errorf("Expected source 'mock', got %q", result.Source)
-	}
+	assert.True(t, mock.called, "Mock resolver should have been called for allowed domain")
+	assert.Equal(t, "mock", result.Source)
 }
 
 func TestFilteringResolver_WhitelistPriority(t *testing.T) {
@@ -133,18 +119,11 @@ func TestFilteringResolver_WhitelistPriority(t *testing.T) {
 	}
 
 	result, err := fr.Resolve(context.Background(), req, nil)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Whitelist should take priority
-	if !mock.called {
-		t.Error("Mock resolver should have been called (whitelist takes priority)")
-	}
-
-	if result.Source != "mock" {
-		t.Errorf("Expected source 'mock', got %q", result.Source)
-	}
+	assert.True(t, mock.called, "Mock resolver should have been called (whitelist takes priority)")
+	assert.Equal(t, "mock", result.Source)
 }
 
 func TestFilteringResolver_DisabledFiltering(t *testing.T) {
@@ -171,18 +150,11 @@ func TestFilteringResolver_DisabledFiltering(t *testing.T) {
 	}
 
 	result, err := fr.Resolve(context.Background(), req, nil)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should be passed to mock (filtering disabled)
-	if !mock.called {
-		t.Error("Mock resolver should have been called (filtering disabled)")
-	}
-
-	if result.Source != "mock" {
-		t.Errorf("Expected source 'mock', got %q", result.Source)
-	}
+	assert.True(t, mock.called, "Mock resolver should have been called (filtering disabled)")
+	assert.Equal(t, "mock", result.Source)
 }
 
 func TestFilteringResolver_NoQuestions(t *testing.T) {
@@ -207,18 +179,11 @@ func TestFilteringResolver_NoQuestions(t *testing.T) {
 	}
 
 	result, err := fr.Resolve(context.Background(), req, nil)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should be passed to mock (no questions to filter)
-	if !mock.called {
-		t.Error("Mock resolver should have been called (no questions)")
-	}
-
-	if result.Source != "mock" {
-		t.Errorf("Expected source 'mock', got %q", result.Source)
-	}
+	assert.True(t, mock.called, "Mock resolver should have been called (no questions)")
+	assert.Equal(t, "mock", result.Source)
 }
 
 func TestFilteringResolver_SubdomainBlocking(t *testing.T) {
@@ -245,16 +210,9 @@ func TestFilteringResolver_SubdomainBlocking(t *testing.T) {
 	}
 
 	result, err := fr.Resolve(context.Background(), req, nil)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should be blocked (subdomain of blocked domain)
-	if mock.called {
-		t.Error("Mock resolver should not have been called for subdomain of blocked domain")
-	}
-
-	if result.Source != "filtered-blocked" {
-		t.Errorf("Expected source 'filtered-blocked', got %q", result.Source)
-	}
+	assert.False(t, mock.called, "Mock resolver should not have been called for subdomain of blocked domain")
+	assert.Equal(t, "filtered-blocked", result.Source)
 }

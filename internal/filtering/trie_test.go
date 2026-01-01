@@ -3,6 +3,8 @@ package filtering
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDomainTrie_Add_Contains(t *testing.T) {
@@ -135,9 +137,7 @@ func TestDomainTrie_Add_Contains(t *testing.T) {
 			}
 
 			got := trie.Contains(tt.checkDomain)
-			if got != tt.want {
-				t.Errorf("Contains(%q) = %v, want %v", tt.checkDomain, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got, "Contains(%q)", tt.checkDomain)
 		})
 	}
 }
@@ -145,25 +145,17 @@ func TestDomainTrie_Add_Contains(t *testing.T) {
 func TestDomainTrie_Size(t *testing.T) {
 	trie := NewDomainTrie()
 
-	if trie.Size() != 0 {
-		t.Errorf("empty trie size = %d, want 0", trie.Size())
-	}
+	assert.Equal(t, 0, trie.Size(), "empty trie size")
 
 	trie.Add("example.com", false)
-	if trie.Size() != 1 {
-		t.Errorf("size after 1 add = %d, want 1", trie.Size())
-	}
+	assert.Equal(t, 1, trie.Size(), "size after 1 add")
 
 	// Adding same domain again should not increase size
 	trie.Add("example.com", false)
-	if trie.Size() != 1 {
-		t.Errorf("size after duplicate add = %d, want 1", trie.Size())
-	}
+	assert.Equal(t, 1, trie.Size(), "size after duplicate add")
 
 	trie.Add("other.com", false)
-	if trie.Size() != 2 {
-		t.Errorf("size after 2nd domain = %d, want 2", trie.Size())
-	}
+	assert.Equal(t, 2, trie.Size(), "size after 2nd domain")
 }
 
 func TestDomainTrie_Clear(t *testing.T) {
@@ -171,19 +163,12 @@ func TestDomainTrie_Clear(t *testing.T) {
 	trie.Add("example.com", true)
 	trie.Add("other.com", true)
 
-	if trie.Size() != 2 {
-		t.Errorf("size before clear = %d, want 2", trie.Size())
-	}
+	assert.Equal(t, 2, trie.Size(), "size before clear")
 
 	trie.Clear()
 
-	if trie.Size() != 0 {
-		t.Errorf("size after clear = %d, want 0", trie.Size())
-	}
-
-	if trie.Contains("example.com") {
-		t.Error("Contains(example.com) after clear = true, want false")
-	}
+	assert.Equal(t, 0, trie.Size(), "size after clear")
+	assert.False(t, trie.Contains("example.com"), "Contains(example.com) after clear")
 }
 
 func TestDomainTrie_Merge(t *testing.T) {
@@ -196,19 +181,10 @@ func TestDomainTrie_Merge(t *testing.T) {
 
 	trie1.Merge(trie2)
 
-	if trie1.Size() != 3 {
-		t.Errorf("merged size = %d, want 3", trie1.Size())
-	}
-
-	if !trie1.Contains("example.com") {
-		t.Error("merged trie should contain example.com")
-	}
-	if !trie1.Contains("other.com") {
-		t.Error("merged trie should contain other.com")
-	}
-	if !trie1.Contains("another.org") {
-		t.Error("merged trie should contain another.org")
-	}
+	assert.Equal(t, 3, trie1.Size(), "merged size")
+	assert.True(t, trie1.Contains("example.com"), "merged trie should contain example.com")
+	assert.True(t, trie1.Contains("other.com"), "merged trie should contain other.com")
+	assert.True(t, trie1.Contains("another.org"), "merged trie should contain another.org")
 }
 
 func TestReversedLabels(t *testing.T) {
@@ -225,14 +201,9 @@ func TestReversedLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.domain, func(t *testing.T) {
 			got := reversedLabels(tt.domain)
-			if len(got) != len(tt.want) {
-				t.Errorf("reversedLabels(%q) length = %d, want %d", tt.domain, len(got), len(tt.want))
-				return
-			}
+			assert.Equal(t, len(tt.want), len(got), "length mismatch")
 			for i, label := range got {
-				if label != tt.want[i] {
-					t.Errorf("reversedLabels(%q)[%d] = %q, want %q", tt.domain, i, label, tt.want[i])
-				}
+				assert.Equal(t, tt.want[i], label, "label[%d] mismatch", i)
 			}
 		})
 	}
@@ -253,9 +224,7 @@ func TestNormalizeDomain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			got := normalizeDomain(tt.input)
-			if got != tt.want {
-				t.Errorf("normalizeDomain(%q) = %q, want %q", tt.input, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -266,24 +235,13 @@ func TestDomainSet(t *testing.T) {
 	set.Add("example.com")
 	set.Add("Example.COM") // duplicate with different case
 
-	if set.Size() != 1 {
-		t.Errorf("set size = %d, want 1", set.Size())
-	}
-
-	if !set.Contains("example.com") {
-		t.Error("set should contain example.com")
-	}
-	if !set.Contains("EXAMPLE.COM") {
-		t.Error("set should contain EXAMPLE.COM (case-insensitive)")
-	}
-	if set.Contains("other.com") {
-		t.Error("set should not contain other.com")
-	}
+	assert.Equal(t, 1, set.Size(), "set size")
+	assert.True(t, set.Contains("example.com"), "set should contain example.com")
+	assert.True(t, set.Contains("EXAMPLE.COM"), "set should contain EXAMPLE.COM (case-insensitive)")
+	assert.False(t, set.Contains("other.com"), "set should not contain other.com")
 
 	set.Clear()
-	if set.Size() != 0 {
-		t.Errorf("set size after clear = %d, want 0", set.Size())
-	}
+	assert.Equal(t, 0, set.Size(), "set size after clear")
 }
 
 // Benchmark tests

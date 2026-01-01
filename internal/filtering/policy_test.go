@@ -1,8 +1,12 @@
 package filtering
 
 import (
+	"context"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPolicyEngine_Evaluate(t *testing.T) {
@@ -53,10 +57,7 @@ func TestPolicyEngine_Evaluate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := pe.Evaluate(tt.domain)
-			if result.Action != tt.expectedAction {
-				t.Errorf("Evaluate(%q).Action = %v, want %v",
-					tt.domain, result.Action, tt.expectedAction)
-			}
+			assert.Equal(t, tt.expectedAction, result.Action, "Evaluate(%q).Action", tt.domain)
 		})
 	}
 }
@@ -75,12 +76,8 @@ func TestPolicyEngine_WhitelistPriority(t *testing.T) {
 	defer pe.Close()
 
 	result := pe.Evaluate("example.com")
-	if result.Action != ActionAllow {
-		t.Errorf("Whitelist should take priority, got action=%v", result.Action)
-	}
-	if result.ListName != "whitelist" {
-		t.Errorf("Expected ListName='whitelist', got %q", result.ListName)
-	}
+	assert.Equal(t, ActionAllow, result.Action, "Whitelist should take priority")
+	assert.Equal(t, "whitelist", result.ListName)
 }
 
 func TestPolicyEngine_Disabled(t *testing.T) {
@@ -94,9 +91,7 @@ func TestPolicyEngine_Disabled(t *testing.T) {
 	defer pe.Close()
 
 	result := pe.Evaluate("ads.example.com")
-	if result.Action != ActionAllow {
-		t.Errorf("Disabled engine should allow everything, got action=%v", result.Action)
-	}
+	assert.Equal(t, ActionAllow, result.Action, "Disabled engine should allow everything")
 }
 
 func TestPolicyEngine_Stats(t *testing.T) {
@@ -118,21 +113,11 @@ func TestPolicyEngine_Stats(t *testing.T) {
 
 	stats := pe.Stats()
 
-	if stats.QueriesTotal != 4 {
-		t.Errorf("QueriesTotal = %d, want 4", stats.QueriesTotal)
-	}
-	if stats.QueriesBlocked != 2 {
-		t.Errorf("QueriesBlocked = %d, want 2", stats.QueriesBlocked)
-	}
-	if stats.QueriesAllowed != 2 {
-		t.Errorf("QueriesAllowed = %d, want 2", stats.QueriesAllowed)
-	}
-	if stats.WhitelistSize != 1 {
-		t.Errorf("WhitelistSize = %d, want 1", stats.WhitelistSize)
-	}
-	if stats.BlacklistSize != 1 {
-		t.Errorf("BlacklistSize = %d, want 1", stats.BlacklistSize)
-	}
+	assert.Equal(t, uint64(4), stats.QueriesTotal)
+	assert.Equal(t, uint64(2), stats.QueriesBlocked)
+	assert.Equal(t, uint64(2), stats.QueriesAllowed)
+	assert.Equal(t, 1, stats.WhitelistSize)
+	assert.Equal(t, 1, stats.BlacklistSize)
 }
 
 func TestPolicyEngine_AddToLists(t *testing.T) {
@@ -146,25 +131,19 @@ func TestPolicyEngine_AddToLists(t *testing.T) {
 
 	// Initially should be allowed
 	result := pe.Evaluate("ads.example.com")
-	if result.Action != ActionAllow {
-		t.Errorf("Initial query should be allowed, got %v", result.Action)
-	}
+	assert.Equal(t, ActionAllow, result.Action, "Initial query should be allowed")
 
 	// Add to blacklist
 	pe.AddToBlacklist("ads.example.com")
 
 	result = pe.Evaluate("ads.example.com")
-	if result.Action != ActionBlock {
-		t.Errorf("After blacklist add should be blocked, got %v", result.Action)
-	}
+	assert.Equal(t, ActionBlock, result.Action, "After blacklist add should be blocked")
 
 	// Add to whitelist (should override blacklist)
 	pe.AddToWhitelist("ads.example.com")
 
 	result = pe.Evaluate("ads.example.com")
-	if result.Action != ActionAllow {
-		t.Errorf("Whitelist should override blacklist, got %v", result.Action)
-	}
+	assert.Equal(t, ActionAllow, result.Action, "Whitelist should override blacklist")
 }
 
 func TestPolicyEngine_SetEnabled(t *testing.T) {
@@ -179,25 +158,19 @@ func TestPolicyEngine_SetEnabled(t *testing.T) {
 
 	// Should be blocked while enabled
 	result := pe.Evaluate("ads.example.com")
-	if result.Action != ActionBlock {
-		t.Errorf("Expected block, got %v", result.Action)
-	}
+	assert.Equal(t, ActionBlock, result.Action)
 
 	// Disable filtering
 	pe.SetEnabled(false)
 
 	result = pe.Evaluate("ads.example.com")
-	if result.Action != ActionAllow {
-		t.Errorf("Expected allow when disabled, got %v", result.Action)
-	}
+	assert.Equal(t, ActionAllow, result.Action, "Expected allow when disabled")
 
 	// Re-enable
 	pe.SetEnabled(true)
 
 	result = pe.Evaluate("ads.example.com")
-	if result.Action != ActionBlock {
-		t.Errorf("Expected block after re-enable, got %v", result.Action)
-	}
+	assert.Equal(t, ActionBlock, result.Action, "Expected block after re-enable")
 }
 
 func TestAction_String(t *testing.T) {
@@ -212,10 +185,56 @@ func TestAction_String(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := tt.action.String(); got != tt.expected {
-			t.Errorf("Action(%d).String() = %q, want %q", tt.action, got, tt.expected)
-		}
+		assert.Equal(t, tt.expected, tt.action.String())
 	}
+}
+
+func TestPolicyEngine_EvaluateWithContext(t *testing.T) {
+	cfg := PolicyEngineConfig{
+		Enabled:          true,
+		BlockAction:      ActionBlock,
+		BlacklistDomains: []string{"blocked.com"},
+	}
+
+	pe := NewPolicyEngine(cfg)
+	defer pe.Close()
+
+	t.Run("allowed domain", func(t *testing.T) {
+		result, err := pe.EvaluateWithContext(context.Background(), "allowed.com")
+		require.NoError(t, err)
+		assert.Equal(t, ActionAllow, result.Action)
+	})
+
+	t.Run("blocked domain", func(t *testing.T) {
+		result, err := pe.EvaluateWithContext(context.Background(), "blocked.com")
+		require.NoError(t, err)
+		assert.Equal(t, ActionBlock, result.Action)
+	})
+
+	t.Run("cancelled context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // cancel immediately
+
+		_, err := pe.EvaluateWithContext(ctx, "anysite.com")
+		assert.Equal(t, context.Canceled, err)
+	})
+}
+
+func TestPolicyEngine_ListInfo(t *testing.T) {
+	cfg := PolicyEngineConfig{
+		Enabled:          true,
+		WhitelistDomains: []string{"safe.com"},
+		BlacklistDomains: []string{"blocked.com"},
+	}
+
+	pe := NewPolicyEngine(cfg)
+	defer pe.Close()
+
+	// ListInfo returns info about blocklists (URLs)
+	// With only static domains (no URLs), this should return empty
+	info := pe.ListInfo()
+	assert.NotNil(t, info, "ListInfo should not return nil")
+	// For a policy engine with only static domains, there's no URL-based list info
 }
 
 func TestPolicyEngine_String(t *testing.T) {
@@ -229,35 +248,12 @@ func TestPolicyEngine_String(t *testing.T) {
 	defer pe.Close()
 
 	s := pe.String()
-	if s == "" {
-		t.Error("String() returned empty string")
-	}
+	assert.NotEmpty(t, s, "String() returned empty string")
 	// Just check it contains expected parts
-	if !containsAll(s, "PolicyEngine", "enabled=true", "whitelist=1", "blacklist=2") {
-		t.Errorf("String() = %q, missing expected parts", s)
-	}
-}
-
-func containsAll(s string, parts ...string) bool {
-	for _, p := range parts {
-		if !contains(s, p) {
-			return false
-		}
-	}
-	return true
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	assert.Contains(t, s, "PolicyEngine")
+	assert.Contains(t, s, "enabled=true")
+	assert.Contains(t, s, "whitelist=1")
+	assert.Contains(t, s, "blacklist=2")
 }
 
 func BenchmarkPolicyEngine_Evaluate(b *testing.B) {

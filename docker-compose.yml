@@ -21,7 +21,7 @@ services:
     # e.g., server.host -> HYDRADNS_SERVER_HOST
     environment:
       - HYDRADNS_CONFIG=/app/config/hydradns.yaml
-      - HYDRADNS_LOGGING_LEVEL=WARN
+      - HYDRADNS_LOGGING_LEVEL=INFO
       # Uncomment to override specific settings:
       # - HYDRADNS_SERVER_WORKERS=4
       # - HYDRADNS_SERVER_HOST=0.0.0.0

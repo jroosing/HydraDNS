@@ -5,6 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/jroosing/hydradns/internal/dns"
 )
 
@@ -35,12 +38,8 @@ func TestChainedResolveFirstSucceeds(t *testing.T) {
 
 	req := dns.Packet{Header: dns.Header{ID: 1234}}
 	res, err := chain.Resolve(context.Background(), req, nil)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if res.Source != "r1" {
-		t.Errorf("expected source r1, got %s", res.Source)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "r1", res.Source)
 }
 
 func TestChainedResolveFirstFailsSecondSucceeds(t *testing.T) {
@@ -51,12 +50,8 @@ func TestChainedResolveFirstFailsSecondSucceeds(t *testing.T) {
 
 	req := dns.Packet{Header: dns.Header{ID: 1234}}
 	res, err := chain.Resolve(context.Background(), req, nil)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if res.Source != "r2" {
-		t.Errorf("expected source r2, got %s", res.Source)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "r2", res.Source)
 }
 
 func TestChainedResolveAllFail(t *testing.T) {
@@ -67,12 +62,8 @@ func TestChainedResolveAllFail(t *testing.T) {
 
 	req := dns.Packet{Header: dns.Header{ID: 1234}}
 	_, err := chain.Resolve(context.Background(), req, nil)
-	if err == nil {
-		t.Fatal("expected error when all resolvers fail")
-	}
-	if err.Error() != "second failed" {
-		t.Errorf("expected last error, got %v", err)
-	}
+	require.Error(t, err)
+	assert.Equal(t, "second failed", err.Error())
 }
 
 func TestChainedResolveNoResolvers(t *testing.T) {
@@ -80,9 +71,7 @@ func TestChainedResolveNoResolvers(t *testing.T) {
 
 	req := dns.Packet{Header: dns.Header{ID: 1234}}
 	_, err := chain.Resolve(context.Background(), req, nil)
-	if err == nil {
-		t.Fatal("expected error with no resolvers")
-	}
+	require.Error(t, err)
 }
 
 func TestChainedResolveContextCancelled(t *testing.T) {
@@ -96,9 +85,7 @@ func TestChainedResolveContextCancelled(t *testing.T) {
 
 	req := dns.Packet{Header: dns.Header{ID: 1234}}
 	_, err := chain.Resolve(ctx, req, nil)
-	if err != context.Canceled {
-		t.Errorf("expected context.Canceled, got %v", err)
-	}
+	assert.Equal(t, context.Canceled, err)
 }
 
 func TestChainedClose(t *testing.T) {
@@ -107,16 +94,10 @@ func TestChainedClose(t *testing.T) {
 
 	chain := &Chained{Resolvers: []Resolver{r1, r2}}
 	err := chain.Close()
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if !r1.closed {
-		t.Error("expected r1 to be closed")
-	}
-	if !r2.closed {
-		t.Error("expected r2 to be closed")
-	}
+	assert.True(t, r1.closed)
+	assert.True(t, r2.closed)
 }
 
 // mockFailingCloser returns an error on Close
@@ -135,11 +116,7 @@ func TestChainedCloseWithError(t *testing.T) {
 
 	chain := &Chained{Resolvers: []Resolver{r1, r2}}
 	err := chain.Close()
-	if err == nil {
-		t.Error("expected error from Close")
-	}
+	require.Error(t, err)
 	// Should still close r2
-	if !r2.closed {
-		t.Error("expected r2 to be closed despite r1 error")
-	}
+	assert.True(t, r2.closed)
 }

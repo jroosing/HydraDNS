@@ -4,6 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWorkerSettingString(t *testing.T) {
@@ -20,9 +23,7 @@ func TestWorkerSettingString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.ws.String()
-			if got != tt.want {
-				t.Errorf("got %q, want %q", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -48,36 +49,21 @@ func TestResolveConfigPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Setenv("HYDRADNS_CONFIG", tt.envValue)
 			got := ResolveConfigPath(tt.flag)
-			if got != tt.want {
-				t.Errorf("got %q, want %q", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
 
 func TestLoadDefault(t *testing.T) {
 	cfg, err := Load("")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cfg.Server.Host != "0.0.0.0" {
-		t.Errorf("expected host 0.0.0.0, got %s", cfg.Server.Host)
-	}
-	if cfg.Server.Port != 1053 {
-		t.Errorf("expected port 1053, got %d", cfg.Server.Port)
-	}
-	if cfg.Server.Workers.Mode != WorkersAuto {
-		t.Errorf("expected workers auto mode")
-	}
-	if !cfg.Server.EnableTCP {
-		t.Error("expected EnableTCP true")
-	}
-	if !cfg.Server.TCPFallback {
-		t.Error("expected TCPFallback true")
-	}
-	if len(cfg.Upstream.Servers) != 1 || cfg.Upstream.Servers[0] != "8.8.8.8" {
-		t.Errorf("unexpected upstream servers: %v", cfg.Upstream.Servers)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0", cfg.Server.Host)
+	assert.Equal(t, 1053, cfg.Server.Port)
+	assert.Equal(t, WorkersAuto, cfg.Server.Workers.Mode)
+	assert.True(t, cfg.Server.EnableTCP)
+	assert.True(t, cfg.Server.TCPFallback)
+	require.Len(t, cfg.Upstream.Servers, 1)
+	assert.Equal(t, "8.8.8.8", cfg.Upstream.Servers[0])
 }
 
 func TestLoadFromFile(t *testing.T) {
@@ -104,65 +90,36 @@ logging:
 `
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test-config.yaml")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to write test config: %v", err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte(content), 0644))
 
 	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if cfg.Server.Host != "127.0.0.1" {
-		t.Errorf("expected host 127.0.0.1, got %s", cfg.Server.Host)
-	}
-	if cfg.Server.Port != 5353 {
-		t.Errorf("expected port 5353, got %d", cfg.Server.Port)
-	}
-	if cfg.Server.Workers.Mode != WorkersFixed || cfg.Server.Workers.Value != 2 {
-		t.Errorf("expected fixed workers 2, got %v", cfg.Server.Workers)
-	}
-	if cfg.Server.EnableTCP {
-		t.Error("expected EnableTCP false")
-	}
-	if cfg.Server.TCPFallback {
-		t.Error("expected TCPFallback false")
-	}
-	if len(cfg.Upstream.Servers) != 2 {
-		t.Errorf("expected 2 servers, got %d", len(cfg.Upstream.Servers))
-	}
-	if cfg.Zones.Directory != "test-zones" {
-		t.Errorf("expected zones directory test-zones, got %s", cfg.Zones.Directory)
-	}
-	if cfg.Logging.Level != "DEBUG" {
-		t.Errorf("expected log level DEBUG, got %s", cfg.Logging.Level)
-	}
-	if !cfg.Logging.Structured {
-		t.Error("expected structured logging enabled")
-	}
-	if cfg.Logging.StructuredFormat != "keyvalue" {
-		t.Errorf("expected format keyvalue, got %s", cfg.Logging.StructuredFormat)
-	}
+	assert.Equal(t, "127.0.0.1", cfg.Server.Host)
+	assert.Equal(t, 5353, cfg.Server.Port)
+	assert.Equal(t, WorkersFixed, cfg.Server.Workers.Mode)
+	assert.Equal(t, 2, cfg.Server.Workers.Value)
+	assert.False(t, cfg.Server.EnableTCP)
+	assert.False(t, cfg.Server.TCPFallback)
+	assert.Len(t, cfg.Upstream.Servers, 2)
+	assert.Equal(t, "test-zones", cfg.Zones.Directory)
+	assert.Equal(t, "DEBUG", cfg.Logging.Level)
+	assert.True(t, cfg.Logging.Structured)
+	assert.Equal(t, "keyvalue", cfg.Logging.StructuredFormat)
 }
 
 func TestLoadInvalidPath(t *testing.T) {
 	_, err := Load("/nonexistent/path/to/config.yaml")
-	if err == nil {
-		t.Error("expected error for nonexistent file")
-	}
+	assert.Error(t, err)
 }
 
 func TestLoadInvalidYAML(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.yaml")
-	// Use truly invalid YAML syntax
-	if err := os.WriteFile(path, []byte("server:\n  port: [invalid"), 0644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  port: [invalid"), 0644))
+
 	_, err := Load(path)
-	if err == nil {
-		t.Error("expected error for invalid YAML")
-	}
+	assert.Error(t, err)
 }
 
 func TestNormalizeInvalidPort(t *testing.T) {
@@ -172,14 +129,10 @@ server:
 `
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.yaml")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte(content), 0644))
 
 	_, err := Load(path)
-	if err == nil {
-		t.Error("expected error for invalid port")
-	}
+	assert.Error(t, err)
 }
 
 func TestNormalizeInvalidWorkers(t *testing.T) {
@@ -189,18 +142,12 @@ server:
 `
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.yaml")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte(content), 0644))
 
 	// With Viper, invalid workers gracefully defaults to "auto"
 	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cfg.Server.Workers.Mode != WorkersAuto {
-		t.Errorf("expected workers auto for invalid value, got %v", cfg.Server.Workers)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, WorkersAuto, cfg.Server.Workers.Mode)
 }
 
 func TestNormalizeTruncatesServers(t *testing.T) {
@@ -215,25 +162,15 @@ upstream:
 `
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.yaml")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte(content), 0644))
 
 	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(cfg.Upstream.Servers) != 3 {
-		t.Errorf("expected 3 servers (truncated), got %d", len(cfg.Upstream.Servers))
-	}
+	require.NoError(t, err)
+	assert.Len(t, cfg.Upstream.Servers, 3, "expected servers to be truncated to 3")
 }
 
 func TestEnvOverrides(t *testing.T) {
 	// Save and restore env
-	// Standard naming pattern: HYDRADNS_<SECTION>_<KEY>
-	// Note: underscores in key names are preserved, dots become underscores
-	// e.g., server.enable_tcp -> HYDRADNS_SERVER_ENABLE_TCP
 	envVars := []string{
 		"HYDRADNS_SERVER_HOST", "HYDRADNS_SERVER_PORT", "HYDRADNS_SERVER_WORKERS",
 		"HYDRADNS_UPSTREAM_SERVERS", "HYDRADNS_ZONES_DIRECTORY",
@@ -260,32 +197,15 @@ func TestEnvOverrides(t *testing.T) {
 	os.Setenv("HYDRADNS_LOGGING_LEVEL", "debug")
 
 	cfg, err := Load("")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if cfg.Server.Host != "192.168.1.1" {
-		t.Errorf("expected host 192.168.1.1, got %s", cfg.Server.Host)
-	}
-	if cfg.Server.Port != 8053 {
-		t.Errorf("expected port 8053, got %d", cfg.Server.Port)
-	}
-	if cfg.Server.Workers.Mode != WorkersFixed || cfg.Server.Workers.Value != 8 {
-		t.Errorf("expected workers 8, got %v", cfg.Server.Workers)
-	}
-	if len(cfg.Upstream.Servers) != 2 {
-		t.Errorf("expected 2 servers, got %d", len(cfg.Upstream.Servers))
-	}
-	if cfg.Zones.Directory != "/custom/zones" {
-		t.Errorf("expected zones dir /custom/zones, got %s", cfg.Zones.Directory)
-	}
-	if cfg.Server.EnableTCP {
-		t.Error("expected EnableTCP false")
-	}
-	if cfg.Server.TCPFallback {
-		t.Error("expected TCPFallback false")
-	}
-	if cfg.Logging.Level != "DEBUG" {
-		t.Errorf("expected log level DEBUG, got %s", cfg.Logging.Level)
-	}
+	assert.Equal(t, "192.168.1.1", cfg.Server.Host)
+	assert.Equal(t, 8053, cfg.Server.Port)
+	assert.Equal(t, WorkersFixed, cfg.Server.Workers.Mode)
+	assert.Equal(t, 8, cfg.Server.Workers.Value)
+	assert.Len(t, cfg.Upstream.Servers, 2)
+	assert.Equal(t, "/custom/zones", cfg.Zones.Directory)
+	assert.False(t, cfg.Server.EnableTCP)
+	assert.False(t, cfg.Server.TCPFallback)
+	assert.Equal(t, "DEBUG", cfg.Logging.Level)
 }

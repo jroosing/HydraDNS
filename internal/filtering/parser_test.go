@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestMain sets a global timeout for all tests in this package.
@@ -34,13 +37,8 @@ malware.com
 
 	parser := NewParser()
 	trie, err := parser.ParseFile(file, FormatDomains)
-	if err != nil {
-		t.Fatalf("ParseFile failed: %v", err)
-	}
-
-	if trie.Size() != 4 {
-		t.Errorf("Expected 4 domains, got %d", trie.Size())
-	}
+	require.NoError(t, err, "ParseFile failed")
+	assert.Equal(t, 4, trie.Size(), "Expected 4 domains")
 
 	tests := []struct {
 		domain   string
@@ -55,9 +53,7 @@ malware.com
 	}
 
 	for _, tt := range tests {
-		if got := trie.Contains(tt.domain); got != tt.expected {
-			t.Errorf("Contains(%q) = %v, want %v", tt.domain, got, tt.expected)
-		}
+		assert.Equal(t, tt.expected, trie.Contains(tt.domain), "Contains(%q)", tt.domain)
 	}
 }
 
@@ -75,14 +71,10 @@ func TestParser_ParseHostsFile(t *testing.T) {
 
 	parser := NewParser()
 	trie, err := parser.ParseFile(file, FormatHosts)
-	if err != nil {
-		t.Fatalf("ParseFile failed: %v", err)
-	}
+	require.NoError(t, err, "ParseFile failed")
 
 	// Should only have 3 domains (not localhost entries)
-	if trie.Size() != 3 {
-		t.Errorf("Expected 3 domains, got %d", trie.Size())
-	}
+	assert.Equal(t, 3, trie.Size(), "Expected 3 domains")
 
 	tests := []struct {
 		domain   string
@@ -96,9 +88,7 @@ func TestParser_ParseHostsFile(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := trie.Contains(tt.domain); got != tt.expected {
-			t.Errorf("Contains(%q) = %v, want %v", tt.domain, got, tt.expected)
-		}
+		assert.Equal(t, tt.expected, trie.Contains(tt.domain), "Contains(%q)", tt.domain)
 	}
 }
 
@@ -119,13 +109,8 @@ example-ad.com
 
 	parser := NewParser()
 	trie, err := parser.ParseFile(file, FormatAdblock)
-	if err != nil {
-		t.Fatalf("ParseFile failed: %v", err)
-	}
-
-	if trie.Size() < 3 {
-		t.Errorf("Expected at least 3 domains, got %d", trie.Size())
-	}
+	require.NoError(t, err, "ParseFile failed")
+	assert.GreaterOrEqual(t, trie.Size(), 3, "Expected at least 3 domains")
 
 	tests := []struct {
 		domain   string
@@ -137,9 +122,7 @@ example-ad.com
 	}
 
 	for _, tt := range tests {
-		if got := trie.Contains(tt.domain); got != tt.expected {
-			t.Errorf("Contains(%q) = %v, want %v", tt.domain, got, tt.expected)
-		}
+		assert.Equal(t, tt.expected, trie.Contains(tt.domain), "Contains(%q)", tt.domain)
 	}
 }
 
@@ -173,13 +156,8 @@ func TestParser_AutoDetectFormat(t *testing.T) {
 
 			parser := NewParser()
 			trie, err := parser.ParseFile(file, FormatAuto)
-			if err != nil {
-				t.Fatalf("ParseFile failed: %v", err)
-			}
-
-			if trie.Size() < 1 {
-				t.Errorf("Expected at least 1 domain, got %d", trie.Size())
-			}
+			require.NoError(t, err, "ParseFile failed")
+			assert.GreaterOrEqual(t, trie.Size(), 1, "Expected at least 1 domain")
 		})
 	}
 }
@@ -196,13 +174,8 @@ func TestParser_ParseURL(t *testing.T) {
 
 	parser := NewParser()
 	trie, err := parser.ParseURL(server.URL, FormatAdblock)
-	if err != nil {
-		t.Fatalf("ParseURL failed: %v", err)
-	}
-
-	if trie.Size() != 2 {
-		t.Errorf("Expected 2 domains, got %d", trie.Size())
-	}
+	require.NoError(t, err, "ParseURL failed")
+	assert.Equal(t, 2, trie.Size(), "Expected 2 domains")
 }
 
 func TestParser_ParseURLTimeout(t *testing.T) {
@@ -212,17 +185,13 @@ func TestParser_ParseURLTimeout(t *testing.T) {
 
 	// Use a non-routable IP that will timeout
 	_, err := parser.ParseURL("http://10.255.255.1:12345/blocklist.txt", FormatAuto)
-	if err == nil {
-		t.Error("Expected timeout error, got nil")
-	}
+	assert.Error(t, err, "Expected timeout error")
 }
 
 func TestParser_InvalidFile(t *testing.T) {
 	parser := NewParser()
 	_, err := parser.ParseFile("/nonexistent/file.txt", FormatAuto)
-	if err == nil {
-		t.Error("Expected error for nonexistent file, got nil")
-	}
+	assert.Error(t, err, "Expected error for nonexistent file")
 }
 
 func TestIsValidDomain(t *testing.T) {
@@ -248,11 +217,35 @@ func TestIsValidDomain(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.domain, func(t *testing.T) {
-			if got := isValidDomain(tt.domain); got != tt.expected {
-				t.Errorf("isValidDomain(%q) = %v, want %v", tt.domain, got, tt.expected)
-			}
+			assert.Equal(t, tt.expected, isValidDomain(tt.domain))
 		})
 	}
+}
+
+func TestParser_ParseDomainsSlice(t *testing.T) {
+	parser := NewParser()
+
+	domains := []string{
+		"example.com",
+		"test.org",
+		"invalid", // no dot
+		"valid.net",
+		"", // empty
+	}
+
+	trie := parser.ParseDomainsSlice(domains)
+
+	assert.Equal(t, 3, trie.Size(), "expected 3 valid domains")
+	assert.True(t, trie.Contains("example.com"), "expected trie to contain example.com")
+	assert.True(t, trie.Contains("test.org"), "expected trie to contain test.org")
+	assert.True(t, trie.Contains("valid.net"), "expected trie to contain valid.net")
+	assert.False(t, trie.Contains("invalid"), "expected trie NOT to contain invalid domain")
+}
+
+func TestParser_ParseDomainsSlice_Empty(t *testing.T) {
+	parser := NewParser()
+	trie := parser.ParseDomainsSlice(nil)
+	assert.Equal(t, 0, trie.Size(), "expected empty trie")
 }
 
 // Helper function to create temporary test files.
@@ -261,8 +254,7 @@ func createTempFile(t *testing.T, content string) string {
 
 	dir := t.TempDir()
 	file := filepath.Join(dir, "blocklist.txt")
-	if err := os.WriteFile(file, []byte(content), 0644); err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
+	err := os.WriteFile(file, []byte(content), 0644)
+	require.NoError(t, err, "Failed to create temp file")
 	return file
 }

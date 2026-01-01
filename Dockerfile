@@ -15,7 +15,6 @@ COPY zones/ ./zones/
 COPY docker/ ./docker/
 
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/hydradns ./cmd/hydradns
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/dnsquery ./cmd/dnsquery
 
 FROM alpine:3.21 AS runtime
 
@@ -33,21 +32,17 @@ ENV HYDRADNS_CONFIG=/app/config/hydradns.yaml \
 WORKDIR /app
 
 COPY --from=builder /out/hydradns /app/hydradns
-COPY --from=builder /out/dnsquery /app/dnsquery
 
 COPY --chown=hydradns:hydradns zones/ /app/zones/
 RUN mkdir -p /app/config && chown hydradns:hydradns /app/config
 COPY --chown=hydradns:hydradns docker/hydradns.yaml /app/config/hydradns.yaml
 
-RUN chmod 755 /app/hydradns /app/dnsquery && \
+RUN chmod 755 /app/hydradns && \
     chmod 644 /app/config/hydradns.yaml && \
     chmod 644 /app/zones/*.zone 2>/dev/null || true
 
 EXPOSE 1053/udp
 EXPOSE 1053/tcp
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD ["/app/dnsquery", "--server", "127.0.0.1:1053", "--name", "example.com", "--qtype", "1", "--quiet"]
 
 USER hydradns
 

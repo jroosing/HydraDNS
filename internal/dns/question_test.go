@@ -2,6 +2,9 @@ package dns
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestQuestionMarshal(t *testing.T) {
@@ -12,27 +15,19 @@ func TestQuestionMarshal(t *testing.T) {
 	}
 
 	b, err := q.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Expected: encoded name (13 bytes) + type (2) + class (2) = 17 bytes
 	// Name: 7 + 'example' + 3 + 'com' + 0 = 1+7+1+3+1 = 13
 	expectedMinLen := 13 + 4
-	if len(b) < expectedMinLen {
-		t.Errorf("expected at least %d bytes, got %d", expectedMinLen, len(b))
-	}
+	assert.GreaterOrEqual(t, len(b), expectedMinLen)
 
 	// Last 4 bytes should be type and class
 	typeVal := int(b[len(b)-4])<<8 | int(b[len(b)-3])
 	classVal := int(b[len(b)-2])<<8 | int(b[len(b)-1])
 
-	if typeVal != int(TypeA) {
-		t.Errorf("expected type %d, got %d", TypeA, typeVal)
-	}
-	if classVal != 1 {
-		t.Errorf("expected class 1, got %d", classVal)
-	}
+	assert.Equal(t, int(TypeA), typeVal)
+	assert.Equal(t, 1, classVal)
 }
 
 func TestQuestionMarshalInvalidName(t *testing.T) {
@@ -48,9 +43,7 @@ func TestQuestionMarshalInvalidName(t *testing.T) {
 	}
 
 	_, err := q.Marshal()
-	if err == nil {
-		t.Error("expected error for invalid name")
-	}
+	assert.Error(t, err, "expected error for invalid name")
 }
 
 func TestParseQuestion(t *testing.T) {
@@ -67,22 +60,12 @@ func TestParseQuestion(t *testing.T) {
 
 	off := 0
 	q, err := ParseQuestion(msg, &off)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if q.Name != "www.example.com" {
-		t.Errorf("expected name www.example.com, got %s", q.Name)
-	}
-	if q.Type != uint16(TypeA) {
-		t.Errorf("expected type %d, got %d", TypeA, q.Type)
-	}
-	if q.Class != 1 {
-		t.Errorf("expected class 1, got %d", q.Class)
-	}
-	if off != len(msg) {
-		t.Errorf("expected offset %d, got %d", len(msg), off)
-	}
+	assert.Equal(t, "www.example.com", q.Name)
+	assert.Equal(t, uint16(TypeA), q.Type)
+	assert.Equal(t, uint16(1), q.Class)
+	assert.Equal(t, len(msg), off)
 }
 
 func TestParseQuestionTruncated(t *testing.T) {
@@ -96,9 +79,7 @@ func TestParseQuestionTruncated(t *testing.T) {
 
 	off := 0
 	_, err := ParseQuestion(msg, &off)
-	if err == nil {
-		t.Error("expected error for truncated question")
-	}
+	assert.Error(t, err, "expected error for truncated question")
 }
 
 func TestQuestionRoundTrip(t *testing.T) {
@@ -109,25 +90,15 @@ func TestQuestionRoundTrip(t *testing.T) {
 	}
 
 	b, err := original.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+	require.NoError(t, err, "Marshal failed")
 
 	off := 0
 	parsed, err := ParseQuestion(b, &off)
-	if err != nil {
-		t.Fatalf("ParseQuestion failed: %v", err)
-	}
+	require.NoError(t, err, "ParseQuestion failed")
 
-	if parsed.Name != original.Name {
-		t.Errorf("name: got %s, want %s", parsed.Name, original.Name)
-	}
-	if parsed.Type != original.Type {
-		t.Errorf("type: got %d, want %d", parsed.Type, original.Type)
-	}
-	if parsed.Class != original.Class {
-		t.Errorf("class: got %d, want %d", parsed.Class, original.Class)
-	}
+	assert.Equal(t, original.Name, parsed.Name)
+	assert.Equal(t, original.Type, parsed.Type)
+	assert.Equal(t, original.Class, parsed.Class)
 }
 
 func TestParseQuestionMultiple(t *testing.T) {
@@ -150,24 +121,12 @@ func TestParseQuestionMultiple(t *testing.T) {
 	off := 0
 
 	q1, err := ParseQuestion(msg, &off)
-	if err != nil {
-		t.Fatalf("failed to parse question 1: %v", err)
-	}
-	if q1.Name != "example.com" {
-		t.Errorf("q1 name: got %s, want example.com", q1.Name)
-	}
-	if q1.Type != uint16(TypeA) {
-		t.Errorf("q1 type: got %d, want %d", q1.Type, TypeA)
-	}
+	require.NoError(t, err, "failed to parse question 1")
+	assert.Equal(t, "example.com", q1.Name)
+	assert.Equal(t, uint16(TypeA), q1.Type)
 
 	q2, err := ParseQuestion(msg, &off)
-	if err != nil {
-		t.Fatalf("failed to parse question 2: %v", err)
-	}
-	if q2.Name != "test.com" {
-		t.Errorf("q2 name: got %s, want test.com", q2.Name)
-	}
-	if q2.Type != uint16(TypeAAAA) {
-		t.Errorf("q2 type: got %d, want %d", q2.Type, TypeAAAA)
-	}
+	require.NoError(t, err, "failed to parse question 2")
+	assert.Equal(t, "test.com", q2.Name)
+	assert.Equal(t, uint16(TypeAAAA), q2.Type)
 }

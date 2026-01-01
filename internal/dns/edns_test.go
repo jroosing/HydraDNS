@@ -2,6 +2,9 @@ package dns
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEDNSOptionMarshal(t *testing.T) {
@@ -11,21 +14,15 @@ func TestEDNSOptionMarshal(t *testing.T) {
 	}
 	b := opt.Marshal()
 	// 2 bytes code + 2 bytes length + 3 bytes data = 7 bytes
-	if len(b) != 7 {
-		t.Fatalf("expected 7 bytes, got %d", len(b))
-	}
+	require.Len(t, b, 7)
 	// Code = 10 (0x000A)
-	if b[0] != 0 || b[1] != 10 {
-		t.Errorf("expected code 10, got %d", int(b[0])<<8|int(b[1]))
-	}
+	assert.Equal(t, byte(0), b[0])
+	assert.Equal(t, byte(10), b[1])
 	// Length = 3
-	if b[2] != 0 || b[3] != 3 {
-		t.Errorf("expected length 3, got %d", int(b[2])<<8|int(b[3]))
-	}
+	assert.Equal(t, byte(0), b[2])
+	assert.Equal(t, byte(3), b[3])
 	// Data
-	if b[4] != 1 || b[5] != 2 || b[6] != 3 {
-		t.Errorf("unexpected data: %v", b[4:])
-	}
+	assert.Equal(t, []byte{1, 2, 3}, b[4:7])
 }
 
 func TestCreateOPT(t *testing.T) {
@@ -44,10 +41,8 @@ func TestCreateOPT(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opt := CreateOPT(tt.size)
-			if int(opt.UDPPayloadSize) < tt.wantMin || int(opt.UDPPayloadSize) > tt.wantMax {
-				t.Errorf("UDPPayloadSize = %d, want between %d and %d",
-					opt.UDPPayloadSize, tt.wantMin, tt.wantMax)
-			}
+			assert.GreaterOrEqual(t, int(opt.UDPPayloadSize), tt.wantMin)
+			assert.LessOrEqual(t, int(opt.UDPPayloadSize), tt.wantMax)
 		})
 	}
 }
@@ -69,9 +64,7 @@ func TestClampInt(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := clampInt(tt.v, tt.min, tt.max)
-			if got != tt.want {
-				t.Errorf("clampInt(%d, %d, %d) = %d, want %d", tt.v, tt.min, tt.max, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -88,29 +81,21 @@ func TestOPTRecordMarshal(t *testing.T) {
 	b := opt.Marshal()
 
 	// Should start with root name (0x00)
-	if b[0] != 0 {
-		t.Errorf("expected root name 0x00, got 0x%02x", b[0])
-	}
+	assert.Equal(t, byte(0), b[0], "expected root name 0x00")
 
 	// Type should be OPT (41)
 	typeVal := int(b[1])<<8 | int(b[2])
-	if typeVal != int(TypeOPT) {
-		t.Errorf("expected type 41, got %d", typeVal)
-	}
+	assert.Equal(t, int(TypeOPT), typeVal)
 
 	// Class should be UDP payload size (4096)
 	classVal := int(b[3])<<8 | int(b[4])
-	if classVal != 4096 {
-		t.Errorf("expected class 4096, got %d", classVal)
-	}
+	assert.Equal(t, 4096, classVal)
 
 	// TTL should have DO bit set (bit 15)
 	// TTL is at bytes 5-8
 	ttl := uint32(b[5])<<24 | uint32(b[6])<<16 | uint32(b[7])<<8 | uint32(b[8])
 	doFlag := (ttl >> 15) & 1
-	if doFlag != 1 {
-		t.Errorf("expected DO flag set, TTL = 0x%08x", ttl)
-	}
+	assert.Equal(t, uint32(1), doFlag, "expected DO flag set")
 }
 
 func TestPackOPTTTL(t *testing.T) {
@@ -135,15 +120,9 @@ func TestPackOPTTTL(t *testing.T) {
 			gotVersion := uint8(ttl >> 16)
 			gotDO := ((ttl >> 15) & 1) == 1
 
-			if gotExtRCode != tt.extRCode {
-				t.Errorf("extRCode: got %d, want %d", gotExtRCode, tt.extRCode)
-			}
-			if gotVersion != tt.version {
-				t.Errorf("version: got %d, want %d", gotVersion, tt.version)
-			}
-			if gotDO != tt.dnssecOk {
-				t.Errorf("dnssecOk: got %v, want %v", gotDO, tt.dnssecOk)
-			}
+			assert.Equal(t, tt.extRCode, gotExtRCode)
+			assert.Equal(t, tt.version, gotVersion)
+			assert.Equal(t, tt.dnssecOk, gotDO)
 		})
 	}
 }
@@ -154,9 +133,7 @@ func TestExtractOPT(t *testing.T) {
 		{Name: "example.com", Type: uint16(TypeA), Class: 1, TTL: 300, Data: []byte{1, 2, 3, 4}},
 	}
 	opt := ExtractOPT(additionals)
-	if opt != nil {
-		t.Error("expected nil for no OPT record")
-	}
+	assert.Nil(t, opt, "expected nil for no OPT record")
 
 	// Test with OPT record
 	// UDP size = 4096, TTL packed with DO flag
@@ -165,15 +142,9 @@ func TestExtractOPT(t *testing.T) {
 		{Name: "", Type: uint16(TypeOPT), Class: 4096, TTL: ttl, Data: []byte{}},
 	}
 	opt = ExtractOPT(additionals)
-	if opt == nil {
-		t.Fatal("expected OPT record to be extracted")
-	}
-	if opt.UDPPayloadSize != 4096 {
-		t.Errorf("expected UDP size 4096, got %d", opt.UDPPayloadSize)
-	}
-	if !opt.DNSSECOk {
-		t.Error("expected DNSSECOk to be true")
-	}
+	require.NotNil(t, opt, "expected OPT record to be extracted")
+	assert.Equal(t, uint16(4096), opt.UDPPayloadSize)
+	assert.True(t, opt.DNSSECOk)
 }
 
 func TestClientMaxUDPSize(t *testing.T) {
@@ -183,9 +154,7 @@ func TestClientMaxUDPSize(t *testing.T) {
 		Additionals: nil,
 	}
 	size := ClientMaxUDPSize(pkt)
-	if size != DefaultUDPPayloadSize {
-		t.Errorf("expected %d, got %d", DefaultUDPPayloadSize, size)
-	}
+	assert.Equal(t, DefaultUDPPayloadSize, size)
 
 	// With EDNS advertising 4096
 	ttl := packOPTTTL(0, 0, false)
@@ -193,18 +162,14 @@ func TestClientMaxUDPSize(t *testing.T) {
 		{Type: uint16(TypeOPT), Class: 4096, TTL: ttl, Data: []byte{}},
 	}
 	size = ClientMaxUDPSize(pkt)
-	if size != 4096 {
-		t.Errorf("expected 4096, got %d", size)
-	}
+	assert.Equal(t, 4096, size)
 
 	// With EDNS advertising below minimum
 	pkt.Additionals = []Record{
 		{Type: uint16(TypeOPT), Class: 100, TTL: ttl, Data: []byte{}},
 	}
 	size = ClientMaxUDPSize(pkt)
-	if size != DefaultUDPPayloadSize {
-		t.Errorf("expected %d (minimum), got %d", DefaultUDPPayloadSize, size)
-	}
+	assert.Equal(t, DefaultUDPPayloadSize, size, "expected minimum")
 }
 
 func TestIsTruncated(t *testing.T) {
@@ -221,9 +186,7 @@ func TestIsTruncated(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := IsTruncated(tt.response)
-			if got != tt.want {
-				t.Errorf("IsTruncated = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -245,9 +208,7 @@ func TestAddEDNSToRequestBytes(t *testing.T) {
 
 	// Add EDNS
 	newBytes := AddEDNSToRequestBytes(req, reqBytes, 4096)
-	if len(newBytes) <= originalLen {
-		t.Errorf("expected longer message after adding EDNS, got %d <= %d", len(newBytes), originalLen)
-	}
+	assert.Greater(t, len(newBytes), originalLen, "expected longer message after adding EDNS")
 
 	// Already has EDNS - should return unchanged
 	req.Additionals = []Record{
@@ -255,7 +216,5 @@ func TestAddEDNSToRequestBytes(t *testing.T) {
 	}
 	reqBytes2, _ := req.Marshal()
 	newBytes2 := AddEDNSToRequestBytes(req, reqBytes2, 4096)
-	if len(newBytes2) != len(reqBytes2) {
-		t.Errorf("should not add EDNS when already present")
-	}
+	assert.Equal(t, len(reqBytes2), len(newBytes2), "should not add EDNS when already present")
 }

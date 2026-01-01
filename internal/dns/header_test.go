@@ -2,6 +2,9 @@ package dns
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHeaderMarshal(t *testing.T) {
@@ -15,37 +18,23 @@ func TestHeaderMarshal(t *testing.T) {
 	}
 
 	b, err := h.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(b) != HeaderSize {
-		t.Errorf("expected %d bytes, got %d", HeaderSize, len(b))
-	}
+	assert.Len(t, b, HeaderSize)
 
 	// Verify ID
-	if b[0] != 0x12 || b[1] != 0x34 {
-		t.Errorf("unexpected ID: %02x%02x", b[0], b[1])
-	}
+	assert.Equal(t, byte(0x12), b[0])
+	assert.Equal(t, byte(0x34), b[1])
 
 	// Verify Flags
-	if b[2] != 0x81 || b[3] != 0x80 {
-		t.Errorf("unexpected Flags: %02x%02x", b[2], b[3])
-	}
+	assert.Equal(t, byte(0x81), b[2])
+	assert.Equal(t, byte(0x80), b[3])
 
 	// Verify counts
-	if b[4] != 0 || b[5] != 1 {
-		t.Errorf("unexpected QDCount: %d", int(b[4])<<8|int(b[5]))
-	}
-	if b[6] != 0 || b[7] != 2 {
-		t.Errorf("unexpected ANCount: %d", int(b[6])<<8|int(b[7]))
-	}
-	if b[8] != 0 || b[9] != 3 {
-		t.Errorf("unexpected NSCount: %d", int(b[8])<<8|int(b[9]))
-	}
-	if b[10] != 0 || b[11] != 4 {
-		t.Errorf("unexpected ARCount: %d", int(b[10])<<8|int(b[11]))
-	}
+	assert.Equal(t, []byte{0, 1}, b[4:6], "unexpected QDCount")
+	assert.Equal(t, []byte{0, 2}, b[6:8], "unexpected ANCount")
+	assert.Equal(t, []byte{0, 3}, b[8:10], "unexpected NSCount")
+	assert.Equal(t, []byte{0, 4}, b[10:12], "unexpected ARCount")
 }
 
 func TestParseHeader(t *testing.T) {
@@ -61,31 +50,15 @@ func TestParseHeader(t *testing.T) {
 
 	off := 0
 	h, err := ParseHeader(msg, &off)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if h.ID != 0x1234 {
-		t.Errorf("expected ID 0x1234, got 0x%04x", h.ID)
-	}
-	if h.Flags != 0x8180 {
-		t.Errorf("expected Flags 0x8180, got 0x%04x", h.Flags)
-	}
-	if h.QDCount != 1 {
-		t.Errorf("expected QDCount 1, got %d", h.QDCount)
-	}
-	if h.ANCount != 2 {
-		t.Errorf("expected ANCount 2, got %d", h.ANCount)
-	}
-	if h.NSCount != 3 {
-		t.Errorf("expected NSCount 3, got %d", h.NSCount)
-	}
-	if h.ARCount != 4 {
-		t.Errorf("expected ARCount 4, got %d", h.ARCount)
-	}
-	if off != HeaderSize {
-		t.Errorf("expected offset %d, got %d", HeaderSize, off)
-	}
+	assert.Equal(t, uint16(0x1234), h.ID)
+	assert.Equal(t, uint16(0x8180), h.Flags)
+	assert.Equal(t, uint16(1), h.QDCount)
+	assert.Equal(t, uint16(2), h.ANCount)
+	assert.Equal(t, uint16(3), h.NSCount)
+	assert.Equal(t, uint16(4), h.ARCount)
+	assert.Equal(t, HeaderSize, off)
 }
 
 func TestParseHeaderTooShort(t *testing.T) {
@@ -93,9 +66,7 @@ func TestParseHeaderTooShort(t *testing.T) {
 
 	off := 0
 	_, err := ParseHeader(msg, &off)
-	if err == nil {
-		t.Error("expected error for too short message")
-	}
+	assert.Error(t, err, "expected error for too short message")
 }
 
 func TestParseHeaderOffset(t *testing.T) {
@@ -106,15 +77,9 @@ func TestParseHeaderOffset(t *testing.T) {
 
 	off := 5
 	h, err := ParseHeader(msg, &off)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if h.ID != 0xABCD {
-		t.Errorf("expected ID 0xABCD, got 0x%04x", h.ID)
-	}
-	if off != 5+HeaderSize {
-		t.Errorf("expected offset %d, got %d", 5+HeaderSize, off)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, uint16(0xABCD), h.ID)
+	assert.Equal(t, 5+HeaderSize, off)
 }
 
 func TestHeaderRoundTrip(t *testing.T) {
@@ -128,17 +93,11 @@ func TestHeaderRoundTrip(t *testing.T) {
 	}
 
 	b, err := original.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+	require.NoError(t, err, "Marshal failed")
 
 	off := 0
 	parsed, err := ParseHeader(b, &off)
-	if err != nil {
-		t.Fatalf("ParseHeader failed: %v", err)
-	}
+	require.NoError(t, err, "ParseHeader failed")
 
-	if parsed != original {
-		t.Errorf("round trip failed: got %+v, want %+v", parsed, original)
-	}
+	assert.Equal(t, original, parsed, "round trip failed")
 }

@@ -2,6 +2,9 @@ package logging
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigure(t *testing.T) {
@@ -41,9 +44,7 @@ func TestConfigure(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := Configure(tt.cfg)
-			if logger == nil {
-				t.Error("expected non-nil logger")
-			}
+			require.NotNil(t, logger)
 		})
 	}
 }
@@ -70,7 +71,7 @@ func TestParseLevel(t *testing.T) {
 		t.Run(tt.input, func(t *testing.T) {
 			level := parseLevel(tt.input)
 			// Just verify it doesn't panic
-			_ = level
+			assert.NotNil(t, level)
 		})
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/jroosing/hydradns/internal/dns"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTruncateUDPResponse_SetsTCAndClearsCounts(t *testing.T) {
@@ -13,33 +15,22 @@ func TestTruncateUDPResponse_SetsTCAndClearsCounts(t *testing.T) {
 		Answers:   []dns.Record{{Name: "example.com", Type: uint16(dns.TypeA), Class: uint16(dns.ClassIN), TTL: 60, Data: []byte{1, 2, 3, 4}}},
 	}
 	b, err := resp.Marshal()
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
+	require.NoError(t, err, "marshal failed")
 
 	// Force truncation, but keep enough room for header+question.
 	qEnd := findQuestionSectionEnd(b, 1)
-	if qEnd <= 12 {
-		t.Fatalf("unexpected question end: %d", qEnd)
-	}
+	require.Greater(t, qEnd, 12, "unexpected question end")
+
 	out := truncateUDPResponse(b, qEnd)
-	if len(out) > qEnd {
-		t.Fatalf("expected <= %d bytes, got %d", qEnd, len(out))
-	}
+	require.LessOrEqual(t, len(out), qEnd, "expected <= %d bytes", qEnd)
 
 	p, err := dns.ParsePacket(out)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if (p.Header.Flags & uint16(dns.TCFlag)) == 0 {
-		t.Fatalf("TC flag not set")
-	}
-	if p.Header.ANCount != 0 || p.Header.NSCount != 0 || p.Header.ARCount != 0 {
-		t.Fatalf("expected counts cleared, got an=%d ns=%d ar=%d", p.Header.ANCount, p.Header.NSCount, p.Header.ARCount)
-	}
-	if len(p.Questions) != 1 {
-		t.Fatalf("expected question preserved")
-	}
+	require.NoError(t, err, "parse failed")
+	assert.NotZero(t, p.Header.Flags&uint16(dns.TCFlag), "TC flag not set")
+	assert.Equal(t, uint16(0), p.Header.ANCount, "expected ANCount cleared")
+	assert.Equal(t, uint16(0), p.Header.NSCount, "expected NSCount cleared")
+	assert.Equal(t, uint16(0), p.Header.ARCount, "expected ARCount cleared")
+	assert.Len(t, p.Questions, 1, "expected question preserved")
 }
 
 func TestTruncateUDPResponseSmallEnough(t *testing.T) {
@@ -59,15 +50,10 @@ func TestTruncateUDPResponseSmallEnough(t *testing.T) {
 	}
 
 	respBytes, err := pkt.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+	require.NoError(t, err, "Marshal failed")
 
 	truncated := truncateUDPResponse(respBytes, 4096)
-
-	if len(truncated) != len(respBytes) {
-		t.Errorf("expected unchanged response, got %d bytes (original %d)", len(truncated), len(respBytes))
-	}
+	assert.Equal(t, len(respBytes), len(truncated), "expected unchanged response")
 }
 
 func TestTruncateUDPResponseZeroMaxSize(t *testing.T) {
@@ -78,19 +64,13 @@ func TestTruncateUDPResponseZeroMaxSize(t *testing.T) {
 	respBytes[3] = 0x80
 
 	truncated := truncateUDPResponse(respBytes, 0)
-
-	if len(truncated) > dns.DefaultUDPPayloadSize {
-		t.Errorf("expected truncation to default size, got %d", len(truncated))
-	}
+	assert.LessOrEqual(t, len(truncated), dns.DefaultUDPPayloadSize, "expected truncation to default size")
 }
 
 func TestTruncateUDPResponseTooShort(t *testing.T) {
 	shortResp := []byte{0x12, 0x34, 0x81, 0x80}
 	result := truncateUDPResponse(shortResp, 512)
-
-	if len(result) != len(shortResp) {
-		t.Errorf("expected unchanged short response, got %d bytes", len(result))
-	}
+	assert.Equal(t, len(shortResp), len(result), "expected unchanged short response")
 }
 
 func TestExtractQuestionCount(t *testing.T) {
@@ -99,9 +79,7 @@ func TestExtractQuestionCount(t *testing.T) {
 	msg[5] = 0x05
 
 	count := extractQuestionCount(msg)
-	if count != 5 {
-		t.Errorf("expected 5, got %d", count)
-	}
+	assert.Equal(t, uint16(5), count)
 }
 
 func TestBuildTruncatedHeader(t *testing.T) {
@@ -117,33 +95,27 @@ func TestBuildTruncatedHeader(t *testing.T) {
 
 	header := buildTruncatedHeader(original, 1)
 
-	if len(header) != dns.HeaderSize {
-		t.Errorf("expected %d bytes, got %d", dns.HeaderSize, len(header))
-	}
+	require.Len(t, header, dns.HeaderSize)
 
-	if header[0] != 0xAB || header[1] != 0xCD {
-		t.Error("transaction ID not preserved")
-	}
+	// Transaction ID preserved
+	assert.Equal(t, byte(0xAB), header[0], "transaction ID byte 0 not preserved")
+	assert.Equal(t, byte(0xCD), header[1], "transaction ID byte 1 not preserved")
 
+	// TC flag set
 	flags := uint16(header[2])<<8 | uint16(header[3])
-	if (flags & dns.TCFlag) == 0 {
-		t.Error("expected TC flag to be set")
-	}
+	assert.NotZero(t, flags&dns.TCFlag, "expected TC flag to be set")
 
+	// QDCOUNT preserved
 	qdcount := uint16(header[4])<<8 | uint16(header[5])
-	if qdcount != 1 {
-		t.Errorf("expected QDCOUNT 1, got %d", qdcount)
-	}
+	assert.Equal(t, uint16(1), qdcount, "expected QDCOUNT 1")
 
-	if header[6] != 0 || header[7] != 0 {
-		t.Error("expected ANCOUNT = 0")
-	}
-	if header[8] != 0 || header[9] != 0 {
-		t.Error("expected NSCOUNT = 0")
-	}
-	if header[10] != 0 || header[11] != 0 {
-		t.Error("expected ARCOUNT = 0")
-	}
+	// Other counts cleared
+	assert.Equal(t, byte(0), header[6], "expected ANCOUNT high byte = 0")
+	assert.Equal(t, byte(0), header[7], "expected ANCOUNT low byte = 0")
+	assert.Equal(t, byte(0), header[8], "expected NSCOUNT high byte = 0")
+	assert.Equal(t, byte(0), header[9], "expected NSCOUNT low byte = 0")
+	assert.Equal(t, byte(0), header[10], "expected ARCOUNT high byte = 0")
+	assert.Equal(t, byte(0), header[11], "expected ARCOUNT low byte = 0")
 }
 
 func TestSkipQNAME(t *testing.T) {
@@ -176,9 +148,7 @@ func TestSkipQNAME(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := skipQNAME(tt.msg, tt.startPos)
-			if got != tt.wantPos {
-				t.Errorf("skipQNAME() = %d, want %d", got, tt.wantPos)
-			}
+			assert.Equal(t, tt.wantPos, got)
 		})
 	}
 }
@@ -197,17 +167,11 @@ func TestFindQuestionSectionEnd(t *testing.T) {
 	}
 
 	b, err := pkt.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+	require.NoError(t, err, "Marshal failed")
 
 	end := findQuestionSectionEnd(b, 1)
 
 	// End should be after header + encoded name + 4 bytes (type+class)
-	if end <= dns.HeaderSize {
-		t.Errorf("expected end > %d, got %d", dns.HeaderSize, end)
-	}
-	if end > len(b) {
-		t.Errorf("expected end <= %d, got %d", len(b), end)
-	}
+	assert.Greater(t, end, dns.HeaderSize, "expected end > HeaderSize")
+	assert.LessOrEqual(t, end, len(b), "expected end <= message length")
 }

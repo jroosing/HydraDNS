@@ -2,6 +2,9 @@ package dns
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPacketMarshal(t *testing.T) {
@@ -20,19 +23,14 @@ func TestPacketMarshal(t *testing.T) {
 	}
 
 	b, err := pkt.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Minimum: 12 (header) + encoded name + 4 (type/class)
-	if len(b) < 12 {
-		t.Errorf("packet too short: %d bytes", len(b))
-	}
+	assert.GreaterOrEqual(t, len(b), 12, "packet too short")
 
 	// Verify header ID
-	if b[0] != 0x12 || b[1] != 0x34 {
-		t.Errorf("unexpected ID in wire format")
-	}
+	assert.Equal(t, byte(0x12), b[0])
+	assert.Equal(t, byte(0x34), b[1])
 }
 
 func TestPacketMarshalWithAnswers(t *testing.T) {
@@ -60,13 +58,8 @@ func TestPacketMarshalWithAnswers(t *testing.T) {
 	}
 
 	b, err := pkt.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(b) == 0 {
-		t.Error("expected non-empty packet")
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, b)
 }
 
 func TestPacketMarshalWithAllSections(t *testing.T) {
@@ -94,13 +87,8 @@ func TestPacketMarshalWithAllSections(t *testing.T) {
 	}
 
 	b, err := pkt.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(b) == 0 {
-		t.Error("expected non-empty packet")
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, b)
 }
 
 func TestPacketMarshalInvalidQuestion(t *testing.T) {
@@ -122,9 +110,7 @@ func TestPacketMarshalInvalidQuestion(t *testing.T) {
 	}
 
 	_, err := pkt.Marshal()
-	if err == nil {
-		t.Error("expected error for invalid question name")
-	}
+	assert.Error(t, err, "expected error for invalid question name")
 }
 
 func TestParsePacket(t *testing.T) {
@@ -141,24 +127,14 @@ func TestParsePacket(t *testing.T) {
 	}
 
 	b, err := pkt.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+	require.NoError(t, err, "Marshal failed")
 
 	parsed, err := ParsePacket(b)
-	if err != nil {
-		t.Fatalf("ParsePacket failed: %v", err)
-	}
+	require.NoError(t, err, "ParsePacket failed")
 
-	if parsed.Header.ID != 0x1234 {
-		t.Errorf("expected ID 0x1234, got 0x%04x", parsed.Header.ID)
-	}
-	if len(parsed.Questions) != 1 {
-		t.Fatalf("expected 1 question, got %d", len(parsed.Questions))
-	}
-	if parsed.Questions[0].Name != "example.com" {
-		t.Errorf("expected name example.com, got %s", parsed.Questions[0].Name)
-	}
+	assert.Equal(t, uint16(0x1234), parsed.Header.ID)
+	require.Len(t, parsed.Questions, 1)
+	assert.Equal(t, "example.com", parsed.Questions[0].Name)
 }
 
 func TestParsePacketWithAnswers(t *testing.T) {
@@ -179,28 +155,18 @@ func TestParsePacketWithAnswers(t *testing.T) {
 	}
 
 	b, err := pkt.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+	require.NoError(t, err, "Marshal failed")
 
 	parsed, err := ParsePacket(b)
-	if err != nil {
-		t.Fatalf("ParsePacket failed: %v", err)
-	}
+	require.NoError(t, err, "ParsePacket failed")
 
-	if len(parsed.Answers) != 1 {
-		t.Fatalf("expected 1 answer, got %d", len(parsed.Answers))
-	}
-	if parsed.Answers[0].Name != "example.com" {
-		t.Errorf("expected answer name example.com, got %s", parsed.Answers[0].Name)
-	}
+	require.Len(t, parsed.Answers, 1)
+	assert.Equal(t, "example.com", parsed.Answers[0].Name)
 }
 
 func TestParsePacketTooShort(t *testing.T) {
 	_, err := ParsePacket([]byte{1, 2, 3}) // Too short for header
-	if err == nil {
-		t.Error("expected error for too short packet")
-	}
+	assert.Error(t, err, "expected error for too short packet")
 }
 
 func TestParsePacketTruncatedQuestion(t *testing.T) {
@@ -217,9 +183,7 @@ func TestParsePacketTruncatedQuestion(t *testing.T) {
 	}
 
 	_, err := ParsePacket(msg)
-	if err == nil {
-		t.Error("expected error for truncated question")
-	}
+	assert.Error(t, err, "expected error for truncated question")
 }
 
 func TestPacketRoundTrip(t *testing.T) {
@@ -242,25 +206,13 @@ func TestPacketRoundTrip(t *testing.T) {
 	}
 
 	b, err := original.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+	require.NoError(t, err, "Marshal failed")
 
 	parsed, err := ParsePacket(b)
-	if err != nil {
-		t.Fatalf("ParsePacket failed: %v", err)
-	}
+	require.NoError(t, err, "ParsePacket failed")
 
-	if parsed.Header.ID != original.Header.ID {
-		t.Errorf("ID mismatch: got %04x, want %04x", parsed.Header.ID, original.Header.ID)
-	}
-	if parsed.Header.Flags != original.Header.Flags {
-		t.Errorf("Flags mismatch: got %04x, want %04x", parsed.Header.Flags, original.Header.Flags)
-	}
-	if len(parsed.Questions) != len(original.Questions) {
-		t.Errorf("Question count mismatch: got %d, want %d", len(parsed.Questions), len(original.Questions))
-	}
-	if len(parsed.Answers) != len(original.Answers) {
-		t.Errorf("Answer count mismatch: got %d, want %d", len(parsed.Answers), len(original.Answers))
-	}
+	assert.Equal(t, original.Header.ID, parsed.Header.ID, "ID mismatch")
+	assert.Equal(t, original.Header.Flags, parsed.Header.Flags, "Flags mismatch")
+	assert.Len(t, parsed.Questions, len(original.Questions), "Question count mismatch")
+	assert.Len(t, parsed.Answers, len(original.Answers), "Answer count mismatch")
 }

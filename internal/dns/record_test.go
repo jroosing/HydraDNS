@@ -2,6 +2,9 @@ package dns
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRecordMarshalA(t *testing.T) {
@@ -14,14 +17,10 @@ func TestRecordMarshalA(t *testing.T) {
 	}
 
 	b, err := rr.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should have: name + 10 bytes fixed + 4 bytes rdata
-	if len(b) < 17 { // minimum: 1 (root) + 10 + 4 = 15, but name is longer
-		t.Errorf("unexpected length: %d", len(b))
-	}
+	assert.GreaterOrEqual(t, len(b), 17, "unexpected length")
 
 	// Verify RDATA length (last 4 bytes before RDATA)
 	// The structure is: name | type(2) | class(2) | ttl(4) | rdlen(2) | rdata
@@ -29,9 +28,7 @@ func TestRecordMarshalA(t *testing.T) {
 	rdlenPos := len(b) - 4 - 2
 	if rdlenPos > 0 {
 		rdlen := int(b[rdlenPos])<<8 | int(b[rdlenPos+1])
-		if rdlen != 4 {
-			t.Errorf("expected rdlen 4, got %d", rdlen)
-		}
+		assert.Equal(t, 4, rdlen)
 	}
 }
 
@@ -45,13 +42,8 @@ func TestRecordMarshalCNAME(t *testing.T) {
 	}
 
 	b, err := rr.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(b) == 0 {
-		t.Error("expected non-empty result")
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, b)
 }
 
 func TestRecordMarshalMX(t *testing.T) {
@@ -64,13 +56,8 @@ func TestRecordMarshalMX(t *testing.T) {
 	}
 
 	b, err := rr.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(b) == 0 {
-		t.Error("expected non-empty result")
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, b)
 }
 
 func TestRecordMarshalTXT(t *testing.T) {
@@ -94,13 +81,8 @@ func TestRecordMarshalTXT(t *testing.T) {
 			}
 
 			b, err := rr.Marshal()
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if len(b) == 0 {
-				t.Error("expected non-empty result")
-			}
+			require.NoError(t, err)
+			assert.NotEmpty(t, b)
 		})
 	}
 }
@@ -115,13 +97,8 @@ func TestRecordMarshalAAAA(t *testing.T) {
 	}
 
 	b, err := rr.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(b) == 0 {
-		t.Error("expected non-empty result")
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, b)
 }
 
 func TestRecordMarshalNS(t *testing.T) {
@@ -134,13 +111,8 @@ func TestRecordMarshalNS(t *testing.T) {
 	}
 
 	b, err := rr.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(b) == 0 {
-		t.Error("expected non-empty result")
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, b)
 }
 
 func TestRecordMarshalSOA(t *testing.T) {
@@ -154,13 +126,8 @@ func TestRecordMarshalSOA(t *testing.T) {
 	}
 
 	b, err := rr.Marshal()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(b) == 0 {
-		t.Error("expected non-empty result")
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, b)
 }
 
 func TestRecordMarshalInvalidAData(t *testing.T) {
@@ -173,9 +140,7 @@ func TestRecordMarshalInvalidAData(t *testing.T) {
 	}
 
 	_, err := rr.Marshal()
-	if err == nil {
-		t.Error("expected error for invalid A record data")
-	}
+	assert.Error(t, err, "expected error for invalid A record data")
 }
 
 func TestRecordMarshalInvalidAAAAData(t *testing.T) {
@@ -188,9 +153,7 @@ func TestRecordMarshalInvalidAAAAData(t *testing.T) {
 	}
 
 	_, err := rr.Marshal()
-	if err == nil {
-		t.Error("expected error for invalid AAAA record data")
-	}
+	assert.Error(t, err, "expected error for invalid AAAA record data")
 }
 
 func TestRecordIPv4(t *testing.T) {
@@ -203,12 +166,8 @@ func TestRecordIPv4(t *testing.T) {
 	}
 
 	ip, ok := rr.IPv4()
-	if !ok {
-		t.Fatal("expected ok to be true")
-	}
-	if ip != "192.0.2.1" {
-		t.Errorf("expected 192.0.2.1, got %s", ip)
-	}
+	require.True(t, ok)
+	assert.Equal(t, "192.0.2.1", ip)
 }
 
 func TestRecordIPv4NotA(t *testing.T) {
@@ -221,9 +180,7 @@ func TestRecordIPv4NotA(t *testing.T) {
 	}
 
 	_, ok := rr.IPv4()
-	if ok {
-		t.Error("expected ok to be false for non-A record")
-	}
+	assert.False(t, ok, "expected ok to be false for non-A record")
 }
 
 func TestRecordIPv6(t *testing.T) {
@@ -236,12 +193,8 @@ func TestRecordIPv6(t *testing.T) {
 	}
 
 	ip, ok := rr.IPv6()
-	if !ok {
-		t.Fatal("expected ok to be true")
-	}
-	if ip != "2001:db8::1" {
-		t.Errorf("expected 2001:db8::1, got %s", ip)
-	}
+	require.True(t, ok)
+	assert.Equal(t, "2001:db8::1", ip)
 }
 
 func TestRecordIPv6NotAAAA(t *testing.T) {
@@ -254,9 +207,7 @@ func TestRecordIPv6NotAAAA(t *testing.T) {
 	}
 
 	_, ok := rr.IPv6()
-	if ok {
-		t.Error("expected ok to be false for non-AAAA record")
-	}
+	assert.False(t, ok, "expected ok to be false for non-AAAA record")
 }
 
 func TestParseRecord(t *testing.T) {
@@ -280,30 +231,16 @@ func TestParseRecord(t *testing.T) {
 
 	off := 0
 	rr, err := ParseRecord(msg, &off)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if rr.Name != "example.com" {
-		t.Errorf("expected name example.com, got %s", rr.Name)
-	}
-	if rr.Type != uint16(TypeA) {
-		t.Errorf("expected type A, got %d", rr.Type)
-	}
-	if rr.Class != 1 {
-		t.Errorf("expected class 1, got %d", rr.Class)
-	}
-	if rr.TTL != 300 {
-		t.Errorf("expected TTL 300, got %d", rr.TTL)
-	}
+	assert.Equal(t, "example.com", rr.Name)
+	assert.Equal(t, uint16(TypeA), rr.Type)
+	assert.Equal(t, uint16(1), rr.Class)
+	assert.Equal(t, uint32(300), rr.TTL)
 
 	data, ok := rr.Data.([]byte)
-	if !ok {
-		t.Fatalf("expected []byte data, got %T", rr.Data)
-	}
-	if len(data) != 4 {
-		t.Errorf("expected 4 bytes, got %d", len(data))
-	}
+	require.True(t, ok, "expected []byte data, got %T", rr.Data)
+	assert.Len(t, data, 4)
 }
 
 func TestParseRecordCNAME(t *testing.T) {
@@ -317,27 +254,17 @@ func TestParseRecordCNAME(t *testing.T) {
 	}
 
 	b, err := rr.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+	require.NoError(t, err, "Marshal failed")
 
 	off := 0
 	parsed, err := ParseRecord(b, &off)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if parsed.Type != uint16(TypeCNAME) {
-		t.Errorf("expected type CNAME, got %d", parsed.Type)
-	}
+	assert.Equal(t, uint16(TypeCNAME), parsed.Type)
 
 	target, ok := parsed.Data.(string)
-	if !ok {
-		t.Fatalf("expected string data, got %T", parsed.Data)
-	}
-	if target != "target.example.com" {
-		t.Errorf("expected target.example.com, got %s", target)
-	}
+	require.True(t, ok, "expected string data, got %T", parsed.Data)
+	assert.Equal(t, "target.example.com", target)
 }
 
 func TestParseRecordMX(t *testing.T) {
@@ -359,24 +286,14 @@ func TestParseRecordMX(t *testing.T) {
 
 	off := 0
 	rr, err := ParseRecord(msg, &off)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if rr.Type != uint16(TypeMX) {
-		t.Errorf("expected type MX, got %d", rr.Type)
-	}
+	assert.Equal(t, uint16(TypeMX), rr.Type)
 
 	mx, ok := rr.Data.(MXData)
-	if !ok {
-		t.Fatalf("expected MXData, got %T", rr.Data)
-	}
-	if mx.Preference != 10 {
-		t.Errorf("expected preference 10, got %d", mx.Preference)
-	}
-	if mx.Exchange != "mail.example.com" {
-		t.Errorf("expected mail.example.com, got %s", mx.Exchange)
-	}
+	require.True(t, ok, "expected MXData, got %T", rr.Data)
+	assert.Equal(t, uint16(10), mx.Preference)
+	assert.Equal(t, "mail.example.com", mx.Exchange)
 }
 
 func TestParseRecordTruncated(t *testing.T) {
@@ -394,7 +311,5 @@ func TestParseRecordTruncated(t *testing.T) {
 
 	off := 0
 	_, err := ParseRecord(msg, &off)
-	if err == nil {
-		t.Error("expected error for truncated record")
-	}
+	assert.Error(t, err, "expected error for truncated record")
 }

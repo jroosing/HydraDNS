@@ -1,3 +1,6 @@
+// Package api provides the REST management API for HydraDNS.
+// It exposes endpoints for health checks, statistics, configuration,
+// zone management, and domain filtering control via a Gin-based HTTP server.
 package api
 
 import (

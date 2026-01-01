@@ -1,3 +1,5 @@
+// Package middleware provides HTTP middleware for the HydraDNS REST API,
+// including API key authentication and request logging.
 package middleware
 
 import (

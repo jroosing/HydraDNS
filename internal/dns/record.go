@@ -6,6 +6,13 @@ import (
 	"net"
 )
 
+// Record represents a DNS resource record (RFC 1035 Section 3.2.1).
+//
+// The Data field type varies by record type:
+//   - A/AAAA/OPT/SOA: []byte (raw wire data)
+//   - CNAME/NS/PTR: string (domain name)
+//   - MX: MXData struct
+//   - TXT: string, []string, or []byte
 type Record struct {
 	Name  string
 	Type  uint16
@@ -19,11 +26,14 @@ type Record struct {
 	Data any
 }
 
+// MXData holds the parsed data for an MX (mail exchange) record.
 type MXData struct {
-	Preference uint16
-	Exchange   string
+	Preference uint16 // Lower values have higher priority
+	Exchange   string // Mail server hostname
 }
 
+// ParseRecord parses a resource record from the message at the given offset.
+// It advances *off past the parsed record on success.
 func ParseRecord(msg []byte, off *int) (Record, error) {
 	name, err := DecodeName(msg, off)
 	if err != nil {

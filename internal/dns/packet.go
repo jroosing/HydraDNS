@@ -1,5 +1,12 @@
 package dns
 
+// Packet represents a complete DNS message (RFC 1035 Section 4).
+//
+// A DNS packet consists of a header and four sections:
+//   - Questions: What the client is asking
+//   - Answers: Resource records answering the question
+//   - Authorities: Nameserver records pointing to authorities
+//   - Additionals: Extra records (e.g., glue records, EDNS OPT)
 type Packet struct {
 	Header      Header
 	Questions   []Question
@@ -8,6 +15,7 @@ type Packet struct {
 	Additionals []Record
 }
 
+// Marshal serializes the packet to DNS wire format (big-endian).
 func (p Packet) Marshal() ([]byte, error) {
 	h := Header{
 		ID:      p.Header.ID,

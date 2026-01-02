@@ -63,14 +63,8 @@ func CreateOPT(udpPayloadSize int) OPTRecord {
 }
 
 // clampInt restricts a value to the range [min, max].
-func clampInt(v, min, max int) int {
-	if v < min {
-		return min
-	}
-	if v > max {
-		return max
-	}
-	return v
+func clampInt(v, lowerLimit, upperLimit int) int {
+	return max(lowerLimit, min(v, upperLimit))
 }
 
 // Marshal serializes the OPT record to DNS wire format.

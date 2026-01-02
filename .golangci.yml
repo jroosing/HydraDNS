@@ -453,6 +453,8 @@ linters:
         linters: [ revive ]
       - text: 'exported \S+ \S+ should have comment( \(or a comment on this block\))? or be unexported'
         linters: [ revive ]
+      - text: 'var-naming: avoid meaningless package names'
+        linters: [ revive ]
       - text: 'package comment should be of the form ".+"'
         source: '// ?(nolint|TODO)'
         linters: [ revive ]

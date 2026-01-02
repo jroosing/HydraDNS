@@ -287,7 +287,7 @@ func parseTTL(tok string) (int, error) {
 		}
 		unit := byte('s')
 		if c != 0 {
-			unit = byte(strings.ToLower(string(c))[0])
+			unit = strings.ToLower(string(c))[0]
 		}
 		if num == "" {
 			continue

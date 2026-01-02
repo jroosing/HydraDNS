@@ -69,8 +69,8 @@ func TestPacket_MarshalAndParse_Response(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, response.Header.ID, parsed.Header.ID)
-	assert.True(t, parsed.Header.Flags&dns.QRFlag != 0, "QR flag should be set")
-	assert.True(t, parsed.Header.Flags&dns.AAFlag != 0, "AA flag should be set")
+	assert.NotEqual(t, parsed.Header.Flags&dns.QRFlag, 0, "QR flag should be set")
+	assert.NotEqual(t, parsed.Header.Flags&dns.AAFlag, 0, "AA flag should be set")
 	require.Len(t, parsed.Answers, 1, "Should have 1 answer")
 	assert.Equal(t, "example.com", parsed.Answers[0].Name)
 	assert.Equal(t, uint32(300), parsed.Answers[0].TTL)

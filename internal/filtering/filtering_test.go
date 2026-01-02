@@ -371,9 +371,9 @@ func TestDomainTrie_ConcurrentReads(t *testing.T) {
 
 	// Concurrent reads should be safe
 	done := make(chan bool)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
-			for j := 0; j < 1000; j++ {
+			for range 1000 {
 				for _, d := range domains {
 					_ = trie.Contains(d)
 				}
@@ -382,7 +382,7 @@ func TestDomainTrie_ConcurrentReads(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 }
@@ -395,9 +395,9 @@ func TestPolicyEngine_ConcurrentEvaluate(t *testing.T) {
 	defer pe.Close()
 
 	done := make(chan bool)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
-			for j := 0; j < 1000; j++ {
+			for range 1000 {
 				pe.Evaluate("blocked.com")
 				pe.Evaluate("allowed.com")
 			}
@@ -405,7 +405,7 @@ func TestPolicyEngine_ConcurrentEvaluate(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		select {
 		case <-done:
 		case <-time.After(5 * time.Second):

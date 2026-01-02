@@ -26,8 +26,8 @@ func TestRequireAPIKey_ValidKey(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("X-API-Key", "test-secret")
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-Api-Key", "test-secret")
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -42,8 +42,8 @@ func TestRequireAPIKey_InvalidKey(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("X-API-Key", "wrong-key")
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-Api-Key", "wrong-key")
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -58,7 +58,7 @@ func TestRequireAPIKey_MissingKey(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	// No X-API-Key header
 	w := httptest.NewRecorder()
 
@@ -75,7 +75,7 @@ func TestRequireAPIKey_EmptyExpected(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -91,8 +91,8 @@ func TestRequireAPIKey_EmptyExpected_WithProvidedKey(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("X-API-Key", "some-key")
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-Api-Key", "some-key")
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -112,7 +112,7 @@ func TestSlogRequestLogger_NilLogger(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
 	// Should not panic
@@ -128,7 +128,7 @@ func TestSlogRequestLogger_RequestCompletes(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -176,7 +176,7 @@ func TestSlogRequestLogger_ErrorStatus(t *testing.T) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "something failed"})
 	})
 
-	req := httptest.NewRequest("GET", "/error", nil)
+	req := httptest.NewRequest(http.MethodGet, "/error", nil)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -197,15 +197,15 @@ func TestMiddlewareChain(t *testing.T) {
 	})
 
 	// With valid key
-	req := httptest.NewRequest("GET", "/protected", nil)
-	req.Header.Set("X-API-Key", "secret")
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("X-Api-Key", "secret")
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Without key - should be rejected
-	req2 := httptest.NewRequest("GET", "/protected", nil)
+	req2 := httptest.NewRequest(http.MethodGet, "/protected", nil)
 	w2 := httptest.NewRecorder()
 
 	router.ServeHTTP(w2, req2)

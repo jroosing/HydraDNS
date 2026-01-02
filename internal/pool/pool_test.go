@@ -102,7 +102,7 @@ func TestPool_WithSliceType(t *testing.T) {
 
 	s := p.Get()
 	assert.NotNil(t, s)
-	assert.Equal(t, 0, len(s))
+	assert.Empty(t, s)
 	assert.Equal(t, 10, cap(s))
 }
 
@@ -130,11 +130,11 @@ func TestPool_ConcurrentAccess(t *testing.T) {
 	const goroutines = 100
 	const iterations = 1000
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
+			for range iterations {
 				buf := p.Get()
 				assert.NotNil(t, buf)
 				// Simulate work
@@ -156,8 +156,7 @@ func BenchmarkPool_GetPut(b *testing.B) {
 		return make([]byte, 1024)
 	})
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf := p.Get()
 		p.Put(buf)
 	}

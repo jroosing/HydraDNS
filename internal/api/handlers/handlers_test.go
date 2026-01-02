@@ -86,7 +86,7 @@ func TestStats_ReturnsServerStats(t *testing.T) {
 
 	assert.NotEmpty(t, resp.Uptime)
 	assert.GreaterOrEqual(t, resp.GoRoutines, 1)
-	assert.Greater(t, resp.NumCPU, 0)
+	assert.Positive(t, resp.NumCPU)
 }
 
 func TestStats_WithPolicyEngine(t *testing.T) {

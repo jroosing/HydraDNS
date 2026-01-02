@@ -140,7 +140,8 @@ func (h *QueryHandler) logRequest(
 	if h.Logger == nil || !h.Logger.Enabled(ctx, slog.LevelDebug) {
 		return
 	}
-	h.Logger.Debug(
+	h.Logger.DebugContext(
+		ctx,
 		"dns request",
 		"transport", transport,
 		"src", src,

@@ -86,7 +86,7 @@ func (s *TCPServer) Run(ctx context.Context, addr string) error {
 		// Enforce per-IP connection limit
 		if !s.tryAcquireConn(remoteIP) {
 			if s.Logger != nil {
-				s.Logger.Warn("tcp connection limit exceeded", "ip", remoteIP)
+				s.Logger.WarnContext(ctx, "tcp connection limit exceeded", "ip", remoteIP)
 			}
 			_ = c.Close()
 			continue

@@ -24,7 +24,7 @@ const (
 //   - Question or RR counts exceed limits
 func ParseRequestBounded(msg []byte) (Packet, error) {
 	if len(msg) > MaxIncomingDNSMessageSize {
-		return Packet{}, errors.New("DNS message too large")
+		return Packet{}, errors.New("dns message too large")
 	}
 	p, err := ParsePacket(msg)
 	if err != nil {
@@ -34,12 +34,12 @@ func ParseRequestBounded(msg []byte) (Packet, error) {
 	// Validate QR flag: must be 0 for queries
 	// QR is bit 15 of flags (0x8000)
 	if isResponse(p.Header.Flags) {
-		return Packet{}, errors.New("Invalid packet: QR flag set (response packet received)")
+		return Packet{}, errors.New("invalid packet: QR flag set (response packet received)")
 	}
 
 	// Extract and validate opcode (bits 14-11)
 	if opcode := extractOpcode(p.Header.Flags); opcode != 0 {
-		return Packet{}, fmt.Errorf("Unsupported OpCode: %d", opcode)
+		return Packet{}, fmt.Errorf("unsupported OpCode: %d", opcode)
 	}
 
 	// Validate section counts

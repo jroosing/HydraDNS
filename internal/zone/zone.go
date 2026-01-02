@@ -246,20 +246,11 @@ func normalizeFQDN(name string, origin string) string {
 	if origin == "" {
 		return name
 	}
-	if strings.HasSuffix(strings.TrimSuffix(name, "."), strings.TrimSuffix(origin, ".")) {
-		// already looks absolute-ish; still keep as-is
-	}
-	if strings.Contains(name, ".") {
-		// could still be relative; zone files treat non-trailing-dot as relative
-	}
 	if strings.HasSuffix(name, origin) {
 		return strings.TrimSuffix(name, ".")
 	}
 	if strings.TrimSpace(name) == "" {
 		return ""
-	}
-	if strings.Contains(name, ".") {
-		// still relative, append origin
 	}
 	if origin == "" {
 		return name

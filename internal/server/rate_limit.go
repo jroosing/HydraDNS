@@ -107,10 +107,7 @@ func (r *RateLimiter) AllowAddr(ip netip.Addr) bool {
 	}
 	// For IP, use the string representation (unavoidable for map key)
 	ipKey := ip.String()
-	if !r.ip.Allow(ipKey) {
-		return false
-	}
-	return true
+	return r.ip.Allow(ipKey)
 }
 
 // prefixKeyFromAddr returns the prefix key for a netip.Addr.

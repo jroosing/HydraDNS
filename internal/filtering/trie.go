@@ -3,6 +3,7 @@
 package filtering
 
 import (
+	"slices"
 	"strings"
 	"sync"
 )
@@ -162,7 +163,7 @@ func (t *DomainTrie) mergeNode(dst, src *trieNode, path []string) {
 			dst.children[label] = dstChild
 		}
 
-		newPath := append(path, label)
+		newPath := append(slices.Clone(path), label)
 
 		if srcChild.isEnd && !dstChild.isEnd {
 			dstChild.isEnd = true

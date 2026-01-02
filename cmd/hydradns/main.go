@@ -18,6 +18,13 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	var (
 		configPath = flag.String("config", "", "Path to YAML configuration file (or set HYDRADNS_CONFIG)")
 		host       = flag.String("host", "", "Override bind host")
@@ -31,8 +38,7 @@ func main() {
 
 	cfg, err := config.Load(config.ResolveConfigPath(*configPath))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	if *host != "" {
@@ -89,11 +95,11 @@ func main() {
 		logger.Info("management API starting", "addr", apiSrv.Addr())
 
 		go func() {
-			err := apiSrv.ListenAndServe()
-			if err == nil || errors.Is(err, http.ErrServerClosed) {
+			serveErr := apiSrv.ListenAndServe()
+			if serveErr == nil || errors.Is(serveErr, http.ErrServerClosed) {
 				return
 			}
-			logger.Error("management API error", "err", err)
+			logger.Error("management API error", "err", serveErr)
 			cancel()
 		}()
 	}
@@ -109,7 +115,7 @@ func main() {
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "server exited with error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("server exited with error: %w", err)
 	}
+	return nil
 }

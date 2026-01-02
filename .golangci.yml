@@ -18,6 +18,12 @@ issues:
   # Default: 3
   max-same-issues: 50
 
+  exclude-rules:
+    # Disable govet err-shadowing reports (shadow analyzer).
+    - linters:
+        - govet
+      text: 'shadow: declaration of "err" shadows declaration'
+
 formatters:
   enable:
     - goimports # checks if the code and import statements are formatted according to the 'goimports' command

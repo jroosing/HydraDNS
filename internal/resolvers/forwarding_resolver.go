@@ -438,9 +438,9 @@ func (f *ForwardingResolver) queryOneAttempt(
 	_ = c.SetDeadline(deadline)
 
 	// Send query
-	if _, err := c.Write(req); err != nil {
+	if _, writeErr := c.Write(req); writeErr != nil {
 		connOK = false
-		return nil, err
+		return nil, writeErr
 	}
 
 	// Receive response

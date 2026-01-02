@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jroosing/hydradns/internal/dns"
+	"github.com/jroosing/hydradns/internal/helpers"
 )
 
 // Forwarding resolver configuration constants.
@@ -526,7 +527,7 @@ func queryUpstreamTCP(ctx context.Context, req []byte, host string, timeout time
 	// Send 2-byte length prefix followed by request
 	// Use two writes to avoid allocation from append(prefix, req...)
 	var prefix [2]byte
-	binary.BigEndian.PutUint16(prefix[:], uint16(len(req)))
+	binary.BigEndian.PutUint16(prefix[:], helpers.ClampIntToUint16(len(req)))
 	if _, err := conn.Write(prefix[:]); err != nil {
 		return nil, err
 	}

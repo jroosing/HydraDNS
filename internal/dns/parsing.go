@@ -3,6 +3,8 @@ package dns
 import (
 	"errors"
 	"fmt"
+
+	"github.com/jroosing/hydradns/internal/helpers"
 )
 
 // Limits for incoming DNS messages to prevent resource exhaustion attacks.
@@ -94,7 +96,7 @@ func BuildErrorResponse(req Packet, rcode uint16) Packet {
 	h := Header{
 		ID:      req.Header.ID,
 		Flags:   flags,
-		QDCount: uint16(len(req.Questions)),
+		QDCount: helpers.ClampIntToUint16(len(req.Questions)),
 		ANCount: 0,
 		NSCount: 0,
 		ARCount: 0,

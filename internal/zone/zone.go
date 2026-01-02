@@ -262,10 +262,60 @@ var ttlRE = regexp.MustCompile(`^(?:\d+[wdhmsWDHMS]?)+$`)
 
 func looksLikeTTL(tok string) bool { return ttlRE.MatchString(strings.TrimSpace(tok)) }
 
+var (
+	errTTLInvalid  = errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+	errTTLTooLarge = errors.New("TTL too large")
+)
+
+func ttlUnitMultiplier(unit byte) (uint64, bool) {
+	switch unit {
+	case 's':
+		return 1, true
+	case 'm':
+		return 60, true
+	case 'h':
+		return 3600, true
+	case 'd':
+		return 86400, true
+	case 'w':
+		return 604800, true
+	default:
+		return 0, false
+	}
+}
+
+func parseTTLNumber(num string) (uint64, error) {
+	n, err := strconv.ParseUint(num, 10, 64)
+	if err != nil {
+		return 0, errTTLInvalid
+	}
+	return n, nil
+}
+
+func mulUint64ToUint32(n, mul uint64) (uint32, error) {
+	maxU32 := uint64(^uint32(0))
+	if mul != 0 && n > maxU32/mul {
+		return 0, errTTLTooLarge
+	}
+	v := n * mul
+	if v > maxU32 {
+		return 0, errTTLTooLarge
+	}
+	return uint32(v), nil
+}
+
+func addUint32(total, add uint32) (uint32, error) {
+	maxU32 := ^uint32(0)
+	if add > (maxU32 - total) {
+		return 0, errTTLTooLarge
+	}
+	return total + add, nil
+}
+
 func parseTTL(tok string) (uint32, error) {
 	tok = strings.TrimSpace(tok)
 	if !ttlRE.MatchString(tok) {
-		return 0, errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+		return 0, errTTLInvalid
 	}
 	// parse repeated number+unit
 	total := uint32(0)
@@ -276,55 +326,41 @@ func parseTTL(tok string) (uint32, error) {
 			num += string(c)
 			continue
 		}
-		unit := byte('s')
-		if c != 0 {
-			unit = strings.ToLower(string(c))[0]
-		}
+		unit := strings.ToLower(string(c))[0]
 		if num == "" {
 			continue
 		}
-		n, err := strconv.ParseUint(num, 10, 64)
+		n, err := parseTTLNumber(num)
 		if err != nil {
-			return 0, errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+			return 0, err
 		}
 		num = ""
-		mul := uint64(1)
-		switch unit {
-		case 's':
-			mul = 1
-		case 'm':
-			mul = 60
-		case 'h':
-			mul = 3600
-		case 'd':
-			mul = 86400
-		case 'w':
-			mul = 604800
-		default:
-			return 0, errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+		mul, ok := ttlUnitMultiplier(unit)
+		if !ok {
+			return 0, errTTLInvalid
 		}
-		if mul != 0 && n > (uint64(^uint32(0))/mul) {
-			return 0, errors.New("TTL too large")
+		add, err := mulUint64ToUint32(n, mul)
+		if err != nil {
+			return 0, err
 		}
-		add := uint32(n * mul)
-		if add > (^uint32(0) - total) {
-			return 0, errors.New("TTL too large")
+		total, err = addUint32(total, add)
+		if err != nil {
+			return 0, err
 		}
-		total += add
 	}
 	if num != "" {
-		n, err := strconv.ParseUint(num, 10, 64)
+		n, err := parseTTLNumber(num)
 		if err != nil {
-			return 0, errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+			return 0, err
 		}
-		if n > uint64(^uint32(0)) {
-			return 0, errors.New("TTL too large")
+		add, err := mulUint64ToUint32(n, 1)
+		if err != nil {
+			return 0, err
 		}
-		add := uint32(n)
-		if add > (^uint32(0) - total) {
-			return 0, errors.New("TTL too large")
+		total, err = addUint32(total, add)
+		if err != nil {
+			return 0, err
 		}
-		total += add
 	}
 	return total, nil
 }

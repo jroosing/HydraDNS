@@ -2,6 +2,8 @@ package dns
 
 import (
 	"encoding/binary"
+
+	"github.com/jroosing/hydradns/internal/helpers"
 )
 
 // EDNS (Extension Mechanisms for DNS) constants per RFC 6891.
@@ -22,7 +24,7 @@ type EDNSOption struct {
 func (o EDNSOption) Marshal() []byte {
 	b := make([]byte, 4+len(o.Data))
 	binary.BigEndian.PutUint16(b[0:2], o.Code)
-	binary.BigEndian.PutUint16(b[2:4], uint16(len(o.Data)))
+	binary.BigEndian.PutUint16(b[2:4], helpers.ClampIntToUint16(len(o.Data)))
 	copy(b[4:], o.Data)
 	return b
 }
@@ -58,13 +60,8 @@ type OPTRecord struct {
 
 // CreateOPT creates an OPT record advertising the given UDP payload size.
 func CreateOPT(udpPayloadSize int) OPTRecord {
-	sz := clampInt(udpPayloadSize, EDNSMinUDPPayloadSize, 65535)
-	return OPTRecord{UDPPayloadSize: uint16(sz)}
-}
-
-// clampInt restricts a value to the range [min, max].
-func clampInt(v, lowerLimit, upperLimit int) int {
-	return max(lowerLimit, min(v, upperLimit))
+	sz := helpers.ClampInt(udpPayloadSize, EDNSMinUDPPayloadSize, 65535)
+	return OPTRecord{UDPPayloadSize: helpers.ClampIntToUint16(sz)}
 }
 
 // Marshal serializes the OPT record to DNS wire format.
@@ -86,7 +83,7 @@ func (o OPTRecord) Marshal() []byte {
 	binary.BigEndian.PutUint16(fixed[0:2], uint16(TypeOPT))
 	binary.BigEndian.PutUint16(fixed[2:4], o.UDPPayloadSize) // CLASS field = UDP size
 	binary.BigEndian.PutUint32(fixed[4:8], ttl)
-	binary.BigEndian.PutUint16(fixed[8:10], uint16(len(rdata)))
+	binary.BigEndian.PutUint16(fixed[8:10], helpers.ClampIntToUint16(len(rdata)))
 	b = append(b, fixed...)
 	b = append(b, rdata...)
 	return b
@@ -130,9 +127,9 @@ func ExtractOPT(additionals []Record) *OPTRecord {
 func unpackOPT(rr Record) OPTRecord {
 	return OPTRecord{
 		UDPPayloadSize: rr.Class,
-		ExtendedRCode:  uint8(rr.TTL >> 24),         // Bits 31-24
-		Version:        uint8(rr.TTL >> 16),         // Bits 23-16
-		DNSSECOk:       ((rr.TTL >> 15) & 0x1) == 1, // Bit 15
+		ExtendedRCode:  helpers.ClampUint32ToUint8((rr.TTL >> 24) & 0xFF), // Bits 31-24
+		Version:        helpers.ClampUint32ToUint8((rr.TTL >> 16) & 0xFF), // Bits 23-16
+		DNSSECOk:       ((rr.TTL >> 15) & 0x1) == 1,                       // Bit 15
 		Options:        nil,
 	}
 }

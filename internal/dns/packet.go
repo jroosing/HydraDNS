@@ -1,5 +1,7 @@
 package dns
 
+import "github.com/jroosing/hydradns/internal/helpers"
+
 type Packet struct {
 	Header      Header
 	Questions   []Question
@@ -12,10 +14,10 @@ func (p Packet) Marshal() ([]byte, error) {
 	h := Header{
 		ID:      p.Header.ID,
 		Flags:   p.Header.Flags,
-		QDCount: uint16(len(p.Questions)),
-		ANCount: uint16(len(p.Answers)),
-		NSCount: uint16(len(p.Authorities)),
-		ARCount: uint16(len(p.Additionals)),
+		QDCount: helpers.ClampIntToUint16(len(p.Questions)),
+		ANCount: helpers.ClampIntToUint16(len(p.Answers)),
+		NSCount: helpers.ClampIntToUint16(len(p.Authorities)),
+		ARCount: helpers.ClampIntToUint16(len(p.Additionals)),
 	}
 
 	hb, err := h.Marshal()

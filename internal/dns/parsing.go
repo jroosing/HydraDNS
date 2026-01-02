@@ -118,7 +118,7 @@ func buildResponseFlags(reqFlags uint16, rcode uint16) uint16 {
 	flags |= (reqFlags & RDFlag)
 
 	// Clear RCODE bits and set new response code (low 4 bits)
-	rcode = rcode & RCodeMask
+	rcode &= RCodeMask
 	flags = (flags &^ RCodeMask) | rcode
 
 	return flags

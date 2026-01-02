@@ -336,14 +336,14 @@ func parseOwner(tokens []string, origin, lastOwner string) (string, []string, er
 	return normalizeFQDN(first, origin), tokens[1:], nil
 }
 
-func parseRRFields(rest []string, defaultTTL uint32) (ttl uint32, class uint16, typ string, rdata string, err error) {
+func parseRRFields(rest []string, defaultTTL uint32) (uint32, uint16, string, string, error) {
 	var (
 		haveTTL   bool
 		haveClass bool
 		idx       int
 	)
-	ttl = defaultTTL
-	class = uint16(dns.ClassIN)
+	ttl := defaultTTL
+	class := uint16(dns.ClassIN)
 	for idx < len(rest) {
 		tok := rest[idx]
 		if !haveTTL && looksLikeTTL(tok) {
@@ -367,12 +367,12 @@ func parseRRFields(rest []string, defaultTTL uint32) (ttl uint32, class uint16, 
 	if idx >= len(rest) {
 		return 0, 0, "", "", errors.New("missing RR type")
 	}
-	typ = strings.ToUpper(rest[idx])
+	typ := strings.ToUpper(rest[idx])
 	idx++
 	if idx >= len(rest) {
 		return 0, 0, "", "", errors.New("missing RR rdata")
 	}
-	rdata = strings.Join(rest[idx:], " ")
+	rdata := strings.Join(rest[idx:], " ")
 	return ttl, class, typ, rdata, nil
 }
 

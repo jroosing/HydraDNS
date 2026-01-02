@@ -358,8 +358,8 @@ func (f *ForwardingResolver) ensurePool(up string) (chan *net.UDPConn, error) {
 		return nil, err
 	}
 	for range f.poolSize {
-		c, err := net.DialUDP("udp", nil, addr)
-		if err != nil {
+		c, _ := net.DialUDP("udp", nil, addr)
+		if c == nil {
 			break // partial pool is acceptable
 		}
 		ch <- c
@@ -559,14 +559,11 @@ func queryUpstreamTCP(ctx context.Context, req []byte, host string, timeout time
 //   - QCLASS matches
 func validateResponse(req dns.Packet, respBytes []byte) error {
 	if len(req.Questions) == 0 {
-		return nil
+		return errors.New("response has no question section")
 	}
 	resp, err := dns.ParsePacket(respBytes)
 	if err != nil {
-		return nil // unparseable responses are handled by cache decision
-	}
-	if len(resp.Questions) == 0 {
-		return errors.New("response has no question section")
+		return fmt.Errorf("failed to parse upstream response: %w", err)
 	}
 
 	reqQ := req.Questions[0]

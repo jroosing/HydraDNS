@@ -215,16 +215,13 @@ func (l *TokenBucketRateLimiter) Allow(key string) bool {
 
 	// Check if this is a new key
 	last, exists := l.lastUpdate[key]
-	if !exists {
-		// Ensure we don't exceed max entries
+
+	// Ensure we don't exceed max entries
+	if !exists && len(l.lastUpdate) >= l.maxEntries {
+		l.cleanupLocked(now)
 		if len(l.lastUpdate) >= l.maxEntries {
-			l.cleanupLocked(now)
-			if len(l.lastUpdate) >= l.maxEntries {
-				// Still at capacity - deny new entries
-				if _, ok := l.lastUpdate[key]; !ok {
-					return false
-				}
-			}
+			// Still at capacity - deny new entries
+			return false
 		}
 		// Initialize new key with full bucket minus 1 token
 		l.lastUpdate[key] = now

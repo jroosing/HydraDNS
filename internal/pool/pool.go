@@ -1,3 +1,5 @@
+// Package pool provides a generic type-safe wrapper around sync.Pool
+// for efficient object reuse and reduced garbage collection pressure.
 package pool
 
 import "sync"

@@ -10,6 +10,7 @@ type Packet struct {
 	Additionals []Record
 }
 
+// Marshal serializes the packet to DNS wire format (big-endian).
 func (p Packet) Marshal() ([]byte, error) {
 	h := Header{
 		ID:      p.Header.ID,

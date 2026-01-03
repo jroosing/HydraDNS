@@ -5,12 +5,19 @@ import (
 	"fmt"
 )
 
+// Question represents a DNS question section entry (RFC 1035 Section 4.1.2).
+//
+// Each question specifies what the client is asking for:
+//   - Name: The domain name being queried
+//   - Type: The record type requested (A, AAAA, MX, etc.)
+//   - Class: Usually ClassIN (Internet)
 type Question struct {
 	Name  string
 	Type  uint16
 	Class uint16
 }
 
+// Marshal serializes the question to DNS wire format.
 func (q Question) Marshal() ([]byte, error) {
 	name, err := EncodeName(q.Name)
 	if err != nil {
@@ -25,6 +32,8 @@ func (q Question) Marshal() ([]byte, error) {
 	return b, nil
 }
 
+// ParseQuestion parses a question from the message at the given offset.
+// It advances *off past the parsed question on success.
 func ParseQuestion(msg []byte, off *int) (Question, error) {
 	name, err := DecodeName(msg, off)
 	if err != nil {

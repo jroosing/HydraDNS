@@ -216,7 +216,7 @@ func TestTokenBucket_DisabledWithZeroRate(t *testing.T) {
 
 	// With rate=0, behavior depends on implementation
 	// Typically allows since no tokens are consumed
-	_ = tb.Allow("key1")
+	assert.True(t, tb.Allow("key1"), "Should allow when rate is 0 (disabled)")
 }
 
 // ============================================================================
@@ -433,7 +433,7 @@ func TestTruncation_LargeResponse(t *testing.T) {
 // Integration-style Tests
 // ============================================================================
 
-func TestRateLimiter_ConcurrentAccess(t *testing.T) {
+func TestRateLimiter_ConcurrentAccess(_ *testing.T) {
 	limiter := server.NewRateLimiter(server.RateLimitSettings{
 		GlobalQPS:   10000,
 		GlobalBurst: 1000,
@@ -484,7 +484,7 @@ func TestQueryHandler_SequentialRequests(t *testing.T) {
 	assert.Equal(t, 5, callCount)
 }
 
-func TestTokenBucket_ConcurrentAccess(t *testing.T) {
+func TestTokenBucket_ConcurrentAccess(_ *testing.T) {
 	tb := server.NewTokenBucketRateLimiter(server.TokenBucketConfig{
 		Rate:       1000,
 		Burst:      100,

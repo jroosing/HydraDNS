@@ -20,7 +20,7 @@ const (
 type cacheEntry[V any] struct {
 	value     V
 	expiresAt time.Time
-	type_     CacheEntryType
+	entryType CacheEntryType
 	elem      *list.Element // Position in LRU list
 }
 
@@ -94,10 +94,10 @@ func (c *TTLCache[K, V]) Get(key K) (V, bool, CacheEntryType) {
 	// Move to back of LRU (most recently used)
 	c.lru.MoveToBack(e.elem)
 	c.hits++
-	if e.type_ != CachePositive {
+	if e.entryType != CachePositive {
 		c.negativeHits++
 	}
-	return e.value, true, e.type_
+	return e.value, true, e.entryType
 }
 
 // Set stores a value in the cache with the specified TTL and entry type.
@@ -122,13 +122,13 @@ func (c *TTLCache[K, V]) Set(key K, val V, ttl time.Duration, entryType CacheEnt
 	if existing := c.data[key]; existing != nil {
 		existing.value = val
 		existing.expiresAt = expires
-		existing.type_ = entryType
+		existing.entryType = entryType
 		c.lru.MoveToBack(existing.elem)
 		return
 	}
 
 	// Create new entry
-	e := &cacheEntry[V]{value: val, expiresAt: expires, type_: entryType}
+	e := &cacheEntry[V]{value: val, expiresAt: expires, entryType: entryType}
 	e.elem = c.lru.PushBack(key)
 	c.data[key] = e
 

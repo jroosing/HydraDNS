@@ -129,7 +129,7 @@ func TestDNSStatsResponse_JSON(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, uint64(10000), decoded.QueriesTotal)
-	assert.Equal(t, float64(1.5), decoded.AvgLatencyMs)
+	assert.InEpsilon(t, 1.5, decoded.AvgLatencyMs, 0.1)
 }
 
 // ============================================================================

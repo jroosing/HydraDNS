@@ -22,7 +22,7 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func createTestHandler(t *testing.T) *handlers.Handler {
+func createTestHandler(_ *testing.T) *handlers.Handler {
 	cfg := &config.Config{
 		Server: config.ServerConfig{
 			Host: "localhost",

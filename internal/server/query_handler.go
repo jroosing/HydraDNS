@@ -70,9 +70,9 @@ func (h *QueryHandler) handleParseError(reqBytes []byte) HandleResult {
 }
 
 // extractQuestionInfo extracts the QNAME and QTYPE from a parsed request.
-func extractQuestionInfo(parsed dns.Packet) (qname string, qtype int) {
-	qname = "<no-question>"
-	qtype = -1
+func extractQuestionInfo(parsed dns.Packet) (string, int) {
+	qname := "<no-question>"
+	qtype := -1
 	if len(parsed.Questions) > 0 {
 		qname = parsed.Questions[0].Name
 		qtype = int(parsed.Questions[0].Type)
@@ -140,7 +140,8 @@ func (h *QueryHandler) logRequest(
 	if h.Logger == nil || !h.Logger.Enabled(ctx, slog.LevelDebug) {
 		return
 	}
-	h.Logger.Debug(
+	h.Logger.DebugContext(
+		ctx,
 		"dns request",
 		"transport", transport,
 		"src", src,

@@ -256,7 +256,7 @@ func TestChained_AllFail(t *testing.T) {
 
 	_, err := chained.Resolve(context.Background(), dns.Packet{}, nil)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "second failed", err.Error())
 }
 
@@ -299,7 +299,7 @@ func TestChained_Close_ReturnsLastError(t *testing.T) {
 
 	err := chained.Close()
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "second error", err.Error())
 }
 
@@ -308,7 +308,7 @@ func TestChained_EmptyResolvers(t *testing.T) {
 
 	_, err := chained.Resolve(context.Background(), dns.Packet{}, nil)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 // ============================================================================
@@ -352,8 +352,8 @@ func TestZoneResolver_AnswersFromZone(t *testing.T) {
 	resp, err := dns.ParsePacket(result.ResponseBytes)
 	require.NoError(t, err)
 	assert.Equal(t, uint16(0x1234), resp.Header.ID)
-	assert.NotEqual(t, resp.Header.Flags&dns.QRFlag, 0, "Should be a response")
-	assert.NotEqual(t, resp.Header.Flags&dns.AAFlag, 0, "Should be authoritative")
+	assert.NotEqual(t, 0, resp.Header.Flags&dns.QRFlag, "Should be a response")
+	assert.NotEqual(t, 0, resp.Header.Flags&dns.AAFlag, "Should be authoritative")
 }
 
 func TestZoneResolver_NXDOMAIN(t *testing.T) {
@@ -376,7 +376,7 @@ func TestZoneResolver_NXDOMAIN(t *testing.T) {
 
 	rcode := resp.Header.Flags & dns.RCodeMask
 	assert.Equal(t, uint16(dns.RCodeNXDomain), rcode, "Should return NXDOMAIN")
-	assert.NotEqual(t, resp.Header.Flags&dns.AAFlag, 0, "Should be authoritative")
+	assert.NotEqual(t, 0, resp.Header.Flags&dns.AAFlag, "Should be authoritative")
 }
 
 func TestZoneResolver_NameNotInZone(t *testing.T) {
@@ -392,7 +392,7 @@ func TestZoneResolver_NameNotInZone(t *testing.T) {
 
 	_, err := resolver.Resolve(context.Background(), req, nil)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not in any configured zone")
 }
 
@@ -408,7 +408,7 @@ func TestZoneResolver_NoZones(t *testing.T) {
 
 	_, err := resolver.Resolve(context.Background(), req, nil)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no zones configured")
 }
 
@@ -423,7 +423,7 @@ func TestZoneResolver_NoQuestion(t *testing.T) {
 
 	_, err := resolver.Resolve(context.Background(), req, nil)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no question")
 }
 
@@ -433,7 +433,7 @@ func TestZoneResolver_Close(t *testing.T) {
 
 	err := resolver.Close()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestZoneResolver_MultipleZones(t *testing.T) {
@@ -537,11 +537,11 @@ func TestForwardingResolver_Close(t *testing.T) {
 	)
 
 	err := resolver.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Close again should be safe
 	err = resolver.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // ============================================================================
@@ -595,7 +595,7 @@ func TestZoneResolver_PreservesRDFlag(t *testing.T) {
 	require.NoError(t, err)
 
 	// RD flag should be preserved
-	assert.NotEqual(t, resp.Header.Flags&dns.RDFlag, 0, "RD flag should be preserved")
+	assert.NotEqual(t, 0, resp.Header.Flags&dns.RDFlag, "RD flag should be preserved")
 }
 
 func TestChained_ZoneThenForwarding(t *testing.T) {

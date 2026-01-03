@@ -105,7 +105,7 @@ func isAddressQuery(qtype uint16) bool {
 // chaseCNAME follows CNAME records when no direct answer exists.
 // If a CNAME exists, it returns the CNAME as the answer and looks up
 // the target name for the additional section.
-func (z *ZoneResolver) chaseCNAME(match *zone.Zone, q dns.Question) (answers, additionals []dns.Record) {
+func (z *ZoneResolver) chaseCNAME(match *zone.Zone, q dns.Question) ([]dns.Record, []dns.Record) {
 	cnames := match.Lookup(q.Name, uint16(dns.TypeCNAME), q.Class)
 	if len(cnames) == 0 {
 		return nil, nil
@@ -113,7 +113,7 @@ func (z *ZoneResolver) chaseCNAME(match *zone.Zone, q dns.Question) (answers, ad
 
 	rr := cnames[0]
 	target := rr.RData.(string)
-	answers = append(answers, dns.Record{
+	answers := append([]dns.Record(nil), dns.Record{
 		Name:  rr.Name,
 		Type:  rr.Type,
 		Class: rr.Class,
@@ -121,6 +121,7 @@ func (z *ZoneResolver) chaseCNAME(match *zone.Zone, q dns.Question) (answers, ad
 		Data:  target,
 	})
 
+	additionals := make([]dns.Record, 0)
 	for _, a := range match.Lookup(target, q.Type, q.Class) {
 		additionals = append(additionals, zoneRecordToDNSRecord(a))
 	}

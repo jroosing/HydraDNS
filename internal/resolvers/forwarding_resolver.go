@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jroosing/hydradns/internal/dns"
+	"github.com/jroosing/hydradns/internal/helpers"
 )
 
 // Forwarding resolver configuration constants.
@@ -358,8 +359,8 @@ func (f *ForwardingResolver) ensurePool(up string) (chan *net.UDPConn, error) {
 		return nil, err
 	}
 	for range f.poolSize {
-		c, err := net.DialUDP("udp", nil, addr)
-		if err != nil {
+		c, _ := net.DialUDP("udp", nil, addr)
+		if c == nil {
 			break // partial pool is acceptable
 		}
 		ch <- c
@@ -409,10 +410,7 @@ func isTimeoutError(err error) bool {
 		return false
 	}
 	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return true
-	}
-	return false
+	return errors.As(err, &netErr)
 }
 
 // queryOneAttempt sends a single query attempt to an upstream server.
@@ -440,9 +438,9 @@ func (f *ForwardingResolver) queryOneAttempt(
 	_ = c.SetDeadline(deadline)
 
 	// Send query
-	if _, err := c.Write(req); err != nil {
+	if _, writeErr := c.Write(req); writeErr != nil {
 		connOK = false
-		return nil, err
+		return nil, writeErr
 	}
 
 	// Receive response
@@ -529,7 +527,7 @@ func queryUpstreamTCP(ctx context.Context, req []byte, host string, timeout time
 	// Send 2-byte length prefix followed by request
 	// Use two writes to avoid allocation from append(prefix, req...)
 	var prefix [2]byte
-	binary.BigEndian.PutUint16(prefix[:], uint16(len(req)))
+	binary.BigEndian.PutUint16(prefix[:], helpers.ClampIntToUint16(len(req)))
 	if _, err := conn.Write(prefix[:]); err != nil {
 		return nil, err
 	}
@@ -562,14 +560,11 @@ func queryUpstreamTCP(ctx context.Context, req []byte, host string, timeout time
 //   - QCLASS matches
 func validateResponse(req dns.Packet, respBytes []byte) error {
 	if len(req.Questions) == 0 {
-		return nil
+		return errors.New("response has no question section")
 	}
 	resp, err := dns.ParsePacket(respBytes)
 	if err != nil {
-		return nil // unparseable responses are handled by cache decision
-	}
-	if len(resp.Questions) == 0 {
-		return errors.New("response has no question section")
+		return fmt.Errorf("failed to parse upstream response: %w", err)
 	}
 
 	reqQ := req.Questions[0]

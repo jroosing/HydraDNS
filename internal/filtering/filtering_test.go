@@ -219,7 +219,7 @@ func TestPolicyEngine_EvaluateWithContext_Cancelled(t *testing.T) {
 	cancel() // Cancel immediately
 
 	_, err := pe.EvaluateWithContext(ctx, "example.com")
-	assert.Error(t, err, "Should return error for cancelled context")
+	require.Error(t, err, "Should return error for cancelled context")
 	assert.Equal(t, context.Canceled, err)
 }
 
@@ -360,7 +360,7 @@ func TestParser_AutoDetect(t *testing.T) {
 // Concurrent Access Tests
 // =============================================================================
 
-func TestDomainTrie_ConcurrentReads(t *testing.T) {
+func TestDomainTrie_ConcurrentReads(_ *testing.T) {
 	trie := filtering.NewDomainTrie()
 
 	// Add some domains

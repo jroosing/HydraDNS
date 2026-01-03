@@ -99,7 +99,23 @@ func loadFromSource(configPath string) (*Config, error) {
 
 	cfg := &Config{}
 
-	// Server config
+	loadServerConfig(v, cfg)
+	loadUpstreamConfig(v, cfg)
+	loadZonesConfig(v, cfg)
+	loadLoggingConfig(v, cfg)
+	loadFilteringConfig(v, cfg)
+	loadAPIConfig(v, cfg)
+	loadRateLimitConfig(v, cfg)
+
+	// Normalize and validate
+	if err := normalizeConfig(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func loadServerConfig(v *viper.Viper, cfg *Config) {
 	cfg.Server.Host = v.GetString("server.host")
 	cfg.Server.Port = v.GetInt("server.port")
 	cfg.Server.MaxConcurrency = v.GetInt("server.max_concurrency")
@@ -107,11 +123,10 @@ func loadFromSource(configPath string) (*Config, error) {
 	cfg.Server.EnableTCP = v.GetBool("server.enable_tcp")
 	cfg.Server.TCPFallback = v.GetBool("server.tcp_fallback")
 	cfg.Server.WorkersRaw = v.GetString("server.workers")
-
-	// Parse workers setting
 	cfg.Server.Workers = parseWorkers(cfg.Server.WorkersRaw)
+}
 
-	// Upstream config
+func loadUpstreamConfig(v *viper.Viper, cfg *Config) {
 	cfg.Upstream.Servers = parseServerList(v.GetStringSlice("upstream.servers"))
 	if len(cfg.Upstream.Servers) == 0 {
 		// Handle comma-separated string from env
@@ -122,19 +137,22 @@ func loadFromSource(configPath string) (*Config, error) {
 	cfg.Upstream.UDPTimeout = v.GetString("upstream.udp_timeout")
 	cfg.Upstream.TCPTimeout = v.GetString("upstream.tcp_timeout")
 	cfg.Upstream.MaxRetries = v.GetInt("upstream.max_retries")
+}
 
-	// Zones config
+func loadZonesConfig(v *viper.Viper, cfg *Config) {
 	cfg.Zones.Directory = v.GetString("zones.directory")
 	cfg.Zones.Files = v.GetStringSlice("zones.files")
+}
 
-	// Logging config
+func loadLoggingConfig(v *viper.Viper, cfg *Config) {
 	cfg.Logging.Level = strings.ToUpper(v.GetString("logging.level"))
 	cfg.Logging.Structured = v.GetBool("logging.structured")
 	cfg.Logging.StructuredFormat = v.GetString("logging.structured_format")
 	cfg.Logging.IncludePID = v.GetBool("logging.include_pid")
 	cfg.Logging.ExtraFields = v.GetStringMapString("logging.extra_fields")
+}
 
-	// Filtering config
+func loadFilteringConfig(v *viper.Viper, cfg *Config) {
 	cfg.Filtering.Enabled = v.GetBool("filtering.enabled")
 	cfg.Filtering.LogBlocked = v.GetBool("filtering.log_blocked")
 	cfg.Filtering.LogAllowed = v.GetBool("filtering.log_allowed")
@@ -158,14 +176,16 @@ func loadFromSource(configPath string) (*Config, error) {
 			Format: "auto",
 		})
 	}
+}
 
-	// Management API config
+func loadAPIConfig(v *viper.Viper, cfg *Config) {
 	cfg.API.Enabled = v.GetBool("api.enabled")
 	cfg.API.Host = v.GetString("api.host")
 	cfg.API.Port = v.GetInt("api.port")
 	cfg.API.APIKey = v.GetString("api.api_key")
+}
 
-	// Rate limiting config
+func loadRateLimitConfig(v *viper.Viper, cfg *Config) {
 	cfg.RateLimit.CleanupSeconds = v.GetFloat64("rate_limit.cleanup_seconds")
 	cfg.RateLimit.MaxIPEntries = v.GetInt("rate_limit.max_ip_entries")
 	cfg.RateLimit.MaxPrefixEntries = v.GetInt("rate_limit.max_prefix_entries")
@@ -175,13 +195,6 @@ func loadFromSource(configPath string) (*Config, error) {
 	cfg.RateLimit.PrefixBurst = v.GetInt("rate_limit.prefix_burst")
 	cfg.RateLimit.IPQPS = v.GetFloat64("rate_limit.ip_qps")
 	cfg.RateLimit.IPBurst = v.GetInt("rate_limit.ip_burst")
-
-	// Normalize and validate
-	if err := normalizeConfig(cfg); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
 }
 
 // parseWorkers converts the workers string to WorkerSetting.

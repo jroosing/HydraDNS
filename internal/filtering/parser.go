@@ -2,6 +2,7 @@ package filtering
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -70,7 +71,12 @@ func (p *Parser) ParseURL(url string, format ListFormat) (*DomainTrie, error) {
 		Timeout: timeout,
 	}
 
-	resp, err := client.Get(url)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch URL: %w", err)
 	}

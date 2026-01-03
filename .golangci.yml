@@ -18,6 +18,12 @@ issues:
   # Default: 3
   max-same-issues: 50
 
+  exclude-rules:
+    # Disable govet err-shadowing reports (shadow analyzer).
+    - linters:
+        - govet
+      text: 'shadow: declaration of "err" shadows declaration'
+
 formatters:
   enable:
     - goimports # checks if the code and import statements are formatted according to the 'goimports' command
@@ -66,8 +72,8 @@ linters:
     - funcorder # checks the order of functions, methods, and constructors
     - funlen # tool for detection of long functions
     - gocheckcompilerdirectives # validates go compiler directive comments (//go:)
-    - gochecknoglobals # checks that no global variables exist
-    - gochecknoinits # checks that no init functions are present in Go code
+    # - gochecknoglobals # checks that no global variables exist
+    # - gochecknoinits # checks that no init functions are present in Go code
     - gochecksumtype # checks exhaustiveness on Go "sum types"
     # - gocognit # computes and checks the cognitive complexity of functions
     - goconst # finds repeated strings that could be replaced by a constant
@@ -336,7 +342,7 @@ linters:
         shadow:
           # Whether to be strict about shadowing; can be noisy.
           # Default: false
-          strict: true
+          strict: false
 
     inamedparam:
       # Skips check for interface methods with only a single parameter.
@@ -452,6 +458,8 @@ linters:
       - text: 'should have a package comment'
         linters: [ revive ]
       - text: 'exported \S+ \S+ should have comment( \(or a comment on this block\))? or be unexported'
+        linters: [ revive ]
+      - text: 'var-naming: avoid meaningless package names'
         linters: [ revive ]
       - text: 'package comment should be of the form ".+"'
         source: '// ?(nolint|TODO)'

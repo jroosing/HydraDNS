@@ -1,12 +1,7 @@
 package dns
 
-// Packet represents a complete DNS message (RFC 1035 Section 4).
-//
-// A DNS packet consists of a header and four sections:
-//   - Questions: What the client is asking
-//   - Answers: Resource records answering the question
-//   - Authorities: Nameserver records pointing to authorities
-//   - Additionals: Extra records (e.g., glue records, EDNS OPT)
+import "github.com/jroosing/hydradns/internal/helpers"
+
 type Packet struct {
 	Header      Header
 	Questions   []Question
@@ -20,10 +15,10 @@ func (p Packet) Marshal() ([]byte, error) {
 	h := Header{
 		ID:      p.Header.ID,
 		Flags:   p.Header.Flags,
-		QDCount: uint16(len(p.Questions)),
-		ANCount: uint16(len(p.Answers)),
-		NSCount: uint16(len(p.Authorities)),
-		ARCount: uint16(len(p.Additionals)),
+		QDCount: helpers.ClampIntToUint16(len(p.Questions)),
+		ANCount: helpers.ClampIntToUint16(len(p.Answers)),
+		NSCount: helpers.ClampIntToUint16(len(p.Authorities)),
+		ARCount: helpers.ClampIntToUint16(len(p.Additionals)),
 	}
 
 	hb, err := h.Marshal()

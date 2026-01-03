@@ -84,7 +84,7 @@ func ParseText(text string) (*Zone, error) {
 			if err != nil {
 				return nil, err
 			}
-			defaultTTL = uint32(ttl)
+			defaultTTL = ttl
 			continue
 		}
 		if origin == "" {
@@ -249,20 +249,11 @@ func normalizeFQDN(name string, origin string) string {
 	if origin == "" {
 		return name
 	}
-	if strings.HasSuffix(strings.TrimSuffix(name, "."), strings.TrimSuffix(origin, ".")) {
-		// already looks absolute-ish; still keep as-is
-	}
-	if strings.Contains(name, ".") {
-		// could still be relative; zone files treat non-trailing-dot as relative
-	}
 	if strings.HasSuffix(name, origin) {
 		return strings.TrimSuffix(name, ".")
 	}
 	if strings.TrimSpace(name) == "" {
 		return ""
-	}
-	if strings.Contains(name, ".") {
-		// still relative, append origin
 	}
 	if origin == "" {
 		return name
@@ -274,13 +265,63 @@ var ttlRE = regexp.MustCompile(`^(?:\d+[wdhmsWDHMS]?)+$`)
 
 func looksLikeTTL(tok string) bool { return ttlRE.MatchString(strings.TrimSpace(tok)) }
 
-func parseTTL(tok string) (int, error) {
+var (
+	errTTLInvalid  = errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+	errTTLTooLarge = errors.New("TTL too large")
+)
+
+func ttlUnitMultiplier(unit byte) (uint64, bool) {
+	switch unit {
+	case 's':
+		return 1, true
+	case 'm':
+		return 60, true
+	case 'h':
+		return 3600, true
+	case 'd':
+		return 86400, true
+	case 'w':
+		return 604800, true
+	default:
+		return 0, false
+	}
+}
+
+func parseTTLNumber(num string) (uint64, error) {
+	n, err := strconv.ParseUint(num, 10, 64)
+	if err != nil {
+		return 0, errTTLInvalid
+	}
+	return n, nil
+}
+
+func mulUint64ToUint32(n, mul uint64) (uint32, error) {
+	maxU32 := uint64(^uint32(0))
+	if mul != 0 && n > maxU32/mul {
+		return 0, errTTLTooLarge
+	}
+	v := n * mul
+	if v > maxU32 {
+		return 0, errTTLTooLarge
+	}
+	return uint32(v), nil
+}
+
+func addUint32(total, add uint32) (uint32, error) {
+	maxU32 := ^uint32(0)
+	if add > (maxU32 - total) {
+		return 0, errTTLTooLarge
+	}
+	return total + add, nil
+}
+
+func parseTTL(tok string) (uint32, error) {
 	tok = strings.TrimSpace(tok)
 	if !ttlRE.MatchString(tok) {
-		return 0, errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+		return 0, errTTLInvalid
 	}
 	// parse repeated number+unit
-	total := 0
+	total := uint32(0)
 	num := ""
 	for i := range len(tok) {
 		c := tok[i]
@@ -288,36 +329,41 @@ func parseTTL(tok string) (int, error) {
 			num += string(c)
 			continue
 		}
-		unit := byte('s')
-		if c != 0 {
-			unit = byte(strings.ToLower(string(c))[0])
-		}
+		unit := strings.ToLower(string(c))[0]
 		if num == "" {
 			continue
 		}
-		n, _ := strconv.Atoi(num)
+		n, err := parseTTLNumber(num)
+		if err != nil {
+			return 0, err
+		}
 		num = ""
-		switch unit {
-		case 's':
-			total += n
-		case 'm':
-			total += n * 60
-		case 'h':
-			total += n * 3600
-		case 'd':
-			total += n * 86400
-		case 'w':
-			total += n * 604800
-		default:
-			return 0, errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
+		mul, ok := ttlUnitMultiplier(unit)
+		if !ok {
+			return 0, errTTLInvalid
+		}
+		add, err := mulUint64ToUint32(n, mul)
+		if err != nil {
+			return 0, err
+		}
+		total, err = addUint32(total, add)
+		if err != nil {
+			return 0, err
 		}
 	}
 	if num != "" {
-		n, _ := strconv.Atoi(num)
-		total += n
-	}
-	if total < 0 {
-		return 0, errors.New("TTL must be >= 0")
+		n, err := parseTTLNumber(num)
+		if err != nil {
+			return 0, err
+		}
+		add, err := mulUint64ToUint32(n, 1)
+		if err != nil {
+			return 0, err
+		}
+		total, err = addUint32(total, add)
+		if err != nil {
+			return 0, err
+		}
 	}
 	return total, nil
 }
@@ -348,14 +394,14 @@ func parseOwner(tokens []string, origin, lastOwner string) (string, []string, er
 	return normalizeFQDN(first, origin), tokens[1:], nil
 }
 
-func parseRRFields(rest []string, defaultTTL uint32) (ttl uint32, class uint16, typ string, rdata string, err error) {
+func parseRRFields(rest []string, defaultTTL uint32) (uint32, uint16, string, string, error) {
 	var (
 		haveTTL   bool
 		haveClass bool
 		idx       int
 	)
-	ttl = defaultTTL
-	class = uint16(dns.ClassIN)
+	ttl := defaultTTL
+	class := uint16(dns.ClassIN)
 	for idx < len(rest) {
 		tok := rest[idx]
 		if !haveTTL && looksLikeTTL(tok) {
@@ -363,7 +409,7 @@ func parseRRFields(rest []string, defaultTTL uint32) (ttl uint32, class uint16, 
 			if e != nil {
 				return 0, 0, "", "", e
 			}
-			ttl = uint32(n)
+			ttl = n
 			haveTTL = true
 			idx++
 			continue
@@ -379,12 +425,12 @@ func parseRRFields(rest []string, defaultTTL uint32) (ttl uint32, class uint16, 
 	if idx >= len(rest) {
 		return 0, 0, "", "", errors.New("missing RR type")
 	}
-	typ = strings.ToUpper(rest[idx])
+	typ := strings.ToUpper(rest[idx])
 	idx++
 	if idx >= len(rest) {
 		return 0, 0, "", "", errors.New("missing RR rdata")
 	}
-	rdata = strings.Join(rest[idx:], " ")
+	rdata := strings.Join(rest[idx:], " ")
 	return ttl, class, typ, rdata, nil
 }
 
@@ -457,29 +503,25 @@ func parseSOARData(rdata, origin string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("invalid SOA serial")
 	}
-	refreshInt, err := parseTTL(parts[3])
+	refresh, err := parseTTL(parts[3])
 	if err != nil {
 		return nil, errors.New("invalid SOA refresh")
 	}
-	refresh := uint32(refreshInt)
 
-	retryInt, err := parseTTL(parts[4])
+	retryV, err := parseTTL(parts[4])
 	if err != nil {
 		return nil, errors.New("invalid SOA retry")
 	}
-	retryV := uint32(retryInt)
 
-	expireInt, err := parseTTL(parts[5])
+	expire, err := parseTTL(parts[5])
 	if err != nil {
 		return nil, errors.New("invalid SOA expire")
 	}
-	expire := uint32(expireInt)
 
-	minimumInt, err := parseTTL(parts[6])
+	minimum, err := parseTTL(parts[6])
 	if err != nil {
 		return nil, errors.New("invalid SOA minimum")
 	}
-	minimum := uint32(minimumInt)
 
 	mwire, err := dns.EncodeName(mname)
 	if err != nil {

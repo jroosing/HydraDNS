@@ -3,6 +3,8 @@ package dns
 import (
 	"errors"
 	"fmt"
+
+	"github.com/jroosing/hydradns/internal/helpers"
 )
 
 // Limits for incoming DNS messages to prevent resource exhaustion attacks.
@@ -24,7 +26,7 @@ const (
 //   - Question or RR counts exceed limits
 func ParseRequestBounded(msg []byte) (Packet, error) {
 	if len(msg) > MaxIncomingDNSMessageSize {
-		return Packet{}, errors.New("DNS message too large")
+		return Packet{}, errors.New("dns message too large")
 	}
 	p, err := ParsePacket(msg)
 	if err != nil {
@@ -34,12 +36,12 @@ func ParseRequestBounded(msg []byte) (Packet, error) {
 	// Validate QR flag: must be 0 for queries
 	// QR is bit 15 of flags (0x8000)
 	if isResponse(p.Header.Flags) {
-		return Packet{}, errors.New("Invalid packet: QR flag set (response packet received)")
+		return Packet{}, errors.New("invalid packet: QR flag set (response packet received)")
 	}
 
 	// Extract and validate opcode (bits 14-11)
 	if opcode := extractOpcode(p.Header.Flags); opcode != 0 {
-		return Packet{}, fmt.Errorf("Unsupported OpCode: %d", opcode)
+		return Packet{}, fmt.Errorf("unsupported OpCode: %d", opcode)
 	}
 
 	// Validate section counts
@@ -94,7 +96,7 @@ func BuildErrorResponse(req Packet, rcode uint16) Packet {
 	h := Header{
 		ID:      req.Header.ID,
 		Flags:   flags,
-		QDCount: uint16(len(req.Questions)),
+		QDCount: helpers.ClampIntToUint16(len(req.Questions)),
 		ANCount: 0,
 		NSCount: 0,
 		ARCount: 0,
@@ -116,7 +118,7 @@ func buildResponseFlags(reqFlags uint16, rcode uint16) uint16 {
 	flags |= (reqFlags & RDFlag)
 
 	// Clear RCODE bits and set new response code (low 4 bits)
-	rcode = rcode & RCodeMask
+	rcode &= RCodeMask
 	flags = (flags &^ RCodeMask) | rcode
 
 	return flags

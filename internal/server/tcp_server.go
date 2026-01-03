@@ -53,7 +53,8 @@ type TCPServer struct {
 
 // Run starts the TCP server, listening on the given address.
 func (s *TCPServer) Run(ctx context.Context, addr string) error {
-	ln, err := net.Listen("tcp", addr)
+	var lc net.ListenConfig
+	ln, err := lc.Listen(ctx, "tcp", addr)
 	if err != nil {
 		return err
 	}
@@ -86,7 +87,7 @@ func (s *TCPServer) Run(ctx context.Context, addr string) error {
 		// Enforce per-IP connection limit
 		if !s.tryAcquireConn(remoteIP) {
 			if s.Logger != nil {
-				s.Logger.Warn("tcp connection limit exceeded", "ip", remoteIP)
+				s.Logger.WarnContext(ctx, "tcp connection limit exceeded", "ip", remoteIP)
 			}
 			_ = c.Close()
 			continue

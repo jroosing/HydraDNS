@@ -257,6 +257,7 @@ func (r *Runner) buildFilteringPolicy(cfg *config.Config) *filtering.PolicyEngin
 	}
 
 	return filtering.NewPolicyEngine(filtering.PolicyEngineConfig{
+		Logger:           r.logger,
 		Enabled:          cfg.Filtering.Enabled,
 		BlockAction:      filtering.ActionBlock,
 		LogBlocked:       cfg.Filtering.LogBlocked,

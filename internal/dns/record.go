@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+
+	"github.com/jroosing/hydradns/internal/helpers"
 )
 
 // Record represents a DNS resource record (RFC 1035 Section 3.2.1).
@@ -107,7 +109,7 @@ func (rr Record) Marshal() ([]byte, error) {
 	binary.BigEndian.PutUint16(fixed[0:2], rr.Type)
 	binary.BigEndian.PutUint16(fixed[2:4], rr.Class)
 	binary.BigEndian.PutUint32(fixed[4:8], rr.TTL)
-	binary.BigEndian.PutUint16(fixed[8:10], uint16(len(rdata)))
+	binary.BigEndian.PutUint16(fixed[8:10], helpers.ClampIntToUint16(len(rdata)))
 	out = append(out, fixed...)
 	out = append(out, rdata...)
 	return out, nil

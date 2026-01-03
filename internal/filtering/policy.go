@@ -50,6 +50,8 @@ type PolicyResult struct {
 //
 // Thread-safe for concurrent use.
 type PolicyEngine struct {
+	logger *slog.Logger
+
 	whitelist *DomainTrie
 	blacklist *DomainTrie
 
@@ -83,6 +85,9 @@ type ListSource struct {
 
 // PolicyEngineConfig configures the policy engine.
 type PolicyEngineConfig struct {
+	// Logger is used for policy engine log output. If nil, the default logger is used.
+	Logger *slog.Logger
+
 	// Enabled determines if filtering is active.
 	Enabled bool
 
@@ -118,7 +123,13 @@ type BlocklistURL struct {
 
 // NewPolicyEngine creates a new policy engine with the given configuration.
 func NewPolicyEngine(cfg PolicyEngineConfig) *PolicyEngine {
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+
 	pe := &PolicyEngine{
+		logger:      logger,
 		whitelist:   NewDomainTrie(),
 		blacklist:   NewDomainTrie(),
 		listSources: make(map[string]ListSource),
@@ -177,14 +188,14 @@ func (pe *PolicyEngine) loadBlocklist(parser *Parser, bl BlocklistURL) {
 	trie, err := parser.ParseURL(bl.URL, bl.Format)
 	if err != nil {
 		source.LastError = err
-		slog.Warn("Failed to load blocklist",
+		pe.logger.Warn("Failed to load blocklist",
 			"name", bl.Name,
 			"url", bl.URL,
 			"error", err)
 	} else {
 		source.DomainCount = trie.Size()
 		pe.blacklist.Merge(trie)
-		slog.Info("Loaded blocklist",
+		pe.logger.Info("Loaded blocklist",
 			"name", bl.Name,
 			"domains", trie.Size())
 	}
@@ -199,7 +210,7 @@ func (pe *PolicyEngine) refreshLoop(parser *Parser, urls []BlocklistURL) {
 	for {
 		select {
 		case <-pe.refreshTicker.C:
-			slog.Debug("Refreshing blocklists...")
+			pe.logger.Debug("Refreshing blocklists...")
 			// Create a new blacklist and merge all sources
 			newBlacklist := NewDomainTrie()
 
@@ -210,7 +221,7 @@ func (pe *PolicyEngine) refreshLoop(parser *Parser, urls []BlocklistURL) {
 			for _, bl := range urls {
 				trie, err := parser.ParseURL(bl.URL, bl.Format)
 				if err != nil {
-					slog.Warn("Failed to refresh blocklist",
+					pe.logger.Warn("Failed to refresh blocklist",
 						"name", bl.Name,
 						"error", err)
 					continue
@@ -222,7 +233,7 @@ func (pe *PolicyEngine) refreshLoop(parser *Parser, urls []BlocklistURL) {
 			pe.blacklist = newBlacklist
 			pe.mu.Unlock()
 
-			slog.Info("Blocklists refreshed", "total_domains", newBlacklist.Size())
+			pe.logger.Info("Blocklists refreshed", "total_domains", newBlacklist.Size())
 
 		case <-pe.refreshStop:
 			return
@@ -244,7 +255,7 @@ func (pe *PolicyEngine) Evaluate(domain string) PolicyResult {
 	if pe.whitelist.Contains(domain) {
 		pe.queriesAllowed.Add(1)
 		if pe.logAllowed {
-			slog.Debug("Domain allowed by whitelist", "domain", domain)
+			pe.logger.Debug("Domain allowed by whitelist", "domain", domain)
 		}
 		return PolicyResult{
 			Action:   ActionAllow,
@@ -257,7 +268,7 @@ func (pe *PolicyEngine) Evaluate(domain string) PolicyResult {
 	if pe.blacklist.Contains(domain) {
 		pe.queriesBlocked.Add(1)
 		if pe.logBlocked {
-			slog.Info("Domain blocked", "domain", domain)
+			pe.logger.Info("Domain blocked", "domain", domain)
 		}
 		return PolicyResult{
 			Action:   pe.blockAction,

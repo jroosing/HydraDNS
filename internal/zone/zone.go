@@ -1,11 +1,12 @@
 // Package zone provides parsing and querying of DNS zone files.
 // It supports RFC 1035 master file format including common record types
-// (A, AAAA, CNAME, MX, NS, TXT, SOA, PTR) and zone directives ($ORIGIN, $TTL).
+// (A, AAAA, CNAME, MX, NS, TXT, SOA, PTR, OPT) and zone directives ($ORIGIN, $TTL).
 package zone
 
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"net/netip"
 	"os"
@@ -28,6 +29,7 @@ type Record struct {
 	// - MX: MX
 	// - SOA: []byte (wire format)
 	// - TXT: string
+	// - OPT: []byte (generic \# format) or nil
 	RData any
 }
 
@@ -262,6 +264,8 @@ var ttlRE = regexp.MustCompile(`^(?:\d+[wdhmsWDHMS]?)+$`)
 
 func looksLikeTTL(tok string) bool { return ttlRE.MatchString(strings.TrimSpace(tok)) }
 
+const rrTypeOPT = "OPT"
+
 var (
 	errTTLInvalid  = errors.New("TTL must be an integer seconds or use suffixes (w/d/h/m/s)")
 	errTTLTooLarge = errors.New("TTL too large")
@@ -370,7 +374,7 @@ func looksLikeClass(tok string) bool { return strings.ToUpper(tok) == "IN" }
 func looksLikeType(tok string) bool {
 	s := strings.ToUpper(tok)
 	switch s {
-	case "A", "AAAA", "CNAME", "NS", "SOA", "MX", "TXT", "PTR":
+	case "A", "AAAA", "CNAME", "NS", "SOA", "MX", "TXT", "PTR", rrTypeOPT:
 		return true
 	default:
 		return false
@@ -392,43 +396,111 @@ func parseOwner(tokens []string, origin, lastOwner string) (string, []string, er
 }
 
 func parseRRFields(rest []string, defaultTTL uint32) (uint32, uint16, string, string, error) {
-	var (
-		haveTTL   bool
-		haveClass bool
-		idx       int
-	)
+	typ, prefix, rdata, err := splitRR(rest)
+	if err != nil {
+		return 0, 0, "", "", err
+	}
+	if typ == rrTypeOPT {
+		return parseOPTFields(prefix, rdata)
+	}
+	return parseNormalRRFields(prefix, rdata, defaultTTL, typ)
+}
+
+func splitRR(rest []string) (string, []string, string, error) {
+	if len(rest) == 0 {
+		return "", nil, "", errors.New("missing RR type")
+	}
+	typeIdx := -1
+	for i, tok := range rest {
+		if looksLikeType(tok) {
+			typeIdx = i
+			break
+		}
+	}
+	if typeIdx < 0 {
+		return "", nil, "", errors.New("missing RR type")
+	}
+	typ := strings.ToUpper(rest[typeIdx])
+	prefix := rest[:typeIdx]
+	rdata := ""
+	if typeIdx+1 < len(rest) {
+		rdata = strings.Join(rest[typeIdx+1:], " ")
+	}
+	return typ, prefix, rdata, nil
+}
+
+func parseOPTFields(prefix []string, rdata string) (uint32, uint16, string, string, error) {
+	ttl := uint32(0)
+	class := uint16(dns.EDNSDefaultUDPPayloadSize)
+	switch len(prefix) {
+	case 0:
+		// Use defaults.
+	case 1:
+		if v, ok := parseUint16Dec(prefix[0]); ok {
+			class = v
+			break
+		}
+		n, err := parseTTL(prefix[0])
+		if err != nil {
+			return 0, 0, "", "", err
+		}
+		ttl = n
+	case 2:
+		n, err := parseTTL(prefix[0])
+		if err != nil {
+			return 0, 0, "", "", err
+		}
+		v, ok := parseUint16Dec(prefix[1])
+		if !ok {
+			return 0, 0, "", "", errors.New("OPT UDP payload size must be 0..65535")
+		}
+		ttl = n
+		class = v
+	default:
+		return 0, 0, "", "", errors.New("invalid OPT record format")
+	}
+	return ttl, class, rrTypeOPT, rdata, nil
+}
+
+func parseNormalRRFields(
+	prefix []string,
+	rdata string,
+	defaultTTL uint32,
+	typ string,
+) (uint32, uint16, string, string, error) {
 	ttl := defaultTTL
 	class := uint16(dns.ClassIN)
-	for idx < len(rest) {
-		tok := rest[idx]
+	haveTTL := false
+	haveClass := false
+	for _, tok := range prefix {
 		if !haveTTL && looksLikeTTL(tok) {
-			n, e := parseTTL(tok)
-			if e != nil {
-				return 0, 0, "", "", e
+			n, err := parseTTL(tok)
+			if err != nil {
+				return 0, 0, "", "", err
 			}
 			ttl = n
 			haveTTL = true
-			idx++
 			continue
 		}
 		if !haveClass && looksLikeClass(tok) {
 			class = uint16(dns.ClassIN)
 			haveClass = true
-			idx++
 			continue
 		}
-		break
+		return 0, 0, "", "", errors.New("invalid RR field")
 	}
-	if idx >= len(rest) {
-		return 0, 0, "", "", errors.New("missing RR type")
-	}
-	typ := strings.ToUpper(rest[idx])
-	idx++
-	if idx >= len(rest) {
+	if strings.TrimSpace(rdata) == "" {
 		return 0, 0, "", "", errors.New("missing RR rdata")
 	}
-	rdata := strings.Join(rest[idx:], " ")
 	return ttl, class, typ, rdata, nil
+}
+
+func parseUint16Dec(tok string) (uint16, bool) {
+	v, err := strconv.ParseUint(strings.TrimSpace(tok), 10, 16)
+	if err != nil {
+		return 0, false
+	}
+	return uint16(v), true
 }
 
 func rrTypeToCode(typ string) (uint16, bool) {
@@ -449,6 +521,8 @@ func rrTypeToCode(typ string) (uint16, bool) {
 		return uint16(dns.TypePTR), true
 	case "SOA":
 		return uint16(dns.TypeSOA), true
+	case rrTypeOPT:
+		return uint16(dns.TypeOPT), true
 	default:
 		return 0, false
 	}
@@ -483,9 +557,56 @@ func transformRData(typeCode uint16, rdata, origin string) (any, error) {
 		return rdata, nil
 	case dns.TypePTR, dns.TypeCNAME, dns.TypeNS:
 		return normalizeFQDN(rdata, origin), nil
+	case dns.TypeOPT:
+		b, err := parseGenericWireRData(rdata)
+		if err != nil {
+			return nil, err
+		}
+		return b, nil
 	default:
 		return rdata, nil
 	}
+}
+
+// parseGenericWireRData parses RFC 3597-style generic RDATA: "\\# <len> <hex>".
+// For OPT, this represents raw option bytes; empty rdata is allowed and returns nil.
+func parseGenericWireRData(rdata string) ([]byte, error) {
+	rdata = strings.TrimSpace(rdata)
+	if rdata == "" {
+		return nil, nil
+	}
+	parts := strings.Fields(rdata)
+	if len(parts) == 0 {
+		return nil, nil
+	}
+	if parts[0] != "\\#" {
+		return nil, errors.New("OPT rdata must be empty or use generic \\\\# format")
+	}
+	if len(parts) < 2 {
+		return nil, errors.New("invalid generic rdata")
+	}
+	ln, err := strconv.Atoi(parts[1])
+	if err != nil || ln < 0 {
+		return nil, errors.New("invalid generic rdata length")
+	}
+	hexStr := ""
+	if len(parts) > 2 {
+		hexStr = strings.Join(parts[2:], "")
+	}
+	if ln == 0 {
+		if strings.TrimSpace(hexStr) != "" {
+			return nil, errors.New("generic rdata length mismatch")
+		}
+		return nil, nil
+	}
+	b, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, errors.New("invalid generic rdata hex")
+	}
+	if len(b) != ln {
+		return nil, errors.New("generic rdata length mismatch")
+	}
+	return b, nil
 }
 
 func parseSOARData(rdata, origin string) ([]byte, error) {

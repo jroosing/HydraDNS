@@ -2,8 +2,8 @@ server:
   host: "0.0.0.0"
   port: 1053
   workers: auto
-  enable_tcp: true
-  tcp_fallback: true
+  enable_tcp: false
+  tcp_fallback: false
 
 upstream:
   servers:
@@ -18,14 +18,14 @@ zones:
   directory: "zones"
 
 logging:
-  level: "INFO"
+  level: "WARN"
   structured: false
   structured_format: "json"
   include_pid: false
 
 filtering:
   enabled: false
-  log_blocked: true
+  log_blocked: false
   log_allowed: false
 
   whitelist_domains:
@@ -41,18 +41,9 @@ filtering:
   refresh_interval: "24h"
 
 rate_limit:
-  cleanup_seconds: 60
-  max_ip_entries: 65536
-  max_prefix_entries: 16384
-  global_qps: 100000
-  global_burst: 100000
-  prefix_qps: 10000
-  prefix_burst: 20000
-  ip_qps: 5000
-  ip_burst: 10000
+  global_qps: 0
+  prefix_qps: 0
+  ip_qps: 0
 
 api:
-  enabled: true
-  host: "127.0.0.1"
-  port: 8080
-  api_key: ""
+  enabled: false

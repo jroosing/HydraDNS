@@ -279,11 +279,11 @@ The token bucket algorithm allows sustained throughput at the configured QPS rat
 
 | Tier | QPS | Burst | Purpose |
 |------|-----|-------|--------|
-| **Global** | 100,000 | 100,000 | Total server capacity |
-| **Prefix** (/24) | 10,000 | 20,000 | Limit per subnet |
-| **Per-IP** | 3,000 | 6,000 | Limit per client |
+| **Global** | 100000 | 100000 | Total server capacity |
+| **Prefix** (/24) | 10000 | 20000 | Limit per subnet |
+| **Per-IP** | 5000 | 10000 | Limit per client |
 
-The default per-IP limit of **3,000 QPS** is suitable for home/small office use. Your actual measured throughput will be slightly lower than the configured QPS due to rate limiter overhead.
+The default per-IP limit of **5000 QPS** is suitable for home/small office use. Your actual measured throughput will be slightly lower than the configured QPS due to rate limiter overhead.
 
 ### Tuning for Higher Throughput
 
@@ -302,9 +302,9 @@ export HYDRADNS_RL_IP_QPS=0
 
 | Use Case | IP QPS | IP Burst | Notes |
 |----------|--------|----------|-------|
-| Home/Small Office | 3,000 | 6,000 | Default, good protection |
-| Enterprise/Internal | 10,000 | 20,000 | Higher for trusted clients |
-| Behind Load Balancer | 50,000+ | 100,000 | Single source IP for many clients |
+| Home/Small Office | 5000 | 10000 | Default, good protection |
+| Enterprise/Internal | 10000 | 20000 | Higher for trusted clients |
+| Behind Load Balancer | 50000+ | 100000 | Single source IP for many clients |
 | Development/Testing | 0 (disabled) | — | No limits for benchmarking |
 
 ### Environment Variables
@@ -315,8 +315,8 @@ export HYDRADNS_RL_IP_QPS=0
 | `HYDRADNS_RL_GLOBAL_BURST` | 100000 | Global burst capacity |
 | `HYDRADNS_RL_PREFIX_QPS` | 10000 | Per /24 subnet QPS limit |
 | `HYDRADNS_RL_PREFIX_BURST` | 20000 | Per /24 subnet burst capacity |
-| `HYDRADNS_RL_IP_QPS` | 3000 | Per-IP QPS limit (0 = disabled) |
-| `HYDRADNS_RL_IP_BURST` | 6000 | Per-IP burst capacity |
+| `HYDRADNS_RL_IP_QPS` | 5000 | Per-IP QPS limit (0 = disabled) |
+| `HYDRADNS_RL_IP_BURST` | 10000 | Per-IP burst capacity |
 | `HYDRADNS_RL_MAX_IP_ENTRIES` | 65536 | Max tracked IP addresses |
 | `HYDRADNS_RL_MAX_PREFIX_ENTRIES` | 16384 | Max tracked /24 prefixes |
 | `HYDRADNS_RL_CLEANUP_SECONDS` | 60 | Stale entry cleanup interval |
@@ -343,7 +343,7 @@ services:
 
 ## Domain Filtering
 
-HydraDNS includes a high-performance domain filtering system for ad blocking, malware protection, and custom access control. Filtering uses a trie-based data structure for O(k) lookups where k is the number of domain labels.
+HydraDNS includes a domain filtering system for ad blocking, malware protection, and custom access control. Filtering uses a trie-based data structure for O(k) lookups where k is the number of domain labels.
 
 ### Features
 
@@ -488,7 +488,7 @@ http://localhost:8080/swagger/index.html
 If `api_key` is configured, all requests must include the `X-API-Key` header:
 
 ```bash
-curl -H "X-API-Key: your-secret-key" http://localhost:8080/api/v1/health
+curl -H "X-Api-Key: your-secret-key" http://localhost:8080/api/v1/health
 ```
 
 ### Example Usage
@@ -498,15 +498,15 @@ curl -H "X-API-Key: your-secret-key" http://localhost:8080/api/v1/health
 curl http://localhost:8080/api/v1/health
 
 # Get server stats
-curl -H "X-API-Key: secret" http://localhost:8080/api/v1/stats
+curl -H "X-Api-Key: secret" http://localhost:8080/api/v1/stats
 
 # Add domains to blacklist
-curl -X POST -H "X-API-Key: secret" -H "Content-Type: application/json" \
+curl -X POST -H "X-Api-Key: secret" -H "Content-Type: application/json" \
   -d '{"domains": ["ads.example.com", "tracker.example.com"]}' \
   http://localhost:8080/api/v1/filtering/blacklist
 
 # Toggle filtering on/off
-curl -X PUT -H "X-API-Key: secret" -H "Content-Type: application/json" \
+curl -X PUT -H "X-Api-Key: secret" -H "Content-Type: application/json" \
   -d '{"enabled": false}' \
   http://localhost:8080/api/v1/filtering/enabled
 ```

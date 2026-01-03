@@ -255,9 +255,6 @@ func normalizeFQDN(name string, origin string) string {
 	if strings.TrimSpace(name) == "" {
 		return ""
 	}
-	if origin == "" {
-		return name
-	}
 	return strings.TrimSuffix(name+"."+strings.TrimSuffix(origin, "."), ".")
 }
 

@@ -163,8 +163,8 @@ rate_limit:
   prefix_burst: 20000  # Burst allowance
 
   # Per-IP rate limit
-  ip_qps: 3000         # Queries per second per IP
-  ip_burst: 6000       # Burst allowance
+  ip_qps: 5000         # Queries per second per IP
+  ip_burst: 10000      # Burst allowance
 
 # REST API configuration
 # The API provides runtime management and monitoring via HTTP.

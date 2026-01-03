@@ -85,8 +85,8 @@ rate_limit:
   global_burst: 100000
   prefix_qps: 10000
   prefix_burst: 20000
-  ip_qps: 3000
-  ip_burst: 6000
+  ip_qps: 5000
+  ip_burst: 10000
 
 # REST API configuration
 # Provides runtime management and monitoring via HTTP

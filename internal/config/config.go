@@ -79,8 +79,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.global_burst", 100000)
 	v.SetDefault("rate_limit.prefix_qps", 10000.0)
 	v.SetDefault("rate_limit.prefix_burst", 20000)
-	v.SetDefault("rate_limit.ip_qps", 3000.0)
-	v.SetDefault("rate_limit.ip_burst", 6000)
+	v.SetDefault("rate_limit.ip_qps", 5000.0)
+	v.SetDefault("rate_limit.ip_burst", 10000)
 
 	// Management API defaults
 	// Default to disabled and bound to localhost for safety.

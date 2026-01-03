@@ -10,3 +10,12 @@ wheels/
 .venv
 .coverage
 queries.txt
+
+# Go build artifacts
+hydradns
+dnsquery
+print-zone
+bench
+*.test
+*.out
+*.prof

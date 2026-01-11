@@ -5,6 +5,8 @@ A high-performance, production-ready DNS server written in Go.
 
 HydraDNS is designed for speed, reliability, and ease of deployment. It supports both authoritative zone serving and recursive forwarding with intelligent caching.
 
+> **Development status:** HydraDNS is still under active development and not yet ready for production or real-world use. Expect breaking changes and incomplete features.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.25%2B-blue.svg)](https://golang.org)
 [![Made for Homelabs](https://img.shields.io/badge/Made%20for-Homelabs-orange.svg)](https://github.com)

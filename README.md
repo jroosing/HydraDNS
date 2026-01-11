@@ -74,7 +74,6 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 │         │ Chained        │          Resolver Chain              │
 │         │ Resolver       │                                      │
 │         │  ├─ Filtering  │◄─── Domain whitelist/blacklist       │
-│         │  ├─ Zone       │◄─── Local authoritative zones        │
 │         │  └─ Forwarding │◄─── Upstream DNS servers             │
 │         └───────┬────────┘                                      │
 │                 │                                               │

@@ -1,0 +1,1360 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "REST API for managing HydraDNS server configuration and filtering.",
+        "title": "HydraDNS Management API",
+        "contact": {
+            "name": "HydraDNS Support",
+            "url": "https://github.com/jroosing/hydradns"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/config": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns the current server configuration (sensitive fields redacted)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "config"
+                ],
+                "summary": "Get current configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ConfigResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Updates server configuration (requires restart for some settings)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "config"
+                ],
+                "summary": "Update configuration",
+                "parameters": [
+                    {
+                        "description": "Configuration update",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ConfigResponse"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/config/reload": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Triggers a hot reload of configuration from disk",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "config"
+                ],
+                "summary": "Reload configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/custom-dns": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns all configured custom DNS host and CNAME records",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "custom-dns"
+                ],
+                "summary": "List all custom DNS records",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.CustomDNSRecordsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/custom-dns/cnames": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Adds a new custom DNS CNAME record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "custom-dns"
+                ],
+                "summary": "Add a CNAME record",
+                "parameters": [
+                    {
+                        "description": "CNAME record to add",
+                        "name": "record",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.AddCNAMERequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.CustomDNSOperationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "CNAME already exists",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/custom-dns/cnames/{alias}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Updates the target for an existing custom DNS CNAME",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "custom-dns"
+                ],
+                "summary": "Update a CNAME record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CNAME alias",
+                        "name": "alias",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated target",
+                        "name": "record",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.UpdateCNAMERequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.CustomDNSOperationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Removes a custom DNS CNAME record",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "custom-dns"
+                ],
+                "summary": "Delete a CNAME record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CNAME alias",
+                        "name": "alias",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.CustomDNSOperationResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/custom-dns/hosts": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Adds a new custom DNS host record (A/AAAA)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "custom-dns"
+                ],
+                "summary": "Add a host record",
+                "parameters": [
+                    {
+                        "description": "Host record to add",
+                        "name": "record",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.AddHostRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.CustomDNSOperationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Host already exists",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/custom-dns/hosts/{name}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Updates the IP addresses for an existing custom DNS host",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "custom-dns"
+                ],
+                "summary": "Update a host record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated IP addresses",
+                        "name": "record",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.UpdateHostRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.CustomDNSOperationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Removes a custom DNS host record",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "custom-dns"
+                ],
+                "summary": "Delete a host record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.CustomDNSOperationResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/filtering/blacklist": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns all domains in the blacklist",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Get blacklist domains",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainListResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Adds one or more domains to the blacklist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Add domains to blacklist",
+                "parameters": [
+                    {
+                        "description": "Domains to add",
+                        "name": "domains",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Removes one or more domains from the blacklist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Remove domains from blacklist",
+                "parameters": [
+                    {
+                        "description": "Domains to remove",
+                        "name": "domains",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainDeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/filtering/enabled": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Toggles the filtering engine on or off",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Enable or disable filtering",
+                "parameters": [
+                    {
+                        "description": "Enable state",
+                        "name": "enabled",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringEnabledRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/filtering/stats": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns detailed filtering statistics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Get filtering statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringStatsResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/filtering/whitelist": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns all domains in the whitelist",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Get whitelist domains",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainListResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Adds one or more domains to the whitelist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Add domains to whitelist",
+                "parameters": [
+                    {
+                        "description": "Domains to add",
+                        "name": "domains",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Removes one or more domains from the whitelist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Remove domains from whitelist",
+                "parameters": [
+                    {
+                        "description": "Domains to remove",
+                        "name": "domains",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.DomainDeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Returns server health status",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns runtime statistics including memory, goroutines, and DNS metrics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Server statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ServerStatsResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github_com_jroosing_hydradns_internal_api_models.APIConfigResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.AddCNAMERequest": {
+            "type": "object",
+            "required": [
+                "alias",
+                "target"
+            ],
+            "properties": {
+                "alias": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.AddHostRequest": {
+            "type": "object",
+            "required": [
+                "ips",
+                "name"
+            ],
+            "properties": {
+                "ips": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.ConfigResponse": {
+            "type": "object",
+            "properties": {
+                "api": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.APIConfigResponse"
+                },
+                "custom_dns": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.CustomDNSConfig"
+                },
+                "filtering": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.FilteringConfig"
+                },
+                "logging": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.LoggingConfig"
+                },
+                "rate_limit": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.RateLimitConfig"
+                },
+                "server": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ServerConfigResponse"
+                },
+                "upstream": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.UpstreamConfig"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.CustomDNSCountsResponse": {
+            "type": "object",
+            "properties": {
+                "cnames": {
+                    "type": "integer"
+                },
+                "hosts": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.CustomDNSOperationResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.CustomDNSRecordsResponse": {
+            "type": "object",
+            "properties": {
+                "cnames": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "count": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.CustomDNSCountsResponse"
+                },
+                "hosts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.DNSStatsResponse": {
+            "type": "object",
+            "properties": {
+                "avg_latency_ms": {
+                    "type": "number"
+                },
+                "queries_tcp": {
+                    "type": "integer"
+                },
+                "queries_total": {
+                    "type": "integer"
+                },
+                "queries_udp": {
+                    "type": "integer"
+                },
+                "responses_error": {
+                    "type": "integer"
+                },
+                "responses_nxdomain": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.DomainDeleteRequest": {
+            "type": "object",
+            "required": [
+                "domains"
+            ],
+            "properties": {
+                "domains": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.DomainListResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.DomainRequest": {
+            "type": "object",
+            "required": [
+                "domains"
+            ],
+            "properties": {
+                "domains": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.FilteringEnabledRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.FilteringStatsResponse": {
+            "type": "object",
+            "properties": {
+                "blacklist_size": {
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "queries_allowed": {
+                    "type": "integer"
+                },
+                "queries_blocked": {
+                    "type": "integer"
+                },
+                "queries_total": {
+                    "type": "integer"
+                },
+                "whitelist_size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.ServerConfigResponse": {
+            "type": "object",
+            "properties": {
+                "enable_tcp": {
+                    "type": "boolean"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "max_concurrency": {
+                    "type": "integer"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "tcp_fallback": {
+                    "type": "boolean"
+                },
+                "upstream_socket_pool_size": {
+                    "type": "integer"
+                },
+                "workers": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.ServerStatsResponse": {
+            "type": "object",
+            "properties": {
+                "dns": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.DNSStatsResponse"
+                },
+                "filtering": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringStatsResponse"
+                },
+                "goroutines": {
+                    "type": "integer"
+                },
+                "memory_alloc_mb": {
+                    "type": "number"
+                },
+                "num_cpu": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "uptime": {
+                    "type": "string"
+                },
+                "uptime_seconds": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.StatusResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.UpdateCNAMERequest": {
+            "type": "object",
+            "required": [
+                "target"
+            ],
+            "properties": {
+                "target": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.UpdateHostRequest": {
+            "type": "object",
+            "required": [
+                "ips"
+            ],
+            "properties": {
+                "ips": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_config.BlocklistConfig": {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "description": "\"auto\", \"adblock\", \"hosts\", \"domains\"",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_config.CustomDNSConfig": {
+            "type": "object",
+            "properties": {
+                "cnames": {
+                    "description": "CNAMEs maps alias names to canonical names\nExample: \"www.homelab.local\": \"homelab.local\"",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "hosts": {
+                    "description": "Hosts maps domain names to IP addresses (IPv4 or IPv6)\nExample: \"homelab.local\": \"192.168.1.10\" or \"server.local\": \"2001:db8::1\"",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_config.FilteringConfig": {
+            "type": "object",
+            "properties": {
+                "blacklist_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "blocklists": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.BlocklistConfig"
+                    }
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "log_allowed": {
+                    "type": "boolean"
+                },
+                "log_blocked": {
+                    "type": "boolean"
+                },
+                "refresh_interval": {
+                    "type": "string"
+                },
+                "whitelist_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_config.LoggingConfig": {
+            "type": "object",
+            "properties": {
+                "extra_fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "include_pid": {
+                    "type": "boolean"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "structured": {
+                    "type": "boolean"
+                },
+                "structured_format": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_config.RateLimitConfig": {
+            "type": "object",
+            "properties": {
+                "cleanup_seconds": {
+                    "description": "CleanupSeconds is how often stale entries are cleaned up (default: 60)",
+                    "type": "number"
+                },
+                "global_burst": {
+                    "description": "GlobalBurst is the global burst size (default: 100000)",
+                    "type": "integer"
+                },
+                "global_qps": {
+                    "description": "GlobalQPS is the server-wide queries per second limit (default: 100000, 0 = disabled)",
+                    "type": "number"
+                },
+                "ip_burst": {
+                    "description": "IPBurst is the per-IP burst size (default: 6000)",
+                    "type": "integer"
+                },
+                "ip_qps": {
+                    "description": "IPQPS is the per-IP QPS limit (default: 3000, 0 = disabled)",
+                    "type": "number"
+                },
+                "max_ip_entries": {
+                    "description": "MaxIPEntries is the maximum number of tracked IPs (default: 65536)",
+                    "type": "integer"
+                },
+                "max_prefix_entries": {
+                    "description": "MaxPrefixEntries is the maximum number of tracked prefixes (default: 16384)",
+                    "type": "integer"
+                },
+                "prefix_burst": {
+                    "description": "PrefixBurst is the per-prefix burst size (default: 20000)",
+                    "type": "integer"
+                },
+                "prefix_qps": {
+                    "description": "PrefixQPS is the per-prefix QPS limit (default: 10000, 0 = disabled)",
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_config.UpstreamConfig": {
+            "type": "object",
+            "properties": {
+                "max_retries": {
+                    "description": "Max retries per upstream on timeout",
+                    "type": "integer"
+                },
+                "servers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tcp_timeout": {
+                    "description": "Timeout for TCP queries (e.g., \"5s\")",
+                    "type": "string"
+                },
+                "udp_timeout": {
+                    "description": "Timeout for UDP queries (e.g., \"3s\")",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "X-API-Key",
+            "in": "header"
+        }
+    }
+}

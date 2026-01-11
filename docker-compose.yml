@@ -1,0 +1,105 @@
+# =============================================================================
+# HydraDNS Docker Compose - Production Configuration
+# =============================================================================
+# Security-hardened deployment with proper resource limits and isolation
+
+services:
+  dns-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hydradns:latest
+    container_name: hydradns
+
+    # Port mappings (UDP, TCP, and API)
+    ports:
+      - "1053:1053/udp"
+      - "1053:1053/tcp"
+      - "8080:8080"      # REST API
+
+    # Environment variables (override config file settings)
+    # Naming pattern: HYDRADNS_<SECTION>_<KEY>
+    # e.g., server.host -> HYDRADNS_SERVER_HOST
+    environment:
+      - HYDRADNS_CONFIG=/app/config/hydradns.yaml
+      - HYDRADNS_LOGGING_LEVEL=INFO
+      # Uncomment to override specific settings:
+      # - HYDRADNS_SERVER_WORKERS=4
+      # - HYDRADNS_SERVER_HOST=0.0.0.0
+      # - HYDRADNS_SERVER_PORT=1053
+      # - HYDRADNS_UPSTREAM_SERVERS=1.1.1.1,8.8.8.8
+      # - HYDRADNS_FILTERING_ENABLED=true
+      # API configuration:
+      - HYDRADNS_API_ENABLED=true
+      - HYDRADNS_API_HOST=0.0.0.0
+      - HYDRADNS_API_PORT=8080
+      # - HYDRADNS_API_KEY=your-secret-key
+      # Rate limiting (set QPS to 0 to disable for benchmarking):
+      # - HYDRADNS_RATE_LIMIT_GLOBAL_QPS=0
+      # - HYDRADNS_RATE_LIMIT_PREFIX_QPS=0
+      # - HYDRADNS_RATE_LIMIT_IP_QPS=0
+
+    # Volume mounts
+    volumes:
+      # Optional: Mount custom config file
+      # - ./docker/hydradns.yaml:/app/config/hydradns.yaml:ro
+    # Restart policy
+    restart: unless-stopped
+
+    # =========================================================================
+    # Security Hardening
+    # =========================================================================
+
+    # Run as non-root user (matches Dockerfile USER)
+    user: "1000:1000"
+
+    # Security options
+    security_opt:
+      # Disable privilege escalation
+      - no-new-privileges:true
+
+    # Drop all capabilities, add only what's needed
+    cap_drop:
+      - ALL
+    # Uncomment if binding to port < 1024:
+    # cap_add:
+    #   - NET_BIND_SERVICE
+
+    # Read-only root filesystem (defense in depth)
+    read_only: true
+
+    # Tmpfs for writable directories (if needed)
+    # noexec,nosuid prevents execution from /tmp and setuid binaries
+    tmpfs:
+      - /tmp:size=10M,mode=1777,noexec,nosuid
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "6"
+          memory: 1024M
+        reservations:
+          cpus: "6"
+          memory: 1024M
+
+    # Healthcheck is baked into the Dockerfile using /app/dnsquery.
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Network mode (optional: use custom network for isolation)
+    # networks:
+    #   - dns-network
+
+# Optional: Custom network for isolation
+# networks:
+#   dns-network:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 172.20.0.0/24

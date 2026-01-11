@@ -3,7 +3,7 @@
 
 A high-performance, production-ready DNS server written in Go.
 
-HydraDNS is designed for speed, reliability, and ease of deployment. It supports both authoritative zone serving and recursive forwarding with intelligent caching.
+HydraDNS is designed for speed, reliability, and ease of deployment. It forwards DNS queries with intelligent caching and can answer simple custom A/AAAA/CNAME records for homelab-style hostnames.
 
 > **Development status:** HydraDNS is still under active development and not yet ready for production or real-world use. Expect breaking changes and incomplete features.
 
@@ -22,7 +22,7 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 - **Concurrent I/O** — Goroutines with non-blocking socket operations
 - **Buffer pooling** — Reuses memory allocations for reduced GC pressure
 - **Singleflight deduplication** — Prevents thundering herd on cache misses
-- **O(1) zone lookups** — Indexed zone data for fast authoritative responses
+- **O(1) custom DNS lookups** — Indexed host mappings for fast local responses
 
 ### Caching
 - **TTL-aware LRU cache** — Respects DNS record TTLs with configurable caps
@@ -36,7 +36,7 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 - **Hardened Docker deployment** — Non-root user, minimal attack surface
 
 ### Operations
-- **Zone file support** — Standard RFC 1035 master file format
+- **Custom DNS via YAML** — Simple hosts/CNAME configuration (dnsmasq-style)
 - **Strict-order failover** — Primary upstream with automatic fallback
 - **Structured logging** — JSON or key-value format for log aggregation
 - **Graceful shutdown** — Drains in-flight requests before stopping
@@ -76,6 +76,7 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 │         │ Chained        │          Resolver Chain              │
 │         │ Resolver       │                                      │
 │         │  ├─ Filtering  │◄─── Domain whitelist/blacklist       │
+│         │  ├─ Custom DNS │◄─── YAML hosts/CNAME records         │
 │         │  └─ Forwarding │◄─── Upstream DNS servers             │
 │         └───────┬────────┘                                      │
 │                 │                                               │
@@ -88,38 +89,41 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It supports
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │                    REST API (Gin)                       │    │
-│  │  /api/v1/health, /config, /zones, /filtering, /stats   │    │
+│  │  /api/v1/health, /config, /custom-dns, /filtering, /stats │ │
 │  │  Swagger UI: /swagger/                                  │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+```yaml
+server:
+  host: "0.0.0.0"
+  port: 1053
+  workers: auto
+  enable_tcp: true
+  tcp_fallback: true
 
-### Component Overview
+upstream:
+  servers:
+    - "9.9.9.9"   # Primary: Quad9
+    - "1.1.1.1"   # Fallback: Cloudflare
+    - "8.8.8.8"   # Fallback: Google
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| **UDP Server** | `internal/server/udp_server.go` | Handles UDP queries with buffer pooling and concurrency control |
-| **TCP Server** | `internal/server/tcp_server.go` | Handles TCP queries with connection pipelining and per-IP limits |
-| **Rate Limiter** | `internal/server/rate_limit.go` | 3-tier token bucket rate limiting (global → /24 prefix → IP) |
-| **Query Handler** | `internal/server/query_handler.go` | Parses requests, dispatches to resolvers, handles timeouts |
-| **Chained Resolver** | `internal/resolvers/chained.go` | Tries resolvers in order (filtering → zone → forwarding) |
-| **Filtering Resolver** | `internal/resolvers/filtering_resolver.go` | Domain filtering with whitelist/blacklist support |
-| **Zone Resolver** | `internal/resolvers/zone_resolver.go` | Serves authoritative responses from loaded zones |
-| **Forwarding Resolver** | `internal/resolvers/forwarding_resolver.go` | Forwards to upstream servers with caching and failover |
-| **Cache** | `internal/resolvers/cache.go` | TTL-aware LRU cache with negative caching support |
-| **DNS Codec** | `internal/dns/` | Wire format parsing and serialization |
-| **Zone Parser** | `internal/zone/` | RFC 1035 master file format parser |
-| **REST API** | `internal/api/` | HTTP management API with Swagger docs |
+custom_dns:
+  hosts:
+    homelab.local: 192.168.1.10
+    nas.local: 192.168.1.20
+  cnames:
+    www.homelab.local: homelab.local
 
-### Request Flow
-
-1. **Receive** — UDP/TCP server receives DNS query
-2. **Rate Limit** — Token bucket check (drops if exceeded)
+logging:
+  level: "INFO"
+  structured: false
+```
 3. **Parse** — Decode DNS wire format into structured packet
 4. **Resolve** — Try resolvers in chain order:
-   - **Zone Resolver**: Check local zones (O(1) indexed lookup)
-   - **Forwarding Resolver**: Check cache → singleflight → upstream
+  - **Custom DNS Resolver**: Check YAML-defined hosts and CNAMEs
+  - **Forwarding Resolver**: Check cache → singleflight → upstream
 5. **Respond** — Serialize and send response (truncate for UDP if needed)
 
 ---
@@ -176,6 +180,13 @@ upstream:
 zones:
   directory: "zones"
 
+custom_dns:
+  hosts:
+    homelab.local: 192.168.1.10
+    nas.local: 192.168.1.20
+  cnames:
+    www.homelab.local: homelab.local
+
 logging:
   level: "INFO"
   structured: false
@@ -202,9 +213,6 @@ See [hydradns.example.yaml](hydradns.example.yaml) for full configuration option
 HydraDNS includes utility commands for debugging and testing:
 
 ```bash
-# Print parsed zone file
-go run ./cmd/print-zone --file zones/example.zone
-
 # Query the server
 go run ./cmd/dnsquery --server 127.0.0.1:1053 --name example.com --qtype 1
 
@@ -228,29 +236,25 @@ The Docker image runs as a non-root user with minimal dependencies.
 
 ---
 
-## Zone Files
+## Custom DNS
 
-HydraDNS supports RFC 1035 master file format:
+HydraDNS answers simple A/AAAA/CNAME records from the YAML config:
 
-```zone
-$ORIGIN example.com.
-$TTL 3600
-
-@       IN  SOA   ns1.example.com. admin.example.com. (
-                  2024010101  ; Serial
-                  3600        ; Refresh
-                  900         ; Retry
-                  604800      ; Expire
-                  86400       ; Minimum TTL
-                  )
-
-@       IN  NS    ns1.example.com.
-@       IN  A     192.0.2.1
-www     IN  A     192.0.2.2
-mail    IN  MX    10 mail.example.com.
+```yaml
+custom_dns:
+  hosts:
+    homelab.local: 192.168.1.10
+    nas.local:
+      - 192.168.1.20
+      - "2001:db8::1"
+  cnames:
+    www.homelab.local: homelab.local
+    files.local: nas.local
 ```
 
-Place zone files in the `zones/` directory (or configure a custom path).
+- `hosts` entries accept a single IP or a list for round-robin responses.
+- `cnames` map aliases to canonical hostnames.
+- Queries that do not match custom DNS entries are forwarded upstream.
 
 ---
 
@@ -260,7 +264,7 @@ HydraDNS includes several performance optimizations for high-throughput DNS serv
 
 - **Buffer pooling** — UDP receive buffers and TCP length prefixes are pooled
 - **Capacity pre-allocation** — Slices are sized based on expected content
-- **Indexed zone lookups** — Zone names are indexed for O(1) access
+- **Indexed custom DNS lookups** — Hostnames are indexed for O(1) access
 - **Singleflight** — Concurrent identical queries share a single upstream request
 - **Two-write TCP** — Avoids allocation by writing length prefix and body separately
 
@@ -437,7 +441,7 @@ filtering:
 3. **Blacklist check** — If domain matches blacklist/blocklists, return NXDOMAIN
 4. **Default allow** — Unmatched domains pass to resolver chain
 
-The filtering resolver sits at the front of the resolver chain, before zone and forwarding resolvers.
+The filtering resolver sits at the front of the resolver chain, before custom DNS and forwarding resolvers.
 
 ---
 
@@ -479,8 +483,7 @@ http://localhost:8080/swagger/index.html
 | `/api/v1/health` | GET | Health check |
 | `/api/v1/stats` | GET | Server statistics (uptime, memory, goroutines) |
 | `/api/v1/config` | GET | Current configuration (sensitive fields redacted) |
-| `/api/v1/zones` | GET | List all loaded zones |
-| `/api/v1/zones/:name` | GET | Get zone details with records |
+| `/api/v1/custom-dns` | GET | List custom DNS hosts and CNAMEs |
 | `/api/v1/filtering/stats` | GET | Filtering statistics |
 | `/api/v1/filtering/enabled` | PUT | Enable/disable filtering at runtime |
 | `/api/v1/filtering/whitelist` | GET | List whitelist domains |

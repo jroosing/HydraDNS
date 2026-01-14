@@ -1,0 +1,163 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+    <button
+      type="button"
+      class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      (click)="refresh()"
+    >
+      Refresh
+    </button>
+  </div>
+
+  <app-error-alert [message]="statsStore.error()" (dismiss)="statsStore.clearError()" />
+
+  @if (statsStore.loading()) {
+    <app-loading-spinner />
+  }
+
+  @if (statsStore.stats(); as stats) {
+    <section aria-labelledby="server-stats-heading">
+      <h2 id="server-stats-heading" class="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
+        Server Status
+      </h2>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <app-stat-card
+          label="Uptime"
+          [value]="stats.uptime"
+          icon="⏱️"
+          iconBgClass="bg-green-100 dark:bg-green-900"
+        />
+        <app-stat-card
+          label="Memory Usage"
+          [value]="stats.memory_alloc_mb.toFixed(1) + ' MB'"
+          icon="💾"
+          iconBgClass="bg-purple-100 dark:bg-purple-900"
+        />
+        <app-stat-card
+          label="Goroutines"
+          [value]="stats.goroutines"
+          icon="🔄"
+          iconBgClass="bg-blue-100 dark:bg-blue-900"
+        />
+        <app-stat-card
+          label="CPUs"
+          [value]="stats.num_cpu"
+          icon="🖥️"
+          iconBgClass="bg-orange-100 dark:bg-orange-900"
+        />
+      </div>
+    </section>
+
+    <section aria-labelledby="dns-stats-heading">
+      <h2 id="dns-stats-heading" class="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
+        DNS Statistics
+      </h2>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <app-stat-card
+          label="Total Queries"
+          [value]="stats.dns.queries_total"
+          icon="📊"
+          iconBgClass="bg-blue-100 dark:bg-blue-900"
+        />
+        <app-stat-card
+          label="UDP Queries"
+          [value]="stats.dns.queries_udp"
+          subtitle="Most common protocol"
+          icon="📡"
+          iconBgClass="bg-cyan-100 dark:bg-cyan-900"
+        />
+        <app-stat-card
+          label="TCP Queries"
+          [value]="stats.dns.queries_tcp"
+          subtitle="Fallback for large responses"
+          icon="🔌"
+          iconBgClass="bg-teal-100 dark:bg-teal-900"
+        />
+        <app-stat-card
+          label="Avg Latency"
+          [value]="stats.dns.avg_latency_ms.toFixed(2) + ' ms'"
+          icon="⚡"
+          iconBgClass="bg-yellow-100 dark:bg-yellow-900"
+        />
+      </div>
+    </section>
+
+    <section aria-labelledby="response-stats-heading">
+      <h2 id="response-stats-heading" class="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
+        Response Statistics
+      </h2>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <app-stat-card
+          label="NXDOMAIN"
+          [value]="stats.dns.responses_nxdomain"
+          subtitle="Non-existent domains"
+          icon="❌"
+          iconBgClass="bg-red-100 dark:bg-red-900"
+        />
+        <app-stat-card
+          label="Errors"
+          [value]="stats.dns.responses_error"
+          subtitle="Failed queries"
+          icon="⚠️"
+          iconBgClass="bg-amber-100 dark:bg-amber-900"
+        />
+        @if (stats.filtering) {
+          <app-stat-card
+            label="Blocked"
+            [value]="stats.filtering.queries_blocked"
+            [subtitle]="filteringStore.blockedPercentage() + '% of total'"
+            icon="🛡️"
+            iconBgClass="bg-rose-100 dark:bg-rose-900"
+          />
+          <app-stat-card
+            label="Allowed"
+            [value]="stats.filtering.queries_allowed"
+            icon="✅"
+            iconBgClass="bg-emerald-100 dark:bg-emerald-900"
+          />
+        }
+      </div>
+    </section>
+
+    @if (stats.filtering) {
+      <section aria-labelledby="filtering-stats-heading">
+        <h2 id="filtering-stats-heading" class="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
+          Filtering Status
+        </h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            class="rounded-lg border p-6"
+            [class]="
+              stats.filtering.enabled
+                ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+                : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'
+            "
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="h-3 w-3 rounded-full"
+                [class]="stats.filtering.enabled ? 'bg-green-500' : 'bg-slate-400'"
+              ></div>
+              <span class="font-medium text-slate-900 dark:text-white">
+                Filtering {{ stats.filtering.enabled ? 'Enabled' : 'Disabled' }}
+              </span>
+            </div>
+          </div>
+          <app-stat-card
+            label="Whitelist Size"
+            [value]="stats.filtering.whitelist_size"
+            icon="📋"
+            iconBgClass="bg-emerald-100 dark:bg-emerald-900"
+          />
+          <app-stat-card
+            label="Blacklist Size"
+            [value]="stats.filtering.blacklist_size"
+            icon="🚫"
+            iconBgClass="bg-red-100 dark:bg-red-900"
+          />
+        </div>
+      </section>
+    }
+  }
+</div>

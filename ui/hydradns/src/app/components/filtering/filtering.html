@@ -1,0 +1,83 @@
+<div class="space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Filtering</h1>
+    <div class="flex items-center gap-4">
+      <label class="flex cursor-pointer items-center gap-2">
+        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
+          Filtering
+        </span>
+        <button
+          type="button"
+          role="switch"
+          [attr.aria-checked]="store.isEnabled()"
+          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          [class]="store.isEnabled() ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'"
+          (click)="toggleFiltering()"
+        >
+          <span
+            class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+            [class]="store.isEnabled() ? 'translate-x-6' : 'translate-x-1'"
+          ></span>
+        </button>
+        <span class="text-sm text-slate-500 dark:text-slate-400">
+          {{ store.isEnabled() ? 'Enabled' : 'Disabled' }}
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <app-error-alert [message]="store.error()" (dismiss)="store.clearError()" />
+
+  @if (store.loading()) {
+    <app-loading-spinner />
+  }
+
+  @if (store.stats(); as stats) {
+    <section aria-labelledby="filtering-overview">
+      <h2 id="filtering-overview" class="sr-only">Filtering Overview</h2>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <app-stat-card
+          label="Total Queries"
+          [value]="stats.queries_total"
+          icon="📊"
+          iconBgClass="bg-blue-100 dark:bg-blue-900"
+        />
+        <app-stat-card
+          label="Blocked"
+          [value]="stats.queries_blocked"
+          [subtitle]="store.blockedPercentage() + '% of total'"
+          icon="🛡️"
+          iconBgClass="bg-rose-100 dark:bg-rose-900"
+        />
+        <app-stat-card
+          label="Whitelist Entries"
+          [value]="store.whitelistCount()"
+          icon="✅"
+          iconBgClass="bg-emerald-100 dark:bg-emerald-900"
+        />
+        <app-stat-card
+          label="Blacklist Entries"
+          [value]="store.blacklistCount()"
+          icon="🚫"
+          iconBgClass="bg-red-100 dark:bg-red-900"
+        />
+      </div>
+    </section>
+  }
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <app-domain-list
+      title="Whitelist"
+      [domains]="store.whitelist()"
+      (addDomain)="store.addToWhitelist($event)"
+      (removeDomain)="store.removeFromWhitelist($event)"
+    />
+
+    <app-domain-list
+      title="Blacklist"
+      [domains]="store.blacklist()"
+      (addDomain)="store.addToBlacklist($event)"
+      (removeDomain)="store.removeFromBlacklist($event)"
+    />
+  </div>
+</div>

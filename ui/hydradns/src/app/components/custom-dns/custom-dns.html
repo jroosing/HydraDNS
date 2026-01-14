@@ -1,0 +1,238 @@
+<div class="space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Custom DNS</h1>
+    <button
+      type="button"
+      class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      (click)="store.loadAll()"
+    >
+      Refresh
+    </button>
+  </div>
+
+  <app-error-alert [message]="store.error()" (dismiss)="store.clearError()" />
+
+  @if (store.loading()) {
+    <app-loading-spinner />
+  }
+
+  <section aria-labelledby="custom-dns-overview">
+    <h2 id="custom-dns-overview" class="sr-only">Custom DNS Overview</h2>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <app-stat-card
+        label="Host Records"
+        [value]="store.hostsCount()"
+        icon="🏠"
+        iconBgClass="bg-blue-100 dark:bg-blue-900"
+      />
+      <app-stat-card
+        label="CNAME Records"
+        [value]="store.cnamesCount()"
+        icon="🔗"
+        iconBgClass="bg-purple-100 dark:bg-purple-900"
+      />
+      <app-stat-card
+        label="Total Entries"
+        [value]="store.totalCount()"
+        icon="📝"
+        iconBgClass="bg-green-100 dark:bg-green-900"
+      />
+    </div>
+  </section>
+
+  <!-- Tabs -->
+  <div class="border-b border-slate-200 dark:border-slate-700">
+    <nav class="-mb-px flex gap-4" aria-label="Tabs">
+      <button
+        type="button"
+        class="border-b-2 px-1 py-3 text-sm font-medium transition-colors"
+        [class]="
+          activeTab() === 'hosts'
+            ? 'border-blue-600 text-blue-600'
+            : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:text-slate-400'
+        "
+        (click)="activeTab.set('hosts')"
+      >
+        Host Records
+      </button>
+      <button
+        type="button"
+        class="border-b-2 px-1 py-3 text-sm font-medium transition-colors"
+        [class]="
+          activeTab() === 'cnames'
+            ? 'border-blue-600 text-blue-600'
+            : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:text-slate-400'
+        "
+        (click)="activeTab.set('cnames')"
+      >
+        CNAME Records
+      </button>
+    </nav>
+  </div>
+
+  <!-- Host Records Tab -->
+  @if (activeTab() === 'hosts') {
+    <div class="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div class="border-b border-slate-200 p-4 dark:border-slate-700">
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Add Host Record</h3>
+        <form (submit)="handleAddHost($event)" class="mt-4 flex flex-wrap gap-4">
+          <input
+            type="text"
+            [(ngModel)]="newHostName"
+            name="hostName"
+            placeholder="Hostname (e.g., myserver.local)"
+            class="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            aria-label="Hostname"
+          />
+          <input
+            type="text"
+            [(ngModel)]="newHostIPs"
+            name="hostIPs"
+            placeholder="IP addresses (comma-separated)"
+            class="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            aria-label="IP addresses"
+          />
+          <button
+            type="submit"
+            class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            [disabled]="!canAddHost()"
+          >
+            Add Host
+          </button>
+        </form>
+      </div>
+
+      <div class="max-h-96 overflow-y-auto">
+        @if (filteredHosts().length === 0) {
+          <div class="p-8 text-center text-slate-500 dark:text-slate-400">
+            No host records configured
+          </div>
+        } @else {
+          <div class="divide-y divide-slate-200 dark:divide-slate-700">
+            @for (host of filteredHosts(); track host.name) {
+              <div class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                <div>
+                  <p class="font-mono font-medium text-slate-900 dark:text-white">
+                    {{ host.name }}
+                  </p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    → {{ host.ips.join(', ') }}
+                  </p>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    class="rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"
+                    (click)="editHost(host)"
+                    [attr.aria-label]="'Edit ' + host.name"
+                  >
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded p-2 text-slate-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40"
+                    (click)="store.deleteHost(host.name)"
+                    [attr.aria-label]="'Delete ' + host.name"
+                  >
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path
+                        fill-rule="evenodd"
+                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- CNAME Records Tab -->
+  @if (activeTab() === 'cnames') {
+    <div class="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div class="border-b border-slate-200 p-4 dark:border-slate-700">
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Add CNAME Record</h3>
+        <form (submit)="handleAddCname($event)" class="mt-4 flex flex-wrap gap-4">
+          <input
+            type="text"
+            [(ngModel)]="newCnameAlias"
+            name="cnameAlias"
+            placeholder="Alias (e.g., www.example.local)"
+            class="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            aria-label="CNAME alias"
+          />
+          <input
+            type="text"
+            [(ngModel)]="newCnameTarget"
+            name="cnameTarget"
+            placeholder="Target (e.g., example.local)"
+            class="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            aria-label="CNAME target"
+          />
+          <button
+            type="submit"
+            class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            [disabled]="!canAddCname()"
+          >
+            Add CNAME
+          </button>
+        </form>
+      </div>
+
+      <div class="max-h-96 overflow-y-auto">
+        @if (filteredCnames().length === 0) {
+          <div class="p-8 text-center text-slate-500 dark:text-slate-400">
+            No CNAME records configured
+          </div>
+        } @else {
+          <div class="divide-y divide-slate-200 dark:divide-slate-700">
+            @for (cname of filteredCnames(); track cname.alias) {
+              <div class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                <div>
+                  <p class="font-mono font-medium text-slate-900 dark:text-white">
+                    {{ cname.alias }}
+                  </p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    → {{ cname.target }}
+                  </p>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    class="rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"
+                    (click)="editCname(cname)"
+                    [attr.aria-label]="'Edit ' + cname.alias"
+                  >
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded p-2 text-slate-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40"
+                    (click)="store.deleteCname(cname.alias)"
+                    [attr.aria-label]="'Delete ' + cname.alias"
+                  >
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path
+                        fill-rule="evenodd"
+                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

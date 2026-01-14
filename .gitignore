@@ -12,10 +12,11 @@ wheels/
 queries.txt
 
 # Go build artifacts
-hydradns
+bin/
 dnsquery
 print-zone
 bench
 *.test
 *.out
 *.prof
+dist

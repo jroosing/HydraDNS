@@ -44,6 +44,11 @@ func New(cfg *config.Config, logger *slog.Logger) *Server {
 	h := handlers.New(cfg, logger)
 	RegisterRoutes(engine, h, cfg)
 
+	// Mount SPA (frontend). When built with the 'ui' build tag, this serves
+	// the embedded Angular app with SPA fallback. Otherwise, a lightweight
+	// placeholder is mounted that explains the UI is not bundled.
+	MountSPA(engine, logger)
+
 	addr := net.JoinHostPort(cfg.API.Host, strconv.Itoa(cfg.API.Port))
 	httpServer := &http.Server{
 		Addr:              addr,

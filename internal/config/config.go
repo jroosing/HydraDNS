@@ -94,8 +94,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.ip_burst", 10000)
 
 	// Management API defaults
-	// Default to disabled and bound to localhost for safety.
-	v.SetDefault("api.enabled", false)
+	// Enabled by default, bound to localhost for safety.
+	v.SetDefault("api.enabled", true)
 	v.SetDefault("api.host", "127.0.0.1")
 	v.SetDefault("api.port", 8080)
 	v.SetDefault("api.api_key", "")

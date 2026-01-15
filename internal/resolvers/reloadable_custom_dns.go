@@ -89,4 +89,3 @@ func (r *ReloadableCustomDNSResolver) ContainsDomain(name string) bool {
 	}
 	return r.resolver.ContainsDomain(name)
 }
-

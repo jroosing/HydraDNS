@@ -31,6 +31,7 @@ func NormalizeName(name string) string {
 //   - Each label max 63 bytes
 //   - Total encoded name max 255 bytes
 //   - ASCII only (no IDN/punycode handled here)
+//
 // EncodeName encodes a domain name to DNS wire format with compression support (RFC 1035 Section 4.1.4).
 //
 // DNS names are encoded as a sequence of labels, each preceded by a length byte.

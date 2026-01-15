@@ -70,7 +70,7 @@ func TestPacket_MarshalAndParse_Response(t *testing.T) {
 	assert.NotEqual(t, 0, parsed.Header.Flags&dns.QRFlag, "QR flag should be set")
 	assert.NotEqual(t, 0, parsed.Header.Flags&dns.AAFlag, "AA flag should be set")
 	require.Len(t, parsed.Answers, 1, "Should have 1 answer")
-	
+
 	// Type assert to IPRecord to check fields
 	ipRec, ok := parsed.Answers[0].(*dns.IPRecord)
 	require.True(t, ok, "Answer should be an IPRecord")

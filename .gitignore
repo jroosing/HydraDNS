@@ -20,3 +20,4 @@ bench
 *.out
 *.prof
 dist
+hydradns.db

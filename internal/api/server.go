@@ -15,6 +15,7 @@ import (
 	"github.com/jroosing/hydradns/internal/api/handlers"
 	"github.com/jroosing/hydradns/internal/api/middleware"
 	"github.com/jroosing/hydradns/internal/config"
+	"github.com/jroosing/hydradns/internal/database"
 )
 
 // Server is the management REST API server.
@@ -25,13 +26,16 @@ import (
 // Security note: do not expose the API to untrusted networks without authentication.
 type Server struct {
 	cfg        *config.Config
+	db         *database.DB
 	logger     *slog.Logger
 	handler    *handlers.Handler
 	engine     *gin.Engine
 	httpServer *http.Server
 }
 
-func New(cfg *config.Config, logger *slog.Logger) *Server {
+// New creates a new API server with the given configuration and database.
+// The database can be nil for testing purposes.
+func New(cfg *config.Config, db *database.DB, logger *slog.Logger) *Server {
 	if cfg == nil {
 		panic("api.New: cfg is nil")
 	}
@@ -41,12 +45,10 @@ func New(cfg *config.Config, logger *slog.Logger) *Server {
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.SlogRequestLogger(logger))
 
-	h := handlers.New(cfg, logger)
+	h := handlers.New(cfg, db, logger)
 	RegisterRoutes(engine, h, cfg)
 
-	// Mount SPA (frontend). When built with the 'ui' build tag, this serves
-	// the embedded Angular app with SPA fallback. Otherwise, a lightweight
-	// placeholder is mounted that explains the UI is not bundled.
+	// Mount SPA (frontend) - always enabled, web UI is mandatory
 	MountSPA(engine, logger)
 
 	addr := net.JoinHostPort(cfg.API.Host, strconv.Itoa(cfg.API.Port))
@@ -59,7 +61,7 @@ func New(cfg *config.Config, logger *slog.Logger) *Server {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	return &Server{cfg: cfg, logger: logger, handler: h, engine: engine, httpServer: httpServer}
+	return &Server{cfg: cfg, db: db, logger: logger, handler: h, engine: engine, httpServer: httpServer}
 }
 
 func (s *Server) Addr() string {

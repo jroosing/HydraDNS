@@ -2,8 +2,8 @@ package models
 
 // CustomDNSRecordsResponse is the response for GET /custom-dns.
 type CustomDNSRecordsResponse struct {
-	Hosts  map[string][]string `json:"hosts"`
-	CNAMEs map[string]string   `json:"cnames"`
+	Hosts  map[string][]string     `json:"hosts"`
+	CNAMEs map[string]string       `json:"cnames"`
 	Count  CustomDNSCountsResponse `json:"count"`
 }
 

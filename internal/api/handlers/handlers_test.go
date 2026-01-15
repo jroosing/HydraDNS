@@ -31,7 +31,7 @@ func createTestHandler(_ *testing.T) *handlers.Handler {
 			Servers: []string{"8.8.8.8"},
 		},
 	}
-	return handlers.New(cfg, nil)
+	return handlers.New(cfg, nil, nil)
 }
 
 func performRequest(r http.Handler, method, path string, body string) *httptest.ResponseRecorder {
@@ -327,7 +327,7 @@ func TestReloadConfig_NotImplemented(t *testing.T) {
 
 func TestHandler_New(t *testing.T) {
 	cfg := &config.Config{}
-	h := handlers.New(cfg, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	assert.NotNil(t, h)
 }
@@ -350,4 +350,3 @@ func TestHandler_SetPolicyEngine(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, resp.FilteringStats)
 }
-

@@ -36,8 +36,8 @@ func (cet CacheEntryType) String() string {
 // cacheEntry holds a cached value with expiration and LRU tracking.
 type cacheEntry[V any] struct {
 	value     V
-	cachedAt  time.Time      // When the entry was cached
-	expiresAt time.Time      // When the entry expires
+	cachedAt  time.Time // When the entry was cached
+	expiresAt time.Time // When the entry expires
 	entryType CacheEntryType
 	elem      *list.Element // Position in LRU list
 }

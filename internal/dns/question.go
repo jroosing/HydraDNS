@@ -11,6 +11,7 @@ import (
 //   - Name: The domain name being queried
 //   - Type: The record type requested (A, AAAA, MX, etc.)
 //   - Class: Usually ClassIN (Internet)
+//
 // Question represents a DNS question (RFC 1035 Section 4.1.2).
 // Each DNS query contains one or more questions asking for records of a specific type.
 type Question struct {

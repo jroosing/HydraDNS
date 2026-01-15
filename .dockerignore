@@ -92,7 +92,6 @@ tools/
 
 # Example/sample files
 *.example.*
-hydradns.example.yaml
 
 # Security: Never include these
 *.pem

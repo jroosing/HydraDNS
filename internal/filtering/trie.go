@@ -16,9 +16,9 @@ import (
 // Example: "ads.example.com" is stored as ["com", "example", "ads"].
 //
 // This allows matching "*.example.com" (all subdomains of example.com) by:
-//   1. Lookup fails at "ads" level
-//   2. But succeeds at "example.com" level with wildcard flag
-//   3. All queries for *.example.com are blocked
+//  1. Lookup fails at "ads" level
+//  2. But succeeds at "example.com" level with wildcard flag
+//  3. All queries for *.example.com are blocked
 //
 // Memory Efficiency:
 //

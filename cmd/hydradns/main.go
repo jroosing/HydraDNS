@@ -12,9 +12,14 @@ import (
 	"time"
 
 	"github.com/jroosing/hydradns/internal/api"
-	"github.com/jroosing/hydradns/internal/config"
+	"github.com/jroosing/hydradns/internal/database"
 	"github.com/jroosing/hydradns/internal/logging"
 	"github.com/jroosing/hydradns/internal/server"
+)
+
+const (
+	// DefaultDatabasePath is the default location for the HydraDNS database.
+	DefaultDatabasePath = "hydradns.db"
 )
 
 func main() {
@@ -26,21 +31,30 @@ func main() {
 
 func run() error {
 	var (
-		configPath = flag.String("config", "", "Path to YAML configuration file (or set HYDRADNS_CONFIG)")
-		host       = flag.String("host", "", "Override bind host")
-		port       = flag.Int("port", 0, "Override bind port")
-		workers    = flag.Int("workers", -1, "Clamp GOMAXPROCS (can only reduce; -1 means default/auto)")
-		noTCP      = flag.Bool("no-tcp", false, "Disable TCP server")
-		jsonLogs   = flag.Bool("json-logs", false, "Enable JSON structured logging")
-		debug      = flag.Bool("debug", false, "Enable debug logging")
+		dbPath   = flag.String("db", DefaultDatabasePath, "Path to SQLite database file")
+		host     = flag.String("host", "", "Override DNS server bind host")
+		port     = flag.Int("port", 0, "Override DNS server bind port")
+		workers  = flag.Int("workers", -1, "Clamp GOMAXPROCS (can only reduce; -1 means default/auto)")
+		noTCP    = flag.Bool("no-tcp", false, "Disable TCP server")
+		jsonLogs = flag.Bool("json-logs", false, "Enable JSON structured logging")
+		debug    = flag.Bool("debug", false, "Enable debug logging")
 	)
 	flag.Parse()
 
-	cfg, err := config.Load(config.ResolveConfigPath(*configPath))
+	// Open database (creates with defaults if new)
+	db, err := database.Open(*dbPath)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	// Export database config to config.Config for compatibility
+	cfg, err := db.ExportToConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config from database: %w", err)
 	}
 
+	// Apply command-line overrides (these don't persist to database)
 	if *host != "" {
 		cfg.Server.Host = *host
 	}
@@ -48,7 +62,8 @@ func run() error {
 		cfg.Server.Port = *port
 	}
 	if *workers >= 0 {
-		cfg.Server.Workers = config.WorkerSetting{Mode: config.WorkersFixed, Value: *workers}
+		cfg.Server.Workers.Mode = 1 // WorkersFixed
+		cfg.Server.Workers.Value = *workers
 	}
 	if *noTCP {
 		cfg.Server.EnableTCP = false
@@ -69,6 +84,7 @@ func run() error {
 		ExtraFields:      cfg.Logging.ExtraFields,
 	})
 	logger.Info("HydraDNS starting",
+		"database", *dbPath,
 		"host", cfg.Server.Host,
 		"port", cfg.Server.Port,
 		"workers", cfg.Server.Workers.String(),
@@ -89,30 +105,26 @@ func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	var apiSrv *api.Server
-	if cfg.API.Enabled {
-		apiSrv = api.New(cfg, logger)
-		logger.Info("management API starting", "addr", apiSrv.Addr())
+	// API server is always enabled (web UI is mandatory)
+	apiSrv := api.New(cfg, db, logger)
+	logger.Info("web UI and API starting", "addr", apiSrv.Addr())
 
-		go func() {
-			serveErr := apiSrv.ListenAndServe()
-			if serveErr == nil || errors.Is(serveErr, http.ErrServerClosed) {
-				return
-			}
-			logger.Error("management API error", "err", serveErr)
-			cancel()
-		}()
-	}
+	go func() {
+		serveErr := apiSrv.ListenAndServe()
+		if serveErr == nil || errors.Is(serveErr, http.ErrServerClosed) {
+			return
+		}
+		logger.Error("API server error", "err", serveErr)
+		cancel()
+	}()
 
 	runner := server.NewRunner(logger)
 	err = runner.RunWithContext(ctx, cfg)
 
-	if apiSrv != nil {
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_ = apiSrv.Shutdown(shutdownCtx)
-		shutdownCancel()
-		logger.Info("management API stopped")
-	}
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_ = apiSrv.Shutdown(shutdownCtx)
+	shutdownCancel()
+	logger.Info("web UI and API stopped")
 
 	if err != nil {
 		return fmt.Errorf("server exited with error: %w", err)

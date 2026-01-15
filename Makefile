@@ -18,7 +18,7 @@ help:
 	@echo "  make vet           Run go vet"
 	@echo "  make build         Build binaries"
 	@echo "  make build-ui-embedded  Build with embedded Angular UI"
-	@echo "  make run           Run the built binary with hydradns.yaml"
+	@echo "  make run           Run the built binary with default database"
 	@echo "  make check         Run fmt + vet + test"
 	@echo ""
 	@echo "Documentation:"
@@ -55,10 +55,11 @@ build:
 	go build -o bin/hydradns ./cmd/hydradns
 
 run: build
-	./bin/hydradns --config hydradns.yaml
+	./bin/hydradns
 
 build-ui-embedded: ui-build
 	@echo "Copying Angular dist to internal/api/dist..."
+	mkdir -p internal/api/dist
 	rm -rf internal/api/dist/*
 	cp -R ui/hydradns/dist/hydradns/* internal/api/dist/
 	@echo "Building Go binary with embedded UI..."

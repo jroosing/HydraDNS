@@ -35,15 +35,20 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It forwards
 - **Response validation** — Verifies upstream responses match requests
 - **Hardened Docker deployment** — Non-root user, minimal attack surface
 
+### Configuration & Management
+- **SQLite database** — All configuration stored in a single database file
+- **Web UI** — Built-in Angular-based management interface
+- **REST API** — Gin-based HTTP API for runtime configuration
+- **OpenAPI/Swagger** — Interactive API documentation at `/swagger/`
+- **Zero-config startup** — Sensible defaults, just run the binary
+
 ### Operations
-- **Custom DNS via YAML** — Simple hosts/CNAME configuration (dnsmasq-style)
+- **Custom DNS** — Simple hosts/CNAME configuration (dnsmasq-style)
 - **Strict-order failover** — Primary upstream with automatic fallback
 - **Structured logging** — JSON or key-value format for log aggregation
 - **Graceful shutdown** — Drains in-flight requests before stopping
 
-### Management API
-- **REST API** — Gin-based HTTP API for runtime configuration
-- **OpenAPI/Swagger** — Interactive API documentation at `/swagger/`
+### DNS API
 - **Runtime control** — Toggle filtering, add domains, view stats without restart
 - **API key auth** — Optional header-based authentication
 
@@ -76,7 +81,7 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It forwards
 │         │ Chained        │          Resolver Chain              │
 │         │ Resolver       │                                      │
 │         │  ├─ Filtering  │◄─── Domain whitelist/blacklist       │
-│         │  ├─ Custom DNS │◄─── YAML hosts/CNAME records         │
+│         │  ├─ Custom DNS │◄─── Database hosts/CNAME records     │
 │         │  └─ Forwarding │◄─── Upstream DNS servers             │
 │         └───────┬────────┘                                      │
 │                 │                                               │
@@ -88,41 +93,25 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It forwards
 │  └──────────┘        └──────────────┘                           │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    REST API (Gin)                       │    │
-│  │  /api/v1/health, /config, /custom-dns, /filtering, /stats │ │
+│  │                    Web UI + REST API                    │    │
+│  │  /api/v1/health, /config, /custom-dns, /filtering       │    │
 │  │  Swagger UI: /swagger/                                  │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                    SQLite Database                      │    │
+│  │  Configuration, Custom DNS, Filtering Rules             │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
-```yaml
-server:
-  host: "0.0.0.0"
-  port: 1053
-  workers: auto
-  enable_tcp: true
-  tcp_fallback: true
 
-upstream:
-  servers:
-    - "9.9.9.9"   # Primary: Quad9
-    - "1.1.1.1"   # Fallback: Cloudflare
-    - "8.8.8.8"   # Fallback: Google
-
-custom_dns:
-  hosts:
-    homelab.local: 192.168.1.10
-    nas.local: 192.168.1.20
-  cnames:
-    www.homelab.local: homelab.local
-
-logging:
-  level: "INFO"
-  structured: false
-```
+**Request Flow:**
+1. **Receive** — UDP/TCP packet arrives at transport layer
+2. **Rate limit** — Token bucket check before parsing
 3. **Parse** — Decode DNS wire format into structured packet
 4. **Resolve** — Try resolvers in chain order:
-  - **Custom DNS Resolver**: Check YAML-defined hosts and CNAMEs
+  - **Custom DNS Resolver**: Check database-defined hosts and CNAMEs
   - **Forwarding Resolver**: Check cache → singleflight → upstream
 5. **Respond** — Serialize and send response (truncate for UDP if needed)
 
@@ -130,7 +119,7 @@ logging:
 
 ## Requirements
 
-- Go 1.24+
+- Go 1.25+
 
 ---
 
@@ -140,97 +129,121 @@ logging:
 # Run tests
 go test ./...
 
-# Start server with default config
+# Start server (creates hydradns.db with defaults on first run)
 go run ./cmd/hydradns
 
-# Start with explicit config
-go run ./cmd/hydradns --config hydradns.example.yaml
+# Start with custom database path
+go run ./cmd/hydradns --db /path/to/hydradns.db
 
 # Start with debug logging
 go run ./cmd/hydradns --debug
+
+# Override DNS server settings (runtime only, not persisted)
+go run ./cmd/hydradns --host 0.0.0.0 --port 53
 ```
+
+On first run, HydraDNS creates a SQLite database (`hydradns.db`) with sensible defaults:
+- DNS server: `0.0.0.0:1053` (UDP + TCP)
+- Upstream servers: `9.9.9.9`, `1.1.1.1`, `8.8.8.8`
+- Web UI + API: `0.0.0.0:8080`
+- Filtering: Disabled by default
+
+Access the web UI at **http://localhost:8080** to configure everything else.
 
 ---
 
 ## Configuration
 
-HydraDNS uses YAML configuration with the following priority:
+HydraDNS stores all configuration in a SQLite database file. On first startup, the database is created with sensible defaults.
 
-1. Command-line arguments
-2. YAML config file
-3. Environment variables
-4. Default values
+### Database Location
 
-### Example Configuration
+By default, the database is created as `hydradns.db` in the current directory. Override with:
 
-```yaml
-server:
-  host: "0.0.0.0"
-  port: 1053
-  workers: auto
-  enable_tcp: true
-  tcp_fallback: true
+```bash
+# Command-line flag
+./hydradns --db /var/lib/hydradns/config.db
 
-upstream:
-  servers:
-    - "9.9.9.9"   # Primary: Quad9
-    - "1.1.1.1"   # Fallback: Cloudflare
-    - "8.8.8.8"   # Fallback: Google
-
-zones:
-  directory: "zones"
-
-custom_dns:
-  hosts:
-    homelab.local: 192.168.1.10
-    nas.local: 192.168.1.20
-  cnames:
-    www.homelab.local: homelab.local
-
-logging:
-  level: "INFO"
-  structured: false
+# Docker volume mount
+docker run -v hydradns-data:/data hydradns --db /data/hydradns.db
 ```
 
-See [hydradns.example.yaml](hydradns.example.yaml) for full configuration options.
+### Default Configuration
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| DNS Host | `0.0.0.0` | Bind address for DNS |
+| DNS Port | `1053` | DNS port (UDP + TCP) |
+| Workers | `auto` | Number of worker goroutines |
+| TCP Enabled | `true` | Enable TCP server |
+| TCP Fallback | `true` | Retry truncated responses over TCP |
+| Upstream Servers | `9.9.9.9, 1.1.1.1, 8.8.8.8` | DNS forwarders |
+| API Host | `0.0.0.0` | Web UI/API bind address |
+| API Port | `8080` | Web UI/API port |
+| Filtering | `false` | Domain filtering disabled |
 
 ### Command-Line Options
 
 | Flag | Description |
 |------|-------------|
-| `--config` | Path to YAML config file |
-| `--host` | Override bind address |
-| `--port` | Override bind port |
+| `--db` | Path to SQLite database file (default: `hydradns.db`) |
+| `--host` | Override DNS bind address (runtime only) |
+| `--port` | Override DNS bind port (runtime only) |
 | `--workers` | Set worker count (clamps GOMAXPROCS) |
 | `--no-tcp` | Disable TCP server |
 | `--json-logs` | Enable JSON structured logging |
 | `--debug` | Enable debug logging |
 
----
+### Configuring via Web UI
 
-## Tools
+After starting HydraDNS, open **http://localhost:8080** in your browser to:
 
-HydraDNS includes utility commands for debugging and testing:
+- Add/remove custom DNS records (A, AAAA, CNAME)
+- Configure upstream DNS servers
+- Manage domain filtering (whitelist, blacklist, blocklists)
+- View server statistics and health
 
-```bash
-# Query the server
-go run ./cmd/dnsquery --server 127.0.0.1:1053 --name example.com --qtype 1
-
-# Benchmark
-go run ./cmd/bench --server 127.0.0.1:1053 --name example.com \
-    --concurrency 200 --requests 20000
-```
+All changes are persisted to the database immediately.
 
 ---
 
 ## Docker
 
+### Quick Start
+
 ```bash
-# Build and run
+# Build and run with Docker Compose
 docker compose up --build
 
-# The container includes a health check using dnsquery
+# Or build manually
+docker build -f Dockerfile.ui -t hydradns .
+docker run -p 1053:1053/udp -p 1053:1053/tcp -p 8080:8080 \
+  -v hydradns-data:/data hydradns
 ```
+
+### Persistent Storage
+
+The SQLite database should be stored on a volume:
+
+```yaml
+# docker-compose.yml
+services:
+  hydradns:
+    volumes:
+      - hydradns-data:/data
+    environment:
+      - HYDRADNS_DB=/data/hydradns.db
+
+volumes:
+  hydradns-data:
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `HYDRADNS_DB` | Path to SQLite database file |
+| `HYDRADNS_LOGGING_LEVEL` | Log level (DEBUG, INFO, WARN, ERROR) |
 
 The Docker image runs as a non-root user with minimal dependencies.
 
@@ -238,23 +251,33 @@ The Docker image runs as a non-root user with minimal dependencies.
 
 ## Custom DNS
 
-HydraDNS answers simple A/AAAA/CNAME records from the YAML config:
+Add custom A/AAAA/CNAME records via the Web UI or REST API:
 
-```yaml
-custom_dns:
-  hosts:
-    homelab.local: 192.168.1.10
-    nas.local:
-      - 192.168.1.20
-      - "2001:db8::1"
-  cnames:
-    www.homelab.local: homelab.local
-    files.local: nas.local
+### Via Web UI
+
+1. Open **http://localhost:8080**
+2. Navigate to **Custom DNS**
+3. Add hosts (hostname → IP) or CNAMEs (alias → target)
+
+### Via REST API
+
+```bash
+# Add an A record
+curl -X POST http://localhost:8080/api/v1/custom-dns/hosts \
+  -H "Content-Type: application/json" \
+  -d '{"hostname": "homelab.local", "ip_address": "192.168.1.10"}'
+
+# Add a CNAME
+curl -X POST http://localhost:8080/api/v1/custom-dns/cnames \
+  -H "Content-Type: application/json" \
+  -d '{"alias": "www.homelab.local", "target": "homelab.local"}'
+
+# List all custom DNS records
+curl http://localhost:8080/api/v1/custom-dns
 ```
 
-- `hosts` entries accept a single IP or a list for round-robin responses.
-- `cnames` map aliases to canonical hostnames.
 - Queries that do not match custom DNS entries are forwarded upstream.
+- Multiple IPs can be added for the same hostname (round-robin).
 
 ---
 
@@ -364,7 +387,12 @@ HydraDNS includes a domain filtering system for ad blocking, malware protection,
 
 ### Quick Start
 
-Enable filtering with environment variables:
+1. Open **http://localhost:8080**
+2. Navigate to **Filtering**
+3. Enable filtering
+4. Add blocklists (e.g., Hagezi, StevenBlack)
+
+Or via environment variables for initial setup:
 
 ```bash
 # Enable filtering with Hagezi blocklist
@@ -372,38 +400,6 @@ export HYDRADNS_FILTERING_ENABLED=true
 export HYDRADNS_FILTERING_BLOCKLIST_URL="https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt"
 
 go run ./cmd/hydradns
-```
-
-### Configuration
-
-```yaml
-filtering:
-  # Enable domain filtering (default: false)
-  enabled: true
-
-  # Log blocked queries (default: true)
-  log_blocked: true
-
-  # Custom whitelist (always allowed)
-  whitelist_domains:
-    - "safe.example.com"
-
-  # Custom blacklist (always blocked)
-  blacklist_domains:
-    - "ads.example.com"
-    - "tracker.example.com"
-
-  # Remote blocklists
-  blocklists:
-    - name: "hagezi-light"
-      url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt"
-      format: "adblock"
-    - name: "stevenblack"
-      url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-      format: "hosts"
-
-  # Refresh interval for remote blocklists (default: 24h)
-  refresh_interval: "24h"
 ```
 
 ### Supported Blocklist Formats
@@ -447,30 +443,11 @@ The filtering resolver sits at the front of the resolver chain, before custom DN
 
 ## REST API
 
-HydraDNS includes an optional REST API for runtime management and monitoring. The API is built with Gin and includes interactive Swagger documentation.
-
-### Enabling the API
-
-```yaml
-api:
-  enabled: true
-  host: "127.0.0.1"  # Bind address (use 0.0.0.0 for all interfaces)
-  port: 8080
-  api_key: "your-secret-key"  # Optional, leave empty for no auth
-```
-
-Or via environment variables:
-
-```bash
-export HYDRADNS_API_ENABLED=true
-export HYDRADNS_API_HOST=127.0.0.1
-export HYDRADNS_API_PORT=8080
-export HYDRADNS_API_KEY=your-secret-key
-```
+HydraDNS includes a REST API for runtime management and monitoring. The API is built with Gin and includes interactive Swagger documentation.
 
 ### Swagger UI
 
-When the API is enabled, interactive documentation is available at:
+Interactive documentation is available at:
 
 ```
 http://localhost:8080/swagger/index.html
@@ -493,7 +470,7 @@ http://localhost:8080/swagger/index.html
 
 ### Authentication
 
-If `api_key` is configured, all requests must include the `X-API-Key` header:
+Configure an API key via the Web UI under **Settings** → **API**. Once set, include it in requests:
 
 ```bash
 curl -H "X-Api-Key: your-secret-key" http://localhost:8080/api/v1/health
@@ -517,14 +494,6 @@ curl -X POST -H "X-Api-Key: secret" -H "Content-Type: application/json" \
 curl -X PUT -H "X-Api-Key: secret" -H "Content-Type: application/json" \
   -d '{"enabled": false}' \
   http://localhost:8080/api/v1/filtering/enabled
-```
-
-### Generating API Docs
-
-Swagger documentation is generated from source code annotations:
-
-```bash
-make docs
 ```
 
 ---
@@ -589,7 +558,6 @@ Please include:
 - HydraDNS version or commit hash
 - Steps to reproduce
 - Expected vs. actual behavior
-- Configuration (with sensitive values redacted)
 - Log output (with debug flag if possible)
 
 ---

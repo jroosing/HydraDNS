@@ -73,10 +73,10 @@ func TestOpaqueRecord_TypedData(t *testing.T) {
 	// Test that opaque records preserve typed data (e.g. MX records)
 	testData := []byte{0x00, 0x0a, 0x04, 'm', 'a', 'i', 'l'}
 	r := dns.NewOpaqueRecord(
-dns.NewRRHeader("example.com.", dns.ClassIN, 300),
-dns.TypeMX,
-testData,
-)
+		dns.NewRRHeader("example.com.", dns.ClassIN, 300),
+		dns.TypeMX,
+		testData,
+	)
 
 	assert.Equal(t, dns.TypeMX, r.Type())
 
@@ -84,4 +84,3 @@ testData,
 	require.NoError(t, err)
 	assert.Equal(t, testData, rdata)
 }
-

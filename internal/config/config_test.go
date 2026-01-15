@@ -1,8 +1,6 @@
 package config_test
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/jroosing/hydradns/internal/config"
@@ -11,247 +9,151 @@ import (
 )
 
 // =============================================================================
-// Configuration Loading Tests
+// Default Configuration Tests
 // =============================================================================
 
-func TestLoad_DefaultValues(t *testing.T) {
-	// Load with empty path to get defaults
-	cfg, err := config.Load("")
-	require.NoError(t, err, "Load should succeed with no config file")
+func TestDefault_ReturnsValidConfig(t *testing.T) {
+	cfg := config.Default()
+	require.NotNil(t, cfg, "Default should return non-nil config")
 
 	// Check server defaults
 	assert.Equal(t, "0.0.0.0", cfg.Server.Host, "Default host should be 0.0.0.0")
 	assert.Equal(t, 1053, cfg.Server.Port, "Default port should be 1053")
 	assert.True(t, cfg.Server.EnableTCP, "TCP should be enabled by default")
+	assert.True(t, cfg.Server.TCPFallback, "TCP fallback should be enabled by default")
+	assert.Equal(t, "auto", cfg.Server.WorkersRaw, "Workers should default to auto")
 
 	// Check upstream defaults
-	assert.Contains(t, cfg.Upstream.Servers, "8.8.8.8", "Default upstream should include 8.8.8.8")
+	assert.Equal(t, []string{"9.9.9.9", "1.1.1.1", "8.8.8.8"}, cfg.Upstream.Servers)
+	assert.Equal(t, "3s", cfg.Upstream.UDPTimeout)
+	assert.Equal(t, "5s", cfg.Upstream.TCPTimeout)
+	assert.Equal(t, 3, cfg.Upstream.MaxRetries)
+
+	// Check logging defaults
+	assert.Equal(t, "INFO", cfg.Logging.Level)
+	assert.False(t, cfg.Logging.Structured)
+	assert.Equal(t, "json", cfg.Logging.StructuredFormat)
 
 	// Check filtering defaults
 	assert.False(t, cfg.Filtering.Enabled, "Filtering should be disabled by default")
+	assert.True(t, cfg.Filtering.LogBlocked)
+	assert.Equal(t, "24h", cfg.Filtering.RefreshInterval)
 
-	// Check API defaults
-	assert.False(t, cfg.API.Enabled, "API should be disabled by default")
-	assert.Equal(t, "127.0.0.1", cfg.API.Host, "API host should default to localhost")
-}
-
-func TestLoad_FromYAMLFile(t *testing.T) {
-	configContent := `
-server:
-  host: "192.168.1.1"
-  port: 5353
-  workers: 4
-
-upstream:
-  servers:
-    - "1.1.1.1"
-    - "9.9.9.9"
-
-logging:
-  level: DEBUG
-
-filtering:
-  enabled: true
-`
-	tmpFile := filepath.Join(t.TempDir(), "test-config.yaml")
-	err := os.WriteFile(tmpFile, []byte(configContent), 0644)
-	require.NoError(t, err)
-
-	cfg, err := config.Load(tmpFile)
-	require.NoError(t, err)
-
-	assert.Equal(t, "192.168.1.1", cfg.Server.Host)
-	assert.Equal(t, 5353, cfg.Server.Port)
-	assert.Equal(t, config.WorkersFixed, cfg.Server.Workers.Mode)
-	assert.Equal(t, 4, cfg.Server.Workers.Value)
-	assert.Equal(t, []string{"1.1.1.1", "9.9.9.9"}, cfg.Upstream.Servers)
-	assert.Equal(t, "DEBUG", cfg.Logging.Level)
-	assert.True(t, cfg.Filtering.Enabled)
-}
-
-func TestLoad_NonexistentFile_ReturnsError(t *testing.T) {
-	_, err := config.Load("/nonexistent/path/config.yaml")
-	assert.Error(t, err, "Load should fail for nonexistent file")
-}
-
-func TestLoad_InvalidYAML_ReturnsError(t *testing.T) {
-	configContent := `
-this is not: valid: yaml:
-  - broken
-    indentation
-`
-	tmpFile := filepath.Join(t.TempDir(), "invalid.yaml")
-	err := os.WriteFile(tmpFile, []byte(configContent), 0644)
-	require.NoError(t, err)
-
-	_, err = config.Load(tmpFile)
-	assert.Error(t, err, "Load should fail for invalid YAML")
+	// Check API defaults - API is always enabled (web UI is mandatory)
+	assert.True(t, cfg.API.Enabled, "API should be enabled by default")
+	assert.Equal(t, "0.0.0.0", cfg.API.Host, "API host should default to 0.0.0.0")
+	assert.Equal(t, 8080, cfg.API.Port)
 }
 
 // =============================================================================
-// Environment Variable Override Tests
+// Validation Tests
 // =============================================================================
 
-func TestLoad_EnvironmentOverrides(t *testing.T) {
-	// Set environment variables
-	t.Setenv("HYDRADNS_SERVER_HOST", "10.0.0.1")
-	t.Setenv("HYDRADNS_SERVER_PORT", "5353")
-	t.Setenv("HYDRADNS_LOGGING_LEVEL", "WARN")
-
-	cfg, err := config.Load("")
-	require.NoError(t, err)
-
-	assert.Equal(t, "10.0.0.1", cfg.Server.Host, "Environment should override default host")
-	assert.Equal(t, 5353, cfg.Server.Port, "Environment should override default port")
-	assert.Equal(t, "WARN", cfg.Logging.Level, "Environment should override default log level")
+func TestValidate_ValidConfig(t *testing.T) {
+	cfg := config.Default()
+	err := cfg.Validate()
+	require.NoError(t, err, "Default config should be valid")
 }
 
-func TestLoad_EnvironmentOverridesConfigFile(t *testing.T) {
-	configContent := `
-server:
-  host: "192.168.1.1"
-  port: 5353
-`
-	tmpFile := filepath.Join(t.TempDir(), "config.yaml")
-	err := os.WriteFile(tmpFile, []byte(configContent), 0644)
-	require.NoError(t, err)
+func TestValidate_InvalidPort(t *testing.T) {
+	cfg := config.Default()
+	cfg.Server.Port = 0
+	err := cfg.Validate()
+	assert.Error(t, err, "Port 0 should be invalid")
 
-	// Environment should take precedence over config file
-	t.Setenv("HYDRADNS_SERVER_HOST", "10.0.0.99")
-
-	cfg, err := config.Load(tmpFile)
-	require.NoError(t, err)
-
-	assert.Equal(t, "10.0.0.99", cfg.Server.Host, "Environment should override config file")
-	assert.Equal(t, 5353, cfg.Server.Port, "Config file value should be used when no env var")
+	cfg.Server.Port = 70000
+	err = cfg.Validate()
+	assert.Error(t, err, "Port 70000 should be invalid")
 }
 
-// =============================================================================
-// ResolveConfigPath Tests
-// =============================================================================
-
-func TestResolveConfigPath_FlagTakesPrecedence(t *testing.T) {
-	t.Setenv("HYDRADNS_CONFIG", "/env/path.yaml")
-
-	result := config.ResolveConfigPath("/flag/path.yaml")
-	assert.Equal(t, "/flag/path.yaml", result, "Flag value should take precedence")
+func TestValidate_InvalidAPIPort(t *testing.T) {
+	cfg := config.Default()
+	cfg.API.Enabled = true
+	cfg.API.Port = 0
+	err := cfg.Validate()
+	assert.Error(t, err, "API port 0 should be invalid when API enabled")
 }
 
-func TestResolveConfigPath_FallsBackToEnv(t *testing.T) {
-	t.Setenv("HYDRADNS_CONFIG", "/env/path.yaml")
-
-	result := config.ResolveConfigPath("")
-	assert.Equal(t, "/env/path.yaml", result, "Should fall back to environment variable")
+func TestValidate_EmptyUpstreamServers(t *testing.T) {
+	cfg := config.Default()
+	cfg.Upstream.Servers = []string{}
+	err := cfg.Validate()
+	require.NoError(t, err)
+	assert.Contains(t, cfg.Upstream.Servers, "8.8.8.8", "Should default to 8.8.8.8 when empty")
 }
 
-func TestResolveConfigPath_EmptyWhenNeitherSet(t *testing.T) {
-	// Make sure env is not set
-	os.Unsetenv("HYDRADNS_CONFIG")
-
-	result := config.ResolveConfigPath("")
-	assert.Empty(t, result, "Should return empty when neither flag nor env is set")
+func TestValidate_LimitsUpstreamTo3(t *testing.T) {
+	cfg := config.Default()
+	cfg.Upstream.Servers = []string{"1.1.1.1", "8.8.8.8", "9.9.9.9", "208.67.222.222"}
+	err := cfg.Validate()
+	require.NoError(t, err)
+	assert.Len(t, cfg.Upstream.Servers, 3, "Should limit to 3 upstream servers")
 }
 
-// =============================================================================
-// Workers Configuration Tests
-// =============================================================================
-
-func TestLoad_WorkersAuto(t *testing.T) {
-	configContent := `
-server:
-  workers: auto
-`
-	tmpFile := filepath.Join(t.TempDir(), "config.yaml")
-	err := os.WriteFile(tmpFile, []byte(configContent), 0644)
+func TestValidate_NormalizesLogLevel(t *testing.T) {
+	cfg := config.Default()
+	cfg.Logging.Level = "debug"
+	err := cfg.Validate()
 	require.NoError(t, err)
-
-	cfg, err := config.Load(tmpFile)
-	require.NoError(t, err)
-
-	// "auto" should result in WorkersAuto mode
-	assert.Equal(t, config.WorkersAuto, cfg.Server.Workers.Mode, "Workers mode should be Auto")
+	assert.Equal(t, "DEBUG", cfg.Logging.Level, "Log level should be uppercased")
 }
 
-func TestLoad_WorkersNumeric(t *testing.T) {
-	configContent := `
-server:
-  workers: 8
-`
-	tmpFile := filepath.Join(t.TempDir(), "config.yaml")
-	err := os.WriteFile(tmpFile, []byte(configContent), 0644)
+func TestValidate_ParsesWorkers(t *testing.T) {
+	cfg := config.Default()
+	cfg.Server.WorkersRaw = "8"
+	err := cfg.Validate()
 	require.NoError(t, err)
-
-	cfg, err := config.Load(tmpFile)
-	require.NoError(t, err)
-
 	assert.Equal(t, config.WorkersFixed, cfg.Server.Workers.Mode)
 	assert.Equal(t, 8, cfg.Server.Workers.Value)
+}
+
+func TestValidate_WorkersAutoDefault(t *testing.T) {
+	cfg := config.Default()
+	cfg.Server.WorkersRaw = ""
+	err := cfg.Validate()
+	require.NoError(t, err)
+	assert.Equal(t, config.WorkersAuto, cfg.Server.Workers.Mode)
 }
 
 // =============================================================================
 // Rate Limit Configuration Tests
 // =============================================================================
 
-func TestLoad_RateLimitDefaults(t *testing.T) {
-	cfg, err := config.Load("")
-	require.NoError(t, err)
+func TestDefault_RateLimitDefaults(t *testing.T) {
+	cfg := config.Default()
 
-	assert.Greater(t, cfg.RateLimit.GlobalQPS, float64(0), "Global QPS should have default")
-	assert.Positive(t, cfg.RateLimit.GlobalBurst, "Global burst should have default")
-	assert.Greater(t, cfg.RateLimit.IPQPS, float64(0), "IP QPS should have default")
-	assert.Positive(t, cfg.RateLimit.IPBurst, "IP burst should have default")
-}
-
-// =============================================================================
-// Filtering Configuration Tests
-// =============================================================================
-
-func TestLoad_FilteringConfig(t *testing.T) {
-	configContent := `
-filtering:
-  enabled: true
-  log_blocked: true
-  whitelist_domains:
-    - "allowed.example.com"
-  blacklist_domains:
-    - "blocked.example.com"
-`
-	tmpFile := filepath.Join(t.TempDir(), "config.yaml")
-	err := os.WriteFile(tmpFile, []byte(configContent), 0644)
-	require.NoError(t, err)
-
-	cfg, err := config.Load(tmpFile)
-	require.NoError(t, err)
-
-	assert.True(t, cfg.Filtering.Enabled)
-	assert.True(t, cfg.Filtering.LogBlocked)
-	assert.Contains(t, cfg.Filtering.WhitelistDomains, "allowed.example.com")
-	assert.Contains(t, cfg.Filtering.BlacklistDomains, "blocked.example.com")
+	assert.Equal(t, 60.0, cfg.RateLimit.CleanupSeconds)
+	assert.Equal(t, 65536, cfg.RateLimit.MaxIPEntries)
+	assert.Equal(t, 16384, cfg.RateLimit.MaxPrefixEntries)
+	assert.Equal(t, 100000.0, cfg.RateLimit.GlobalQPS)
+	assert.Equal(t, 100000, cfg.RateLimit.GlobalBurst)
+	assert.Equal(t, 10000.0, cfg.RateLimit.PrefixQPS)
+	assert.Equal(t, 20000, cfg.RateLimit.PrefixBurst)
+	assert.Equal(t, 5000.0, cfg.RateLimit.IPQPS)
+	assert.Equal(t, 10000, cfg.RateLimit.IPBurst)
 }
 
 // =============================================================================
 // Custom DNS Configuration Tests
 // =============================================================================
 
-func TestLoad_CustomDNSConfig(t *testing.T) {
-	configContent := `
-custom_dns:
-  hosts:
-    homelab.local:
-      - 192.168.1.10
-      - 2001:db8::1
-  cnames:
-    www.homelab.local: homelab.local
-`
-	tmpFile := filepath.Join(t.TempDir(), "config.yaml")
-	err := os.WriteFile(tmpFile, []byte(configContent), 0644)
-	require.NoError(t, err)
+func TestDefault_CustomDNSEmpty(t *testing.T) {
+	cfg := config.Default()
 
-	cfg, err := config.Load(tmpFile)
-	require.NoError(t, err)
+	assert.NotNil(t, cfg.CustomDNS.Hosts)
+	assert.NotNil(t, cfg.CustomDNS.CNAMEs)
+	assert.Empty(t, cfg.CustomDNS.Hosts)
+	assert.Empty(t, cfg.CustomDNS.CNAMEs)
+}
 
-	assert.Len(t, cfg.CustomDNS.Hosts, 1)
-	assert.Len(t, cfg.CustomDNS.CNAMEs, 1)
-	assert.Equal(t, []string{"192.168.1.10", "2001:db8::1"}, cfg.CustomDNS.Hosts["homelab.local"])
-	assert.Equal(t, "homelab.local", cfg.CustomDNS.CNAMEs["www.homelab.local"])
+// =============================================================================
+// WorkerSetting Tests
+// =============================================================================
+
+func TestWorkerSetting_String(t *testing.T) {
+	auto := config.WorkerSetting{Mode: config.WorkersAuto}
+	assert.Equal(t, "auto", auto.String())
+
+	fixed := config.WorkerSetting{Mode: config.WorkersFixed, Value: 4}
+	assert.Equal(t, "4", fixed.String())
 }

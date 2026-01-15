@@ -55,14 +55,14 @@ func performRequest(r http.Handler, method, path string, body string) *httptest.
 func TestNew_CreatesServer(t *testing.T) {
 	cfg := createTestConfig()
 
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	assert.NotNil(t, server)
 }
 
 func TestNew_PanicsOnNilConfig(t *testing.T) {
 	assert.Panics(t, func() {
-		api.New(nil, nil)
+		api.New(nil, nil, nil)
 	})
 }
 
@@ -71,14 +71,14 @@ func TestServer_Addr(t *testing.T) {
 	cfg.API.Host = "0.0.0.0"
 	cfg.API.Port = 9090
 
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	assert.Equal(t, "0.0.0.0:9090", server.Addr())
 }
 
 func TestServer_Engine(t *testing.T) {
 	cfg := createTestConfig()
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	engine := server.Engine()
 
@@ -91,7 +91,7 @@ func TestServer_Engine(t *testing.T) {
 
 func TestRoutes_HealthEndpoint(t *testing.T) {
 	cfg := createTestConfig()
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	w := performRequest(server.Engine(), "GET", "/api/v1/health", "")
 
@@ -105,7 +105,7 @@ func TestRoutes_HealthEndpoint(t *testing.T) {
 
 func TestRoutes_StatsEndpoint(t *testing.T) {
 	cfg := createTestConfig()
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	w := performRequest(server.Engine(), "GET", "/api/v1/stats", "")
 
@@ -119,7 +119,7 @@ func TestRoutes_StatsEndpoint(t *testing.T) {
 
 func TestRoutes_ConfigEndpoint(t *testing.T) {
 	cfg := createTestConfig()
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	w := performRequest(server.Engine(), "GET", "/api/v1/config", "")
 
@@ -128,7 +128,7 @@ func TestRoutes_ConfigEndpoint(t *testing.T) {
 
 func TestRoutes_FilteringEndpoints(t *testing.T) {
 	cfg := createTestConfig()
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	// Without PolicyEngine, filtering endpoints return 503
 	w := performRequest(server.Engine(), "GET", "/api/v1/filtering/whitelist", "")
@@ -145,7 +145,7 @@ func TestRoutes_FilteringEndpoints(t *testing.T) {
 func TestRoutes_WithAPIKey_ValidKey(t *testing.T) {
 	cfg := createTestConfig()
 	cfg.API.APIKey = "secret-key"
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
 	req.Header.Set("X-Api-Key", "secret-key")
@@ -159,7 +159,7 @@ func TestRoutes_WithAPIKey_ValidKey(t *testing.T) {
 func TestRoutes_WithAPIKey_InvalidKey(t *testing.T) {
 	cfg := createTestConfig()
 	cfg.API.APIKey = "secret-key"
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
 	req.Header.Set("X-Api-Key", "wrong-key")
@@ -173,7 +173,7 @@ func TestRoutes_WithAPIKey_InvalidKey(t *testing.T) {
 func TestRoutes_WithAPIKey_MissingKey(t *testing.T) {
 	cfg := createTestConfig()
 	cfg.API.APIKey = "secret-key"
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
 	// No X-API-Key header
@@ -187,7 +187,7 @@ func TestRoutes_WithAPIKey_MissingKey(t *testing.T) {
 func TestRoutes_NoAPIKey_NoAuth(t *testing.T) {
 	cfg := createTestConfig()
 	cfg.API.APIKey = "" // No API key configured
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
 	w := httptest.NewRecorder()
@@ -204,7 +204,7 @@ func TestRoutes_NoAPIKey_NoAuth(t *testing.T) {
 func TestServer_Shutdown(t *testing.T) {
 	cfg := createTestConfig()
 	cfg.API.Port = 0 // Let the OS pick a port
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	// Shutdown should not error even if never started
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -220,7 +220,7 @@ func TestServer_Shutdown(t *testing.T) {
 
 func TestRoutes_SwaggerEndpoint(t *testing.T) {
 	cfg := createTestConfig()
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	w := performRequest(server.Engine(), "GET", "/swagger/index.html", "")
 
@@ -234,7 +234,7 @@ func TestRoutes_SwaggerEndpoint(t *testing.T) {
 
 func TestRoutes_NotFound(t *testing.T) {
 	cfg := createTestConfig()
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	w := performRequest(server.Engine(), "GET", "/api/v1/nonexistent", "")
 
@@ -245,11 +245,9 @@ func TestRoutes_NotFound(t *testing.T) {
 // Method Tests
 // ============================================================================
 
-
-
 func TestRoutes_PutConfig_NotImplemented(t *testing.T) {
 	cfg := createTestConfig()
-	server := api.New(cfg, nil)
+	server := api.New(cfg, nil, nil)
 
 	w := performRequest(server.Engine(), "PUT", "/api/v1/config", `{}`)
 

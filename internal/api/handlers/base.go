@@ -57,28 +57,36 @@ import (
 	"time"
 
 	"github.com/jroosing/hydradns/internal/config"
+	"github.com/jroosing/hydradns/internal/database"
 	"github.com/jroosing/hydradns/internal/filtering"
 )
 
 // Handler contains dependencies for API handlers.
 type Handler struct {
 	cfg       *config.Config
+	db        *database.DB
 	logger    *slog.Logger
 	startTime time.Time
 
 	// Runtime components (set after server starts)
-	policyEngine         *filtering.PolicyEngine
-	customDNSReloadFunc  func() error // Callback to reload custom DNS resolver
-	mu                   sync.RWMutex
+	policyEngine        *filtering.PolicyEngine
+	customDNSReloadFunc func() error // Callback to reload custom DNS resolver
+	mu                  sync.RWMutex
 }
 
-// New creates a new Handler with the given configuration.
-func New(cfg *config.Config, logger *slog.Logger) *Handler {
+// New creates a new Handler with the given configuration and database.
+func New(cfg *config.Config, db *database.DB, logger *slog.Logger) *Handler {
 	return &Handler{
 		cfg:       cfg,
+		db:        db,
 		logger:    logger,
 		startTime: time.Now(),
 	}
+}
+
+// DB returns the database connection for handlers that need it.
+func (h *Handler) DB() *database.DB {
+	return h.db
 }
 
 // SetPolicyEngine sets the filtering policy engine for runtime access.

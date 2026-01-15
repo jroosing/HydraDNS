@@ -11,7 +11,6 @@ RUN go mod download
 
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
-COPY docker/ ./docker/
 
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/hydradns ./cmd/hydradns
 
@@ -25,22 +24,23 @@ RUN addgroup -g ${GID} hydradns && \
     apk add --no-cache ca-certificates && \
     rm -rf /var/cache/apk/* /tmp/*
 
-ENV HYDRADNS_CONFIG=/app/config/hydradns.yaml \
+ENV HYDRADNS_DB=/data/hydradns.db \
     HYDRADNS_LOGGING_LEVEL=INFO
 
 WORKDIR /app
 
 COPY --from=builder /out/hydradns /app/hydradns
 
-RUN mkdir -p /app/config && chown hydradns:hydradns /app/config
-COPY --chown=hydradns:hydradns docker/hydradns.yaml /app/config/hydradns.yaml
+RUN mkdir -p /data && chown hydradns:hydradns /data
 
-RUN chmod 755 /app/hydradns && \
-    chmod 644 /app/config/hydradns.yaml
+RUN chmod 755 /app/hydradns
 
 EXPOSE 1053/udp
 EXPOSE 1053/tcp
+EXPOSE 8080/tcp
+
+VOLUME ["/data"]
 
 USER hydradns
 
-CMD ["/app/hydradns"]
+CMD ["/app/hydradns", "--db", "/data/hydradns.db"]

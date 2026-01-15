@@ -244,7 +244,7 @@ func AddEDNSToRequestBytes(req Packet, reqBytes []byte, udpSize int) []byte {
 
 	// Create OPT record with DO flag preserved from original request if it had one
 	opt := CreateOPT(udpSize)
-	
+
 	// The opt.Marshal() will include the DO flag if DNSSECOk is true
 	optBytes := opt.Marshal()
 

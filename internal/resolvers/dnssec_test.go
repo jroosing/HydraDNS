@@ -13,12 +13,12 @@ import (
 // when forwarding queries to upstream servers.
 func TestDNSSECFlagPreservation(t *testing.T) {
 	tests := []struct {
-		name          string
-		requestFlags  uint16
-		includeDO     bool
-		expectedAD    bool
-		expectedCD    bool
-		description   string
+		name         string
+		requestFlags uint16
+		includeDO    bool
+		expectedAD   bool
+		expectedCD   bool
+		description  string
 	}{
 		{
 			name:         "AD flag preserved",
@@ -80,7 +80,7 @@ func TestDNSSECFlagPreservation(t *testing.T) {
 				opt := dns.CreateOPT(4096)
 				opt.DNSSECOk = true
 				optBytes := opt.Marshal()
-				
+
 				// Parse the OPT record back as an opaque record
 				var off int
 				optRecord, err := dns.ParseRecord(optBytes, &off)
@@ -95,11 +95,11 @@ func TestDNSSECFlagPreservation(t *testing.T) {
 			// Verify flags are in the wire format
 			if len(reqBytes) >= 4 {
 				flags := uint16(reqBytes[2])<<8 | uint16(reqBytes[3])
-				
+
 				// Check AD flag
 				hasAD := (flags & dns.ADFlag) != 0
 				assert.Equal(t, tt.expectedAD, hasAD, "AD flag mismatch in wire format")
-				
+
 				// Check CD flag
 				hasCD := (flags & dns.CDFlag) != 0
 				assert.Equal(t, tt.expectedCD, hasCD, "CD flag mismatch in wire format")

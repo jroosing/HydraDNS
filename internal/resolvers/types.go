@@ -4,10 +4,10 @@
 //
 // The resolver chain allows multiple resolution strategies to work together:
 //
-//   1. FilteringResolver - Filters queries by domain (whitelist/blacklist)
-//   2. CustomDNSResolver - Answers local A/AAAA/CNAME records
-//   3. ForwardingResolver - Queries upstream servers with caching
-//   4. ChainedResolver - Tries resolvers in order, falling back as needed
+//  1. FilteringResolver - Filters queries by domain (whitelist/blacklist)
+//  2. CustomDNSResolver - Answers local A/AAAA/CNAME records
+//  3. ForwardingResolver - Queries upstream servers with caching
+//  4. ChainedResolver - Tries resolvers in order, falling back as needed
 //
 // Caching Strategy:
 //

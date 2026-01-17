@@ -114,6 +114,17 @@
               Custom DNS
             </a>
           </li>
+          <li>
+            <a
+              routerLink="/configuration"
+              routerLinkActive="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+              class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              (click)="sidebarOpen.set(false)"
+            >
+              <span class="text-lg">⚙️</span>
+              Configuration
+            </a>
+          </li>
         </ul>
       </nav>
     </aside>

@@ -40,6 +40,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/custom-dns/custom-dns').then((m) => m.CustomDnsComponent),
   },
   {
+    path: 'configuration',
+    loadComponent: () =>
+      import('./pages/configuration/configuration').then((m) => m.ConfigurationComponent),
+  },
+  {
     path: '**',
     redirectTo: 'dashboard',
   },

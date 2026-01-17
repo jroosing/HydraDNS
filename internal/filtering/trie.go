@@ -150,6 +150,63 @@ func (t *DomainTrie) Size() int {
 	return t.size
 }
 
+// Remove deletes a domain from the trie if present.
+// Returns true if the domain existed and was removed.
+func (t *DomainTrie) Remove(domain string) bool {
+	domain = normalizeDomain(domain)
+	if domain == "" {
+		return false
+	}
+
+	labels := reversedLabels(domain)
+	if len(labels) == 0 {
+		return false
+	}
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// Stack to track path for cleanup
+	nodes := make([]*trieNode, 0, len(labels)+1)
+	nodes = append(nodes, t.root)
+
+	node := t.root
+	for _, label := range labels {
+		child, exists := node.children[label]
+		if !exists {
+			return false
+		}
+		node = child
+		nodes = append(nodes, node)
+	}
+
+	// Unset end marker
+	if !node.isEnd {
+		return false
+	}
+	node.isEnd = false
+	node.isWild = false
+	t.size--
+
+	// Cleanup: remove orphan nodes without children and not endpoints
+	for i := len(labels) - 1; i >= 0; i-- {
+		parent := nodes[i]
+		label := labels[i]
+		child := parent.children[label]
+		if child == nil {
+			break
+		}
+		if len(child.children) == 0 && !child.isEnd && !child.isWild {
+			delete(parent.children, label)
+		} else {
+			// Stop if the node still has structure
+			break
+		}
+	}
+
+	return true
+}
+
 // Clear removes all entries from the trie.
 func (t *DomainTrie) Clear() {
 	t.mu.Lock()

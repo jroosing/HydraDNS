@@ -36,6 +36,9 @@ func RegisterRoutes(r *gin.Engine, h *handlers.Handler, cfg *config.Config) {
 	api.GET("/filtering/blacklist", h.GetBlacklist)
 	api.POST("/filtering/blacklist", h.AddBlacklist)
 	api.DELETE("/filtering/blacklist", h.RemoveBlacklist)
+	api.GET("/filtering/blocklists", h.GetBlocklists)
+	api.PUT("/filtering/blocklists/:name/enabled", h.SetBlocklistEnabled)
+	api.POST("/filtering/blocklists/:name/refresh", h.RefreshBlocklist)
 
 	api.GET("/filtering/stats", h.FilteringStats)
 	api.PUT("/filtering/enabled", h.SetFilteringEnabled)

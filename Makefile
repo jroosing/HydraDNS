@@ -50,14 +50,7 @@ fmt:
 vet:
 	go vet ./...
 
-build:
-	mkdir -p bin
-	go build -o bin/hydradns ./cmd/hydradns
-
-run: build
-	./bin/hydradns
-
-build-ui-embedded: ui-build
+build: ui-build
 	@echo "Copying Angular dist to internal/api/dist..."
 	mkdir -p internal/api/dist
 	rm -rf internal/api/dist/*
@@ -66,6 +59,13 @@ build-ui-embedded: ui-build
 	mkdir -p bin
 	go build -o bin/hydradns ./cmd/hydradns
 	@echo "Done! Binary: bin/hydradns (with embedded UI)"
+
+build-no-fe:
+	mkdir -p bin
+	go build -o bin/hydradns ./cmd/hydradns
+
+run: build
+	./bin/hydradns
 
 check: fmt vet test
 	@echo "All checks passed!"

@@ -105,8 +105,12 @@ func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
+	// Build shared filtering policy engine (even if disabled) for API + DNS path
+	policy := server.BuildPolicyEngine(cfg, logger)
+
 	// API server is always enabled (web UI is mandatory)
 	apiSrv := api.New(cfg, db, logger)
+	apiSrv.Handler().SetPolicyEngine(policy)
 	logger.Info("web UI and API starting", "addr", apiSrv.Addr())
 
 	go func() {
@@ -119,6 +123,7 @@ func run() error {
 	}()
 
 	runner := server.NewRunner(logger)
+	runner.SetPolicyEngine(policy)
 	err = runner.RunWithContext(ctx, cfg)
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)

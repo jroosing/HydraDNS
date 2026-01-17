@@ -30,3 +30,18 @@ type DomainDeleteRequest struct {
 type FilteringEnabledRequest struct {
 	Enabled bool `json:"enabled"`
 }
+
+// Blocklist represents a configured remote blocklist.
+type Blocklist struct {
+	Name        string  `json:"name"`
+	URL         string  `json:"url"`
+	Format      string  `json:"format"`
+	Enabled     bool    `json:"enabled"`
+	LastFetched *string `json:"last_fetched,omitempty"`
+}
+
+// BlocklistsResponse contains all configured blocklists.
+type BlocklistsResponse struct {
+	Blocklists []Blocklist `json:"blocklists"`
+	Count      int         `json:"count"`
+}

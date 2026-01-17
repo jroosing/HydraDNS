@@ -302,6 +302,16 @@ func (pe *PolicyEngine) AddToBlacklist(domain string) {
 	pe.blacklist.Add(domain, true)
 }
 
+// RemoveFromWhitelist removes a domain from the whitelist.
+func (pe *PolicyEngine) RemoveFromWhitelist(domain string) {
+	pe.whitelist.Remove(domain)
+}
+
+// RemoveFromBlacklist removes a domain from the blacklist.
+func (pe *PolicyEngine) RemoveFromBlacklist(domain string) {
+	pe.blacklist.Remove(domain)
+}
+
 // Stats returns current filtering statistics.
 func (pe *PolicyEngine) Stats() PolicyStats {
 	return PolicyStats{

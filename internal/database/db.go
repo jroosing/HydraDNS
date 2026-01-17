@@ -17,7 +17,6 @@ package database
 
 import (
 	"database/sql"
-	"embed"
 	"fmt"
 	"sync"
 	"time"
@@ -25,11 +24,11 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jroosing/hydradns/migrations"
 	_ "modernc.org/sqlite" // Pure Go SQLite driver
 )
 
-//go:embed migrations/*.sql
-var migrationsFS embed.FS
+// Migrations are embedded via the root-level migrations package.
 
 // DB wraps a SQLite database connection with thread-safe operations.
 type DB struct {
@@ -61,12 +60,6 @@ func Open(path string) (*DB, error) {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	// Initialize defaults if this is a fresh database
-	if err := db.InitDefaults(); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("failed to initialize defaults: %w", err)
-	}
-
 	return db, nil
 }
 
@@ -77,8 +70,8 @@ func (db *DB) Close() error {
 
 // runMigrations runs database migrations using golang-migrate.
 func (db *DB) runMigrations() error {
-	// Create migration source from embedded FS
-	sourceDriver, err := iofs.New(migrationsFS, "migrations")
+	// Create migration source from embedded FS (root-level migrations package)
+	sourceDriver, err := iofs.New(migrations.FS, ".")
 	if err != nil {
 		return fmt.Errorf("failed to create migration source: %w", err)
 	}

@@ -2,6 +2,22 @@
   <div class="flex flex-wrap items-center justify-between gap-4">
     <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Filtering</h1>
     <div class="flex items-center gap-4">
+      <button
+        type="button"
+        class="rounded bg-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+        (click)="refreshStats()"
+        [disabled]="store.loading() || cooldownActive()"
+        aria-label="Refresh filtering stats"
+      >
+        @if (store.loading()) {
+          <span class="inline-flex items-center gap-1">
+            <span class="inline-block h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+            Refreshing…
+          </span>
+        } @else {
+          Refresh Stats
+        }
+      </button>
       <div class="flex cursor-pointer items-center gap-2">
         <span class="text-sm font-medium text-slate-700 dark:text-slate-300"> Filtering </span>
         <button
@@ -28,6 +44,11 @@
   @if (store.stats(); as stats) {
     <section aria-labelledby="filtering-overview">
       <h2 id="filtering-overview" class="sr-only">Filtering Overview</h2>
+      @if (showToast()) {
+        <div class="rounded bg-emerald-100 px-3 py-2 text-sm font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100">
+          Stats refreshed
+        </div>
+      }
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <app-stat-card
           label="Total Queries"
@@ -44,13 +65,13 @@
         />
         <app-stat-card
           label="Whitelist Entries"
-          [value]="store.whitelistCount()"
+          [value]="stats.whitelist_size"
           icon="✅"
           iconBgClass="bg-emerald-100 dark:bg-emerald-900"
         />
         <app-stat-card
           label="Blacklist Entries"
-          [value]="store.blacklistCount()"
+          [value]="stats.blacklist_size"
           icon="🚫"
           iconBgClass="bg-red-100 dark:bg-red-900"
         />
@@ -67,6 +88,11 @@
         class="px-4 py-3 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-300"
       >
         Whitelist & Blacklist
+        @if (store.stats(); as s) {
+          <span class="ml-2 inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800 dark:bg-slate-700 dark:text-slate-100">
+            WL: {{ s.whitelist_size }} · BL: {{ s.blacklist_size }}
+          </span>
+        }
       </a>
       <a
         routerLink="blocklists"
@@ -74,6 +100,9 @@
         class="px-4 py-3 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-300"
       >
         Blocklists
+        <span class="ml-2 inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800 dark:bg-slate-700 dark:text-slate-100">
+          {{ store.blocklistCount() }}
+        </span>
       </a>
     </nav>
   </div>

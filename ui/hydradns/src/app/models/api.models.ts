@@ -112,6 +112,19 @@ export interface FilteringConfig {
   refresh_interval: string;
 }
 
+export interface Blocklist {
+  name: string;
+  url: string;
+  format: string;
+  enabled: boolean;
+  last_fetched?: string;
+}
+
+export interface BlocklistsResponse {
+  blocklists: Blocklist[];
+  count: number;
+}
+
 export interface RateLimitConfig {
   enabled: boolean;
   requests_per_second: number;

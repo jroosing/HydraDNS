@@ -8,12 +8,70 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func newConfig() *config.Config {
+	return &config.Config{
+		Server: config.ServerConfig{
+			Host:                   "0.0.0.0",
+			Port:                   1053,
+			WorkersRaw:             "auto",
+			Workers:                config.WorkerSetting{Mode: config.WorkersAuto},
+			MaxConcurrency:         0,
+			UpstreamSocketPoolSize: 0,
+			EnableTCP:              true,
+			TCPFallback:            true,
+		},
+		Upstream: config.UpstreamConfig{
+			Servers:    []string{"9.9.9.9", "1.1.1.1", "8.8.8.8"},
+			UDPTimeout: "3s",
+			TCPTimeout: "5s",
+			MaxRetries: 3,
+		},
+		CustomDNS: config.CustomDNSConfig{
+			Hosts:  map[string][]string{},
+			CNAMEs: map[string]string{},
+		},
+		Logging: config.LoggingConfig{
+			Level:            "INFO",
+			Structured:       false,
+			StructuredFormat: "json",
+			IncludePID:       false,
+			ExtraFields:      map[string]string{},
+		},
+		Filtering: config.FilteringConfig{
+			Enabled:          false,
+			LogBlocked:       true,
+			LogAllowed:       false,
+			WhitelistDomains: []string{},
+			BlacklistDomains: []string{},
+			Blocklists:       []config.BlocklistConfig{},
+			RefreshInterval:  "24h",
+		},
+		RateLimit: config.RateLimitConfig{
+			CleanupSeconds:   60.0,
+			MaxIPEntries:     65536,
+			MaxPrefixEntries: 16384,
+			GlobalQPS:        100000.0,
+			GlobalBurst:      100000,
+			PrefixQPS:        10000.0,
+			PrefixBurst:      20000,
+			IPQPS:            5000.0,
+			IPBurst:          10000,
+		},
+		API: config.APIConfig{
+			Enabled: true,
+			Host:    "0.0.0.0",
+			Port:    8080,
+			APIKey:  "",
+		},
+	}
+}
+
 // =============================================================================
 // Default Configuration Tests
 // =============================================================================
 
-func TestDefault_ReturnsValidConfig(t *testing.T) {
-	cfg := config.Default()
+func TestSeedDefaults_ReturnsValidConfig(t *testing.T) {
+	cfg := newConfig()
 	require.NotNil(t, cfg, "Default should return non-nil config")
 
 	// Check server defaults
@@ -50,13 +108,13 @@ func TestDefault_ReturnsValidConfig(t *testing.T) {
 // =============================================================================
 
 func TestValidate_ValidConfig(t *testing.T) {
-	cfg := config.Default()
+	cfg := newConfig()
 	err := cfg.Validate()
 	require.NoError(t, err, "Default config should be valid")
 }
 
 func TestValidate_InvalidPort(t *testing.T) {
-	cfg := config.Default()
+	cfg := newConfig()
 	cfg.Server.Port = 0
 	err := cfg.Validate()
 	assert.Error(t, err, "Port 0 should be invalid")
@@ -67,7 +125,7 @@ func TestValidate_InvalidPort(t *testing.T) {
 }
 
 func TestValidate_InvalidAPIPort(t *testing.T) {
-	cfg := config.Default()
+	cfg := newConfig()
 	cfg.API.Enabled = true
 	cfg.API.Port = 0
 	err := cfg.Validate()
@@ -75,7 +133,7 @@ func TestValidate_InvalidAPIPort(t *testing.T) {
 }
 
 func TestValidate_EmptyUpstreamServers(t *testing.T) {
-	cfg := config.Default()
+	cfg := newConfig()
 	cfg.Upstream.Servers = []string{}
 	err := cfg.Validate()
 	require.NoError(t, err)
@@ -83,7 +141,7 @@ func TestValidate_EmptyUpstreamServers(t *testing.T) {
 }
 
 func TestValidate_LimitsUpstreamTo3(t *testing.T) {
-	cfg := config.Default()
+	cfg := newConfig()
 	cfg.Upstream.Servers = []string{"1.1.1.1", "8.8.8.8", "9.9.9.9", "208.67.222.222"}
 	err := cfg.Validate()
 	require.NoError(t, err)
@@ -91,7 +149,7 @@ func TestValidate_LimitsUpstreamTo3(t *testing.T) {
 }
 
 func TestValidate_NormalizesLogLevel(t *testing.T) {
-	cfg := config.Default()
+	cfg := newConfig()
 	cfg.Logging.Level = "debug"
 	err := cfg.Validate()
 	require.NoError(t, err)
@@ -99,7 +157,7 @@ func TestValidate_NormalizesLogLevel(t *testing.T) {
 }
 
 func TestValidate_ParsesWorkers(t *testing.T) {
-	cfg := config.Default()
+	cfg := newConfig()
 	cfg.Server.WorkersRaw = "8"
 	err := cfg.Validate()
 	require.NoError(t, err)
@@ -108,7 +166,7 @@ func TestValidate_ParsesWorkers(t *testing.T) {
 }
 
 func TestValidate_WorkersAutoDefault(t *testing.T) {
-	cfg := config.Default()
+	cfg := newConfig()
 	cfg.Server.WorkersRaw = ""
 	err := cfg.Validate()
 	require.NoError(t, err)
@@ -119,8 +177,8 @@ func TestValidate_WorkersAutoDefault(t *testing.T) {
 // Rate Limit Configuration Tests
 // =============================================================================
 
-func TestDefault_RateLimitDefaults(t *testing.T) {
-	cfg := config.Default()
+func TestSeedDefaults_RateLimitDefaults(t *testing.T) {
+	cfg := newConfig()
 
 	assert.Equal(t, 60.0, cfg.RateLimit.CleanupSeconds)
 	assert.Equal(t, 65536, cfg.RateLimit.MaxIPEntries)
@@ -137,8 +195,8 @@ func TestDefault_RateLimitDefaults(t *testing.T) {
 // Custom DNS Configuration Tests
 // =============================================================================
 
-func TestDefault_CustomDNSEmpty(t *testing.T) {
-	cfg := config.Default()
+func TestSeedDefaults_CustomDNSEmpty(t *testing.T) {
+	cfg := newConfig()
 
 	assert.NotNil(t, cfg.CustomDNS.Hosts)
 	assert.NotNil(t, cfg.CustomDNS.CNAMEs)

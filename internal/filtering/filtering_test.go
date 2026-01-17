@@ -77,6 +77,36 @@ func TestDomainTrie_Clear(t *testing.T) {
 	assert.False(t, trie.Contains("example.com"))
 }
 
+func TestDomainTrie_Remove(t *testing.T) {
+	trie := filtering.NewDomainTrie()
+
+	trie.Add("example.com", false)
+	trie.Add("sub.example.com", false)
+	assert.True(t, trie.Contains("example.com"))
+	assert.True(t, trie.Contains("sub.example.com"))
+	assert.Equal(t, 2, trie.Size())
+
+	// Remove specific domain
+	removed := trie.Remove("sub.example.com")
+	assert.True(t, removed)
+	assert.False(t, trie.Contains("sub.example.com"))
+	assert.True(t, trie.Contains("example.com"))
+	assert.Equal(t, 1, trie.Size())
+
+	// Remove non-existent
+	removed = trie.Remove("notfound.com")
+	assert.False(t, removed)
+	assert.Equal(t, 1, trie.Size())
+
+	// Remove last remaining domain and ensure cleanup
+	removed = trie.Remove("example.com")
+	assert.True(t, removed)
+	assert.False(t, trie.Contains("example.com"))
+	assert.Equal(t, 0, trie.Size())
+}
+
+// (Policy remove methods verified indirectly via handler tests)
+
 func TestDomainTrie_Merge(t *testing.T) {
 	trie1 := filtering.NewDomainTrie()
 	trie1.Add("example.com", false)

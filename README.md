@@ -129,7 +129,7 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It forwards
 # Run tests
 go test ./...
 
-# Start server (creates hydradns.db with defaults on first run)
+# Start server (creates hydradns.db with defaults on first run via migrations)
 go run ./cmd/hydradns
 
 # Start with custom database path
@@ -142,7 +142,7 @@ go run ./cmd/hydradns --debug
 go run ./cmd/hydradns --host 0.0.0.0 --port 53
 ```
 
-On first run, HydraDNS creates a SQLite database (`hydradns.db`) with sensible defaults:
+On first run, HydraDNS creates a SQLite database (`hydradns.db`) with sensible defaults seeded by the migrations:
 - DNS server: `0.0.0.0:1053` (UDP + TCP)
 - Upstream servers: `9.9.9.9`, `1.1.1.1`, `8.8.8.8`
 - Web UI + API: `0.0.0.0:8080`
@@ -154,7 +154,7 @@ Access the web UI at **http://localhost:8080** to configure everything else.
 
 ## Configuration
 
-HydraDNS stores all configuration in a SQLite database file. On first startup, the database is created with sensible defaults.
+HydraDNS stores all configuration in a SQLite database file. On first startup, the migrations create the schema and seed sensible defaults.
 
 ### Database Location
 

@@ -2,12 +2,13 @@ import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap } from 'rxjs';
-import { FilteringStats } from '../models/api.models';
+import { FilteringStats, Blocklist } from '../models/api.models';
 import { DnsApiService } from '../services/dns-api.service';
 
 export interface FilteringState {
   whitelist: string[];
   blacklist: string[];
+  blocklists: Blocklist[];
   stats: FilteringStats | null;
   loading: boolean;
   error: string | null;
@@ -16,6 +17,7 @@ export interface FilteringState {
 const initialState: FilteringState = {
   whitelist: [],
   blacklist: [],
+  blocklists: [],
   stats: null,
   loading: false,
   error: null,
@@ -28,6 +30,7 @@ export const FilteringStore = signalStore(
     isEnabled: computed(() => store.stats()?.enabled ?? false),
     whitelistCount: computed(() => store.whitelist().length),
     blacklistCount: computed(() => store.blacklist().length),
+    blocklistCount: computed(() => store.blocklists().length),
     blockedPercentage: computed(() => {
       const stats = store.stats();
       if (!stats || stats.queries_total === 0) return 0;
@@ -42,6 +45,50 @@ export const FilteringStore = signalStore(
           api.getFilteringStats().pipe(
             tap({
               next: (stats) => patchState(store, { stats, loading: false }),
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
+    ),
+
+    loadBlocklists: rxMethod<void>(
+      pipe(
+        tap(() => patchState(store, { loading: true, error: null })),
+        switchMap(() =>
+          api.getBlocklists().pipe(
+            tap({
+              next: (res) => patchState(store, { blocklists: res.blocklists, loading: false }),
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
+    ),
+
+    setBlocklistEnabled: rxMethod<{ name: string; enabled: boolean }>(
+      pipe(
+        tap(() => patchState(store, { loading: true, error: null })),
+        switchMap(({ name, enabled }) =>
+          api.setBlocklistEnabled(name, enabled).pipe(
+            switchMap(() => api.getBlocklists()),
+            tap({
+              next: (res) => patchState(store, { blocklists: res.blocklists, loading: false }),
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
+    ),
+
+    refreshBlocklist: rxMethod<string>(
+      pipe(
+        tap(() => patchState(store, { loading: true, error: null })),
+        switchMap((name) =>
+          api.refreshBlocklist(name).pipe(
+            switchMap(() => api.getBlocklists()),
+            tap({
+              next: (res) => patchState(store, { blocklists: res.blocklists, loading: false }),
               error: (err) => patchState(store, { error: err.message, loading: false }),
             }),
           ),

@@ -14,6 +14,6 @@ export class FilteringBlocklistsComponent implements OnInit {
   protected readonly store = inject(FilteringStore);
 
   ngOnInit(): void {
-    this.store.loadAll();
+    this.store.loadBlocklists();
   }
 }

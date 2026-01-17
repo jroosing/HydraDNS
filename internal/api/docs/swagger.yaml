@@ -32,6 +32,28 @@ definitions:
     - ips
     - name
     type: object
+  github_com_jroosing_hydradns_internal_api_models.Blocklist:
+    properties:
+      enabled:
+        type: boolean
+      format:
+        type: string
+      last_fetched:
+        type: string
+      name:
+        type: string
+      url:
+        type: string
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.BlocklistsResponse:
+    properties:
+      blocklists:
+        items:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.Blocklist'
+        type: array
+      count:
+        type: integer
+    type: object
   github_com_jroosing_hydradns_internal_api_models.ConfigResponse:
     properties:
       api:
@@ -712,6 +734,93 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Add domains to blacklist
+      tags:
+      - filtering
+  /filtering/blocklists:
+    get:
+      description: Returns all configured blocklists
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.BlocklistsResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get blocklists
+      tags:
+      - filtering
+  /filtering/blocklists/{name}/enabled:
+    put:
+      consumes:
+      - application/json
+      description: Toggles a specific blocklist on or off (takes effect after restart
+        until hot-reload is implemented)
+      parameters:
+      - description: Blocklist name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Enable state
+        in: body
+        name: enabled
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringEnabledRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Enable or disable a blocklist
+      tags:
+      - filtering
+  /filtering/blocklists/{name}/refresh:
+    post:
+      description: Marks a blocklist as refreshed (updates last_fetched); engine reload
+        pending future hot-reload
+      parameters:
+      - description: Blocklist name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Refresh a blocklist
       tags:
       - filtering
   /filtering/enabled:

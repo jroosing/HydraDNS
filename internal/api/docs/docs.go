@@ -623,6 +623,141 @@ const docTemplate = `{
                 }
             }
         },
+        "/filtering/blocklists": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns all configured blocklists",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Get blocklists",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.BlocklistsResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/filtering/blocklists/{name}/enabled": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Toggles a specific blocklist on or off (takes effect after restart until hot-reload is implemented)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Enable or disable a blocklist",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Blocklist name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Enable state",
+                        "name": "enabled",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringEnabledRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/filtering/blocklists/{name}/refresh": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Marks a blocklist as refreshed (updates last_fetched); engine reload pending future hot-reload",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "filtering"
+                ],
+                "summary": "Refresh a blocklist",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Blocklist name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/filtering/enabled": {
             "put": {
                 "security": [
@@ -926,6 +1061,40 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.Blocklist": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "format": {
+                    "type": "string"
+                },
+                "last_fetched": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.BlocklistsResponse": {
+            "type": "object",
+            "properties": {
+                "blocklists": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.Blocklist"
+                    }
+                },
+                "count": {
+                    "type": "integer"
                 }
             }
         },

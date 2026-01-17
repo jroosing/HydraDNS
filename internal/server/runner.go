@@ -18,12 +18,19 @@ import (
 
 // Runner orchestrates the DNS server startup, configuration, and shutdown.
 type Runner struct {
-	logger *slog.Logger
+	logger       *slog.Logger
+	policyEngine *filtering.PolicyEngine
 }
 
 // NewRunner creates a new server runner with the given logger.
 func NewRunner(logger *slog.Logger) *Runner {
 	return &Runner{logger: logger}
+}
+
+// SetPolicyEngine injects a shared policy engine for both DNS resolution and the API.
+// If nil, RunWithContext will build one from the current config.
+func (r *Runner) SetPolicyEngine(pe *filtering.PolicyEngine) {
+	r.policyEngine = pe
 }
 
 // Run starts the DNS server with the given configuration.
@@ -64,8 +71,15 @@ func (r *Runner) RunWithContext(ctx context.Context, cfg *config.Config) error {
 	// Initialize custom DNS resolver
 	customResolver := r.initCustomDNS(cfg)
 
+	// Build or reuse filtering policy
+	policy := r.policyEngine
+	if policy == nil {
+		policy = BuildPolicyEngine(cfg, r.logger)
+		r.policyEngine = policy
+	}
+
 	// Build resolver chain
-	resolver := r.buildResolverChain(cfg, customResolver, upPool)
+	resolver := r.buildResolverChain(cfg, customResolver, upPool, policy)
 	defer resolver.Close()
 
 	// Create server components
@@ -191,7 +205,7 @@ func (r *Runner) initCustomDNS(cfg *config.Config) *resolvers.CustomDNSResolver 
 }
 
 // buildResolverChain creates the resolver chain: filtering -> custom DNS (if any) -> forwarding.
-func (r *Runner) buildResolverChain(cfg *config.Config, customResolver *resolvers.CustomDNSResolver, upPool int) resolvers.Resolver {
+func (r *Runner) buildResolverChain(cfg *config.Config, customResolver *resolvers.CustomDNSResolver, upPool int, policy *filtering.PolicyEngine) resolvers.Resolver {
 	resList := make([]resolvers.Resolver, 0, 2)
 
 	if customResolver != nil {
@@ -215,12 +229,12 @@ func (r *Runner) buildResolverChain(cfg *config.Config, customResolver *resolver
 
 	var chain resolvers.Resolver = &resolvers.Chained{Resolvers: resList}
 
-	// Wrap with filtering if enabled
-	if cfg.Filtering.Enabled {
-		policy := r.buildFilteringPolicy(cfg)
+	// Always wrap with filtering; the policy's enabled flag controls behavior.
+	if policy != nil {
 		chain = resolvers.NewFilteringResolver(policy, chain)
 		if r.logger != nil {
-			r.logger.Info("filtering enabled",
+			r.logger.Info("filtering configured",
+				"enabled", cfg.Filtering.Enabled,
 				"whitelist_count", len(cfg.Filtering.WhitelistDomains),
 				"blacklist_count", len(cfg.Filtering.BlacklistDomains),
 				"blocklists", len(cfg.Filtering.Blocklists),
@@ -231,9 +245,13 @@ func (r *Runner) buildResolverChain(cfg *config.Config, customResolver *resolver
 	return chain
 }
 
-// buildFilteringPolicy creates a PolicyEngine from the configuration.
-func (r *Runner) buildFilteringPolicy(cfg *config.Config) *filtering.PolicyEngine {
-	// Convert blocklist configs to BlocklistURLs
+// BuildPolicyEngine constructs a filtering policy engine from the config.
+// The returned engine may be disabled based on cfg.Filtering.Enabled but remains usable for stats and toggling.
+func BuildPolicyEngine(cfg *config.Config, logger *slog.Logger) *filtering.PolicyEngine {
+	if cfg == nil {
+		return nil
+	}
+
 	blocklists := make([]filtering.BlocklistURL, 0, len(cfg.Filtering.Blocklists))
 	for _, bl := range cfg.Filtering.Blocklists {
 		format := filtering.FormatAuto
@@ -252,7 +270,6 @@ func (r *Runner) buildFilteringPolicy(cfg *config.Config) *filtering.PolicyEngin
 		})
 	}
 
-	// Parse refresh interval
 	refreshInterval := 24 * time.Hour
 	if cfg.Filtering.RefreshInterval != "" {
 		if d, err := time.ParseDuration(cfg.Filtering.RefreshInterval); err == nil {
@@ -261,7 +278,7 @@ func (r *Runner) buildFilteringPolicy(cfg *config.Config) *filtering.PolicyEngin
 	}
 
 	return filtering.NewPolicyEngine(filtering.PolicyEngineConfig{
-		Logger:           r.logger,
+		Logger:           logger,
 		Enabled:          cfg.Filtering.Enabled,
 		BlockAction:      filtering.ActionBlock,
 		LogBlocked:       cfg.Filtering.LogBlocked,

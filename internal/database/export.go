@@ -185,20 +185,25 @@ func (db *DB) exportFilteringConfig(cfg *config.Config) error {
 	}
 	cfg.Filtering.BlacklistDomains = blacklist
 
-	// Get blocklists
+	// Get enabled blocklists only
 	blocklists, err := db.GetBlocklists()
 	if err != nil {
 		return fmt.Errorf("failed to get blocklists: %w", err)
 	}
 
-	cfg.Filtering.Blocklists = make([]config.BlocklistConfig, len(blocklists))
-	for i, blocklist := range blocklists {
-		cfg.Filtering.Blocklists[i] = config.BlocklistConfig{
+	// Filter out disabled entries (engine currently does not track enabled state)
+	enabled := make([]config.BlocklistConfig, 0, len(blocklists))
+	for _, blocklist := range blocklists {
+		if !blocklist.Enabled {
+			continue
+		}
+		enabled = append(enabled, config.BlocklistConfig{
 			Name:   blocklist.Name,
 			URL:    blocklist.URL,
 			Format: blocklist.Format,
-		}
+		})
 	}
+	cfg.Filtering.Blocklists = enabled
 
 	return nil
 }

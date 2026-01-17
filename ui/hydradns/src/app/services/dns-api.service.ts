@@ -9,6 +9,7 @@ import {
   DomainListResponse,
   DomainRequest,
   FilteringStats,
+  BlocklistsResponse,
   HostRecord,
   ServerStats,
   UpdateCNAMERequest,
@@ -79,6 +80,25 @@ export class DnsApiService {
   // Filtering Stats & Toggle
   getFilteringStats(): Observable<FilteringStats> {
     return this.http.get<FilteringStats>(`${this.baseUrl}/filtering/stats`);
+  }
+
+  // Filtering - Blocklists
+  getBlocklists(): Observable<BlocklistsResponse> {
+    return this.http.get<BlocklistsResponse>(`${this.baseUrl}/filtering/blocklists`);
+  }
+
+  setBlocklistEnabled(name: string, enabled: boolean): Observable<{ status: string }> {
+    return this.http.put<{ status: string }>(
+      `${this.baseUrl}/filtering/blocklists/${encodeURIComponent(name)}/enabled`,
+      { enabled },
+    );
+  }
+
+  refreshBlocklist(name: string): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(
+      `${this.baseUrl}/filtering/blocklists/${encodeURIComponent(name)}/refresh`,
+      {},
+    );
   }
 
   setFilteringEnabled(enabled: boolean): Observable<FilteringStats> {

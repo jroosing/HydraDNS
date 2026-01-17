@@ -38,13 +38,13 @@ func (db *DB) AddHost(hostname, ipAddress string) error {
 	}
 
 	query := `
-		INSERT INTO custom_dns_hosts (hostname, ip_address, record_type, updated_at)
+		INSERT INTO custom_dns_records (source, type, target, updated_at)
 		VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT(hostname, ip_address) DO UPDATE SET
+		ON CONFLICT(source, target, type) DO UPDATE SET
 			updated_at = CURRENT_TIMESTAMP
 	`
 
-	_, err := db.conn.Exec(query, hostname, ipAddress, recordType)
+	_, err := db.conn.Exec(query, hostname, recordType, ipAddress)
 	if err != nil {
 		return fmt.Errorf("failed to add host %s: %w", hostname, err)
 	}
@@ -58,10 +58,10 @@ func (db *DB) GetHosts(hostname string) ([]CustomDNSHost, error) {
 	defer db.mu.RUnlock()
 
 	query := `
-		SELECT id, hostname, ip_address, record_type
-		FROM custom_dns_hosts
-		WHERE hostname = ?
-		ORDER BY record_type, ip_address
+		SELECT id, source, target, type
+		FROM custom_dns_records
+		WHERE source = ? AND type IN ('A','AAAA')
+		ORDER BY type, target
 	`
 
 	rows, err := db.conn.Query(query, hostname)
@@ -92,9 +92,10 @@ func (db *DB) GetAllHosts() ([]CustomDNSHost, error) {
 	defer db.mu.RUnlock()
 
 	query := `
-		SELECT id, hostname, ip_address, record_type
-		FROM custom_dns_hosts
-		ORDER BY hostname, record_type, ip_address
+		SELECT id, source, target, type
+		FROM custom_dns_records
+		WHERE type IN ('A','AAAA')
+		ORDER BY source, type, target
 	`
 
 	rows, err := db.conn.Query(query)
@@ -124,8 +125,18 @@ func (db *DB) DeleteHost(hostname, ipAddress string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	query := "DELETE FROM custom_dns_hosts WHERE hostname = ? AND ip_address = ?"
-	result, err := db.conn.Exec(query, hostname, ipAddress)
+	// Determine record type to delete the precise entry
+	ip := net.ParseIP(ipAddress)
+	if ip == nil {
+		return fmt.Errorf("invalid IP address: %s", ipAddress)
+	}
+	recordType := "AAAA"
+	if ip.To4() != nil {
+		recordType = "A"
+	}
+
+	query := "DELETE FROM custom_dns_records WHERE source = ? AND target = ? AND type = ?"
+	result, err := db.conn.Exec(query, hostname, ipAddress, recordType)
 	if err != nil {
 		return fmt.Errorf("failed to delete host: %w", err)
 	}
@@ -147,7 +158,7 @@ func (db *DB) DeleteAllHostsForHostname(hostname string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	_, err := db.conn.Exec("DELETE FROM custom_dns_hosts WHERE hostname = ?", hostname)
+	_, err := db.conn.Exec("DELETE FROM custom_dns_records WHERE source = ? AND type IN ('A','AAAA')", hostname)
 	if err != nil {
 		return fmt.Errorf("failed to delete hosts for %s: %w", hostname, err)
 	}
@@ -160,12 +171,14 @@ func (db *DB) AddCNAME(alias, target string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
+	// For CNAME, enforce a single target: delete any existing, then insert new
+	if _, err := db.conn.Exec("DELETE FROM custom_dns_records WHERE source = ? AND type = 'CNAME'", alias); err != nil {
+		return fmt.Errorf("failed to clear existing CNAME %s: %w", alias, err)
+	}
+
 	query := `
-		INSERT INTO custom_dns_cnames (alias, target, updated_at)
-		VALUES (?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT(alias) DO UPDATE SET
-			target = excluded.target,
-			updated_at = CURRENT_TIMESTAMP
+		INSERT INTO custom_dns_records (source, type, target, updated_at)
+		VALUES (?, 'CNAME', ?, CURRENT_TIMESTAMP)
 	`
 
 	_, err := db.conn.Exec(query, alias, target)
@@ -182,7 +195,7 @@ func (db *DB) GetCNAME(alias string) (string, error) {
 	defer db.mu.RUnlock()
 
 	var target string
-	err := db.conn.QueryRow("SELECT target FROM custom_dns_cnames WHERE alias = ?", alias).Scan(&target)
+	err := db.conn.QueryRow("SELECT target FROM custom_dns_records WHERE source = ? AND type = 'CNAME'", alias).Scan(&target)
 	if err == sql.ErrNoRows {
 		return "", fmt.Errorf("CNAME not found: %s", alias)
 	}
@@ -198,7 +211,7 @@ func (db *DB) GetAllCNAMEs() ([]CustomDNSCNAME, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	query := "SELECT id, alias, target FROM custom_dns_cnames ORDER BY alias"
+	query := "SELECT id, source AS alias, target FROM custom_dns_records WHERE type = 'CNAME' ORDER BY source"
 
 	rows, err := db.conn.Query(query)
 	if err != nil {
@@ -227,7 +240,7 @@ func (db *DB) DeleteCNAME(alias string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	result, err := db.conn.Exec("DELETE FROM custom_dns_cnames WHERE alias = ?", alias)
+	result, err := db.conn.Exec("DELETE FROM custom_dns_records WHERE source = ? AND type = 'CNAME'", alias)
 	if err != nil {
 		return fmt.Errorf("failed to delete CNAME: %w", err)
 	}

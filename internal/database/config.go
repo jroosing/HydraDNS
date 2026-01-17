@@ -7,7 +7,6 @@ import (
 
 // ConfigKey represents configuration key names in the database.
 const (
-	// Server configuration
 	ConfigKeyServerHost               = "server.host"
 	ConfigKeyServerPort               = "server.port"
 	ConfigKeyServerWorkers            = "server.workers"
@@ -16,24 +15,20 @@ const (
 	ConfigKeyServerEnableTCP          = "server.enable_tcp"
 	ConfigKeyServerTCPFallback        = "server.tcp_fallback"
 
-	// Upstream configuration
 	ConfigKeyUpstreamUDPTimeout = "upstream.udp_timeout"
 	ConfigKeyUpstreamTCPTimeout = "upstream.tcp_timeout"
 	ConfigKeyUpstreamMaxRetries = "upstream.max_retries"
 
-	// Logging configuration
 	ConfigKeyLoggingLevel            = "logging.level"
 	ConfigKeyLoggingStructured       = "logging.structured"
 	ConfigKeyLoggingStructuredFormat = "logging.structured_format"
 	ConfigKeyLoggingIncludePID       = "logging.include_pid"
 
-	// Filtering configuration
 	ConfigKeyFilteringEnabled         = "filtering.enabled"
 	ConfigKeyFilteringLogBlocked      = "filtering.log_blocked"
 	ConfigKeyFilteringLogAllowed      = "filtering.log_allowed"
 	ConfigKeyFilteringRefreshInterval = "filtering.refresh_interval"
 
-	// Rate limit configuration
 	ConfigKeyRateLimitCleanupSeconds   = "rate_limit.cleanup_seconds"
 	ConfigKeyRateLimitMaxIPEntries     = "rate_limit.max_ip_entries"
 	ConfigKeyRateLimitMaxPrefixEntries = "rate_limit.max_prefix_entries"
@@ -44,7 +39,6 @@ const (
 	ConfigKeyRateLimitIPQPS            = "rate_limit.ip_qps"
 	ConfigKeyRateLimitIPBurst          = "rate_limit.ip_burst"
 
-	// API configuration
 	ConfigKeyAPIEnabled = "api.enabled"
 	ConfigKeyAPIHost    = "api.host"
 	ConfigKeyAPIPort    = "api.port"

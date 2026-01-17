@@ -111,15 +111,14 @@ export class DnsApiService {
   }
 
   updateCNAME(alias: string, target: string): Observable<CustomDNSOperationResponse> {
-    return this.http.put<CustomDNSOperationResponse>(
-      `${this.baseUrl}/custom-dns/cnames/${alias}`,
-      { target } as UpdateCNAMERequest
-    );
+    return this.http.put<CustomDNSOperationResponse>(`${this.baseUrl}/custom-dns/cnames/${alias}`, {
+      target,
+    } as UpdateCNAMERequest);
   }
 
   deleteCNAME(alias: string): Observable<CustomDNSOperationResponse> {
     return this.http.delete<CustomDNSOperationResponse>(
-      `${this.baseUrl}/custom-dns/cnames/${alias}`
+      `${this.baseUrl}/custom-dns/cnames/${alias}`,
     );
   }
 }

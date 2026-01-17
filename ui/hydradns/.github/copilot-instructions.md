@@ -5,11 +5,13 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 ## Project Context
 
 This is the web management UI for HydraDNS, a high-performance DNS forwarding server. The UI provides:
+
 - Dashboard with real-time server statistics
 - Filtering management (whitelist/blacklist)
 - Custom DNS record management (hosts/CNAMEs)
 
 ## Technology Stack
+
 - Angular 21+
 - NgRx Signal Store for state management
 - Tailwind CSS 4 for styling
@@ -56,7 +58,9 @@ This is the web management UI for HydraDNS, a high-performance DNS forwarding se
 - Use external templates/styles with paths relative to the component TS file
 
 ### Component File Structure
+
 Each component should have its own folder with separate files:
+
 ```
 component-name/
 ├── component-name.ts      # Component class

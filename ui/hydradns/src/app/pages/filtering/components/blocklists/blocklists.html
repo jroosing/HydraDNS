@@ -1,0 +1,12 @@
+<div class="space-y-6">
+  <h2 class="text-xl font-semibold text-slate-900 dark:text-white">Blocklists</h2>
+
+  <app-error-alert [message]="store.error()" (dismiss)="store.clearError()" />
+
+  @if (store.loading()) {
+    <app-loading-spinner />
+  }
+
+  <!-- Blocklists content will go here -->
+  <p class="text-slate-600 dark:text-slate-400">Blocklists configuration</p>
+</div>

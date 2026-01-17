@@ -1,38 +1,43 @@
 import { Routes } from '@angular/router';
-import { LayoutComponent } from './components/layout/layout';
 
 export const routes: Routes = [
   {
     path: '',
-    component: LayoutComponent,
+    redirectTo: 'dashboard',
+    pathMatch: 'full',
+  },
+  {
+    path: 'dashboard',
+    loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardComponent),
+  },
+  {
+    path: 'filtering',
+    loadComponent: () => import('./pages/filtering/filtering').then((m) => m.FilteringComponent),
     children: [
       {
         path: '',
-        redirectTo: 'dashboard',
+        redirectTo: 'lists',
         pathMatch: 'full',
       },
       {
-        path: 'dashboard',
+        path: 'lists',
         loadComponent: () =>
-          import('./components/dashboard/dashboard').then(
-            (m) => m.DashboardComponent
+          import('./pages/filtering/components/filtering-list/lists').then(
+            (m) => m.FilteringListsComponent,
           ),
       },
       {
-        path: 'filtering',
+        path: 'blocklists',
         loadComponent: () =>
-          import('./components/filtering/filtering').then(
-            (m) => m.FilteringComponent
-          ),
-      },
-      {
-        path: 'custom-dns',
-        loadComponent: () =>
-          import('./components/custom-dns/custom-dns').then(
-            (m) => m.CustomDnsComponent
+          import('./pages/filtering/components/blocklists/blocklists').then(
+            (m) => m.FilteringBlocklistsComponent,
           ),
       },
     ],
+  },
+  {
+    path: 'custom-dns',
+    loadComponent: () => import('./pages/custom-dns/custom-dns').then((m) => m.CustomDnsComponent),
   },
   {
     path: '**',

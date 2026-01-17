@@ -30,12 +30,11 @@ export const StatsStore = signalStore(
           api.getStats().pipe(
             tap({
               next: (stats) => patchState(store, { stats, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     loadConfig: rxMethod<void>(
@@ -45,12 +44,11 @@ export const StatsStore = signalStore(
           api.getConfig().pipe(
             tap({
               next: (config) => patchState(store, { config, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     startPolling: rxMethod<number>(
@@ -65,12 +63,12 @@ export const StatsStore = signalStore(
                   error: () => {
                     // Silently fail on polling errors
                   },
-                })
-              )
-            )
-          )
-        )
-      )
+                }),
+              ),
+            ),
+          ),
+        ),
+      ),
     ),
 
     reloadConfig: rxMethod<void>(
@@ -80,16 +78,15 @@ export const StatsStore = signalStore(
           api.reloadConfig().pipe(
             tap({
               next: () => patchState(store, { loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     clearError() {
       patchState(store, { error: null });
     },
-  }))
+  })),
 );

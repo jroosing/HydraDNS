@@ -7,9 +7,9 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ErrorAlertComponent } from '../error-alert/error-alert';
-import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner';
-import { StatCardComponent } from '../stat-card/stat-card';
+import { ErrorAlertComponent } from '../../shared/error-alert/error-alert';
+import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner';
+import { StatCardComponent } from '../../shared/stat-card/stat-card';
 import { CustomDnsStore } from '../../stores/custom-dns.store';
 
 type TabType = 'hosts' | 'cnames';
@@ -39,11 +39,11 @@ export class CustomDnsComponent implements OnInit {
   protected readonly editingCnameAlias = signal<string | null>(null);
 
   protected readonly canAddHost = computed(
-    () => this.newHostName().trim() && this.newHostIPs().trim()
+    () => this.newHostName().trim() && this.newHostIPs().trim(),
   );
 
   protected readonly canAddCname = computed(
-    () => this.newCnameAlias().trim() && this.newCnameTarget().trim()
+    () => this.newCnameAlias().trim() && this.newCnameTarget().trim(),
   );
 
   protected readonly filteredHosts = computed(() => this.store.hostsList());
@@ -59,7 +59,10 @@ export class CustomDnsComponent implements OnInit {
     const ipsString = this.newHostIPs().trim();
 
     if (name && ipsString) {
-      const ips = ipsString.split(',').map((ip) => ip.trim()).filter(Boolean);
+      const ips = ipsString
+        .split(',')
+        .map((ip) => ip.trim())
+        .filter(Boolean);
       if (ips.length > 0) {
         if (this.editingHostName()) {
           this.store.updateHost({ name, ips });

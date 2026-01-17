@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
-import { ErrorAlertComponent } from '../error-alert/error-alert';
-import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner';
-import { StatCardComponent } from '../stat-card/stat-card';
+import { ErrorAlertComponent } from '../../shared/error-alert/error-alert';
+import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner';
+import { StatCardComponent } from '../../shared/stat-card/stat-card';
 import { StatsStore } from '../../stores/stats.store';
 import { FilteringStore } from '../../stores/filtering.store';
 

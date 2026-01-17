@@ -1,11 +1,5 @@
 import { computed, inject } from '@angular/core';
-import {
-  patchState,
-  signalStore,
-  withComputed,
-  withMethods,
-  withState,
-} from '@ngrx/signals';
+import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap } from 'rxjs';
 import { CNAMERecord, HostRecord } from '../models/api.models';
@@ -29,16 +23,14 @@ export const CustomDnsStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
   withComputed((store) => ({
-    hostsList: computed(() =>
-      Object.entries(store.hosts()).map(([name, ips]) => ({ name, ips }))
-    ),
+    hostsList: computed(() => Object.entries(store.hosts()).map(([name, ips]) => ({ name, ips }))),
     cnamesList: computed(() =>
-      Object.entries(store.cnames()).map(([alias, target]) => ({ alias, target }))
+      Object.entries(store.cnames()).map(([alias, target]) => ({ alias, target })),
     ),
     hostsCount: computed(() => Object.keys(store.hosts()).length),
     cnamesCount: computed(() => Object.keys(store.cnames()).length),
     totalCount: computed(
-      () => Object.keys(store.hosts()).length + Object.keys(store.cnames()).length
+      () => Object.keys(store.hosts()).length + Object.keys(store.cnames()).length,
     ),
   })),
   withMethods((store, api = inject(DnsApiService)) => ({
@@ -54,12 +46,11 @@ export const CustomDnsStore = signalStore(
                   cnames: res.cnames,
                   loading: false,
                 }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     addHost: rxMethod<HostRecord>(
@@ -74,12 +65,11 @@ export const CustomDnsStore = signalStore(
                   loading: false,
                 }));
               },
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     updateHost: rxMethod<HostRecord>(
@@ -94,12 +84,11 @@ export const CustomDnsStore = signalStore(
                   loading: false,
                 }));
               },
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     deleteHost: rxMethod<string>(
@@ -115,12 +104,11 @@ export const CustomDnsStore = signalStore(
                   return { hosts, loading: false };
                 });
               },
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     addCname: rxMethod<CNAMERecord>(
@@ -135,12 +123,11 @@ export const CustomDnsStore = signalStore(
                   loading: false,
                 }));
               },
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     updateCname: rxMethod<CNAMERecord>(
@@ -155,12 +142,11 @@ export const CustomDnsStore = signalStore(
                   loading: false,
                 }));
               },
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     deleteCname: rxMethod<string>(
@@ -176,16 +162,15 @@ export const CustomDnsStore = signalStore(
                   return { cnames, loading: false };
                 });
               },
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     clearError() {
       patchState(store, { error: null });
     },
-  }))
+  })),
 );

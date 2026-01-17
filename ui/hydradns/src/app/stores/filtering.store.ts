@@ -1,11 +1,5 @@
 import { computed, inject } from '@angular/core';
-import {
-  patchState,
-  signalStore,
-  withComputed,
-  withMethods,
-  withState,
-} from '@ngrx/signals';
+import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap } from 'rxjs';
 import { FilteringStats } from '../models/api.models';
@@ -48,12 +42,11 @@ export const FilteringStore = signalStore(
           api.getFilteringStats().pipe(
             tap({
               next: (stats) => patchState(store, { stats, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     loadWhitelist: rxMethod<void>(
@@ -62,14 +55,12 @@ export const FilteringStore = signalStore(
         switchMap(() =>
           api.getWhitelist().pipe(
             tap({
-              next: (res) =>
-                patchState(store, { whitelist: res.domains, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              next: (res) => patchState(store, { whitelist: res.domains, loading: false }),
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     loadBlacklist: rxMethod<void>(
@@ -78,14 +69,12 @@ export const FilteringStore = signalStore(
         switchMap(() =>
           api.getBlacklist().pipe(
             tap({
-              next: (res) =>
-                patchState(store, { blacklist: res.domains, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              next: (res) => patchState(store, { blacklist: res.domains, loading: false }),
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     addToWhitelist: rxMethod<string[]>(
@@ -94,14 +83,12 @@ export const FilteringStore = signalStore(
         switchMap((domains) =>
           api.addWhitelist(domains).pipe(
             tap({
-              next: (res) =>
-                patchState(store, { whitelist: res.domains, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              next: (res) => patchState(store, { whitelist: res.domains, loading: false }),
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     removeFromWhitelist: rxMethod<string[]>(
@@ -110,14 +97,12 @@ export const FilteringStore = signalStore(
         switchMap((domains) =>
           api.removeWhitelist(domains).pipe(
             tap({
-              next: (res) =>
-                patchState(store, { whitelist: res.domains, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              next: (res) => patchState(store, { whitelist: res.domains, loading: false }),
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     addToBlacklist: rxMethod<string[]>(
@@ -126,14 +111,12 @@ export const FilteringStore = signalStore(
         switchMap((domains) =>
           api.addBlacklist(domains).pipe(
             tap({
-              next: (res) =>
-                patchState(store, { blacklist: res.domains, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              next: (res) => patchState(store, { blacklist: res.domains, loading: false }),
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     removeFromBlacklist: rxMethod<string[]>(
@@ -142,14 +125,12 @@ export const FilteringStore = signalStore(
         switchMap((domains) =>
           api.removeBlacklist(domains).pipe(
             tap({
-              next: (res) =>
-                patchState(store, { blacklist: res.domains, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              next: (res) => patchState(store, { blacklist: res.domains, loading: false }),
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     toggleFiltering: rxMethod<boolean>(
@@ -159,16 +140,15 @@ export const FilteringStore = signalStore(
           api.setFilteringEnabled(enabled).pipe(
             tap({
               next: (stats) => patchState(store, { stats, loading: false }),
-              error: (err) =>
-                patchState(store, { error: err.message, loading: false }),
-            })
-          )
-        )
-      )
+              error: (err) => patchState(store, { error: err.message, loading: false }),
+            }),
+          ),
+        ),
+      ),
     ),
 
     clearError() {
       patchState(store, { error: null });
     },
-  }))
+  })),
 );

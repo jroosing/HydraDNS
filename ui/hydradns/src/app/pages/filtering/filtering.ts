@@ -1,14 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
-import { DomainListComponent } from '../domain-list/domain-list';
-import { ErrorAlertComponent } from '../error-alert/error-alert';
-import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner';
-import { StatCardComponent } from '../stat-card/stat-card';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { StatCardComponent } from '../../shared/stat-card/stat-card';
 import { FilteringStore } from '../../stores/filtering.store';
 
 @Component({
   selector: 'app-filtering',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DomainListComponent, StatCardComponent, LoadingSpinnerComponent, ErrorAlertComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, StatCardComponent],
   templateUrl: './filtering.html',
   styleUrl: './filtering.scss',
 })
@@ -17,8 +15,6 @@ export class FilteringComponent implements OnInit {
 
   ngOnInit(): void {
     this.store.loadAll();
-    this.store.loadWhitelist();
-    this.store.loadBlacklist();
   }
 
   protected toggleFiltering(): void {

@@ -54,6 +54,15 @@ definitions:
       count:
         type: integer
     type: object
+  github_com_jroosing_hydradns_internal_api_models.CPUStats:
+    properties:
+      idle_percent:
+        type: number
+      num_cpu:
+        type: integer
+      used_percent:
+        type: number
+    type: object
   github_com_jroosing_hydradns_internal_api_models.ConfigResponse:
     properties:
       api:
@@ -170,6 +179,17 @@ definitions:
       whitelist_size:
         type: integer
     type: object
+  github_com_jroosing_hydradns_internal_api_models.MemoryStats:
+    properties:
+      free_mb:
+        type: number
+      total_mb:
+        type: number
+      used_mb:
+        type: number
+      used_percent:
+        type: number
+    type: object
   github_com_jroosing_hydradns_internal_api_models.ServerConfigResponse:
     properties:
       enable_tcp:
@@ -189,16 +209,14 @@ definitions:
     type: object
   github_com_jroosing_hydradns_internal_api_models.ServerStatsResponse:
     properties:
+      cpu:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.CPUStats'
       dns:
         $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.DNSStatsResponse'
       filtering:
         $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringStatsResponse'
-      goroutines:
-        type: integer
-      memory_alloc_mb:
-        type: number
-      num_cpu:
-        type: integer
+      memory:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.MemoryStats'
       start_time:
         type: string
       uptime:
@@ -970,8 +988,8 @@ paths:
       - system
   /stats:
     get:
-      description: Returns runtime statistics including memory, goroutines, and DNS
-        metrics
+      description: Returns runtime statistics including system CPU usage, memory usage,
+        and DNS metrics
       produces:
       - application/json
       responses:

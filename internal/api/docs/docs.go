@@ -996,7 +996,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Returns runtime statistics including memory, goroutines, and DNS metrics",
+                "description": "Returns runtime statistics including system CPU usage, memory usage, and DNS metrics",
                 "produces": [
                     "application/json"
                 ],
@@ -1095,6 +1095,20 @@ const docTemplate = `{
                 },
                 "count": {
                     "type": "integer"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.CPUStats": {
+            "type": "object",
+            "properties": {
+                "idle_percent": {
+                    "type": "number"
+                },
+                "num_cpu": {
+                    "type": "integer"
+                },
+                "used_percent": {
+                    "type": "number"
                 }
             }
         },
@@ -1276,6 +1290,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_jroosing_hydradns_internal_api_models.MemoryStats": {
+            "type": "object",
+            "properties": {
+                "free_mb": {
+                    "type": "number"
+                },
+                "total_mb": {
+                    "type": "number"
+                },
+                "used_mb": {
+                    "type": "number"
+                },
+                "used_percent": {
+                    "type": "number"
+                }
+            }
+        },
         "github_com_jroosing_hydradns_internal_api_models.ServerConfigResponse": {
             "type": "object",
             "properties": {
@@ -1305,20 +1336,17 @@ const docTemplate = `{
         "github_com_jroosing_hydradns_internal_api_models.ServerStatsResponse": {
             "type": "object",
             "properties": {
+                "cpu": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.CPUStats"
+                },
                 "dns": {
                     "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.DNSStatsResponse"
                 },
                 "filtering": {
                     "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.FilteringStatsResponse"
                 },
-                "goroutines": {
-                    "type": "integer"
-                },
-                "memory_alloc_mb": {
-                    "type": "number"
-                },
-                "num_cpu": {
-                    "type": "integer"
+                "memory": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.MemoryStats"
                 },
                 "start_time": {
                     "type": "string"

@@ -49,9 +49,17 @@ func TestServerStatsResponse_JSON(t *testing.T) {
 		Uptime:        "1h30m",
 		UptimeSeconds: 5400,
 		StartTime:     startTime,
-		GoRoutines:    42,
-		MemoryAllocMB: 123.45,
-		NumCPU:        8,
+		CPU: models.CPUStats{
+			NumCPU:      8,
+			UsedPercent: 25.5,
+			IdlePercent: 74.5,
+		},
+		Memory: models.MemoryStats{
+			TotalMB:     16384.0,
+			FreeMB:      8192.0,
+			UsedMB:      8192.0,
+			UsedPercent: 50.0,
+		},
 		DNSStats: models.DNSStatsResponse{
 			QueriesTotal: 1000,
 			QueriesUDP:   900,
@@ -68,8 +76,9 @@ func TestServerStatsResponse_JSON(t *testing.T) {
 
 	assert.Equal(t, "1h30m", decoded.Uptime)
 	assert.Equal(t, int64(5400), decoded.UptimeSeconds)
-	assert.Equal(t, 42, decoded.GoRoutines)
-	assert.Equal(t, 8, decoded.NumCPU)
+	assert.Equal(t, 8, decoded.CPU.NumCPU)
+	assert.Equal(t, 25.5, decoded.CPU.UsedPercent)
+	assert.Equal(t, 50.0, decoded.Memory.UsedPercent)
 	assert.Equal(t, uint64(1000), decoded.DNSStats.QueriesTotal)
 }
 

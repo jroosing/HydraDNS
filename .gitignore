@@ -21,3 +21,4 @@ bench
 *.prof
 dist
 hydradns.db
+.ui-repo

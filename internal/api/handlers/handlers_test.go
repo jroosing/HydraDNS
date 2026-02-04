@@ -93,8 +93,8 @@ func TestStats_ReturnsServerStats(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotEmpty(t, resp.Uptime)
-	assert.GreaterOrEqual(t, resp.GoRoutines, 1)
-	assert.Positive(t, resp.NumCPU)
+	assert.GreaterOrEqual(t, resp.Memory.UsedPercent, 0.0)
+	assert.Positive(t, resp.CPU.NumCPU)
 }
 
 func TestStats_WithPolicyEngine(t *testing.T) {

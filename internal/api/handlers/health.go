@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jroosing/hydradns/internal/api/models"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 // Health godoc
@@ -22,25 +24,39 @@ func (h *Handler) Health(c *gin.Context) {
 
 // Stats godoc
 // @Summary Server statistics
-// @Description Returns runtime statistics including memory, goroutines, and DNS metrics
+// @Description Returns runtime statistics including system CPU usage, memory usage, and DNS metrics
 // @Tags system
 // @Produce json
 // @Success 200 {object} models.ServerStatsResponse
 // @Security ApiKeyAuth
 // @Router /stats [get]
 func (h *Handler) Stats(c *gin.Context) {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-
 	uptime := time.Since(h.startTime)
+
+	// Get system memory stats
+	memStats := models.MemoryStats{}
+	if vmStat, err := mem.VirtualMemory(); err == nil {
+		memStats.TotalMB = float64(vmStat.Total) / 1024 / 1024
+		memStats.FreeMB = float64(vmStat.Available) / 1024 / 1024
+		memStats.UsedMB = float64(vmStat.Used) / 1024 / 1024
+		memStats.UsedPercent = vmStat.UsedPercent
+	}
+
+	// Get system CPU stats (average over 200ms sample)
+	cpuStats := models.CPUStats{
+		NumCPU: runtime.NumCPU(),
+	}
+	if cpuPercent, err := cpu.Percent(200*time.Millisecond, false); err == nil && len(cpuPercent) > 0 {
+		cpuStats.UsedPercent = cpuPercent[0]
+		cpuStats.IdlePercent = 100.0 - cpuPercent[0]
+	}
 
 	resp := models.ServerStatsResponse{
 		Uptime:        uptime.Round(time.Second).String(),
 		UptimeSeconds: int64(uptime.Seconds()),
 		StartTime:     h.startTime,
-		GoRoutines:    runtime.NumGoroutine(),
-		MemoryAllocMB: float64(m.Alloc) / 1024 / 1024,
-		NumCPU:        runtime.NumCPU(),
+		CPU:           cpuStats,
+		Memory:        memStats,
 		DNSStats: models.DNSStatsResponse{
 			QueriesTotal: 0,
 		},

@@ -2,14 +2,28 @@ package models
 
 import "time"
 
+// CPUStats contains system CPU statistics.
+type CPUStats struct {
+	NumCPU       int     `json:"num_cpu"`
+	UsedPercent  float64 `json:"used_percent"`
+	IdlePercent  float64 `json:"idle_percent"`
+}
+
+// MemoryStats contains system memory statistics.
+type MemoryStats struct {
+	TotalMB     float64 `json:"total_mb"`
+	FreeMB      float64 `json:"free_mb"`
+	UsedMB      float64 `json:"used_mb"`
+	UsedPercent float64 `json:"used_percent"`
+}
+
 // ServerStatsResponse contains server runtime statistics.
 type ServerStatsResponse struct {
 	Uptime         string                  `json:"uptime"`
 	UptimeSeconds  int64                   `json:"uptime_seconds"`
 	StartTime      time.Time               `json:"start_time"`
-	GoRoutines     int                     `json:"goroutines"`
-	MemoryAllocMB  float64                 `json:"memory_alloc_mb"`
-	NumCPU         int                     `json:"num_cpu"`
+	CPU            CPUStats                `json:"cpu"`
+	Memory         MemoryStats             `json:"memory"`
 	DNSStats       DNSStatsResponse        `json:"dns"`
 	FilteringStats *FilteringStatsResponse `json:"filtering,omitempty"`
 }

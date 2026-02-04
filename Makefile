@@ -30,9 +30,8 @@ help:
 	@echo "  make docker-build-ui  Build Docker image with embedded UI (Dockerfile.ui)"
 	@echo ""
 	@echo "Frontend (Angular):"
-	@echo "  make ui-build      Build Angular UI (ui/hydradns)"
-	@echo "  make ui-serve      Serve Angular dev server with proxy"
-	@echo "  make ui-clean      Remove Angular dist build output"
+	@echo "  make ui-build      Fetch & Build Angular UI (from external repo)"
+	@echo "  make ui-clean      Remove fetched UI repository and build artifacts"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean         Remove build artifacts and caches"
@@ -54,7 +53,8 @@ build: ui-build
 	@echo "Copying Angular dist to internal/api/dist..."
 	mkdir -p internal/api/dist
 	rm -rf internal/api/dist/*
-	cp -R ui/hydradns/dist/hydradns/* internal/api/dist/
+	# Assuming standard Angular build output structure
+	cp -R $(UI_DIR)/dist/hydradns/* internal/api/dist/
 	@echo "Building Go binary with embedded UI..."
 	mkdir -p bin
 	go build -o bin/hydradns ./cmd/hydradns
@@ -92,7 +92,7 @@ docker-run:
 docker-down:
 	docker compose down
 
-docker-build-ui:
+docker-build-ui: ui-fetch
 	docker build -f Dockerfile.ui -t hydradns:ui .
 
 # =============================================================================
@@ -107,11 +107,24 @@ clean:
 # Frontend (Angular)
 # =============================================================================
 
-ui-build:
-	cd ui/hydradns && npm ci && npm run build -- --configuration production
+UI_REPO := https://github.com/jroosing/HydraDNS-frontend.git
+UI_DIR := .ui-repo
 
-ui-serve:
-	cd ui/hydradns && npm start -- --proxy-config proxy.conf.json
+ui-fetch:
+	@if [ -d "$(UI_DIR)/.git" ]; then \
+		echo "Pulling latest UI changes..."; \
+		cd $(UI_DIR) && git pull; \
+	else \
+		echo "Cloning UI repository..."; \
+		rm -rf $(UI_DIR); \
+		git clone $(UI_REPO) $(UI_DIR); \
+	fi
+
+ui-build: ui-fetch
+	cd $(UI_DIR) && npm ci && npm run build -- --configuration production
+
+ui-serve: ui-fetch
+	cd $(UI_DIR) && npm start -- --proxy-config proxy.conf.json
 
 ui-clean:
-	rm -rf ui/hydradns/dist
+	rm -rf $(UI_DIR)

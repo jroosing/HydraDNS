@@ -7,12 +7,10 @@ ARG NODE_IMAGE=node:20-alpine
 FROM ${NODE_IMAGE} AS ui-builder
 WORKDIR /ui
 
-# Copy Angular project (expects it under ui/hydradns)
-# You can override UI_PROJECT via build-arg if your project name differs.
-ARG UI_PROJECT=hydradns
-COPY ui/${UI_PROJECT}/package*.json ./
+# Copy Angular project (expects it under .ui-repo via 'make ui-fetch')
+COPY .ui-repo/package*.json ./
 RUN npm ci
-COPY ui/${UI_PROJECT}/ ./
+COPY .ui-repo/ ./
 # Build production assets to /ui/dist
 RUN npm run build -- --configuration production
 

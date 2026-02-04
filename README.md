@@ -528,9 +528,12 @@ go test ./...
 # Run linter
 golangci-lint run ./...
 
-# Build the binary
+# Build the binary (automatically fetches and builds the UI)
 make build
 ```
+
+**Note:** The frontend (Web UI) code is maintained in a separate repository: [HydraDNS-frontend](https://github.com/jroosing/HydraDNS-frontend).
+The `make build` command automatically clones and builds the latest frontend code.
 
 ### Code Style
 

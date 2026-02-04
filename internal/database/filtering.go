@@ -266,3 +266,66 @@ func (db *DB) UpdateBlocklistFetchTime(name string) error {
 
 	return nil
 }
+
+// GetFilteringEnabled returns whether filtering is enabled.
+func (db *DB) GetFilteringEnabled() (bool, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	var enabled bool
+	err := db.conn.QueryRow("SELECT enabled FROM config_filtering WHERE id = 1").Scan(&enabled)
+	if err != nil {
+		return false, fmt.Errorf("failed to get filtering enabled state: %w", err)
+	}
+
+	return enabled, nil
+}
+
+// SetFilteringEnabled sets whether filtering is enabled.
+func (db *DB) SetFilteringEnabled(enabled bool) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	query := "UPDATE config_filtering SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1"
+
+	result, err := db.conn.Exec(query, enabled)
+	if err != nil {
+		return fmt.Errorf("failed to set filtering enabled state: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("config_filtering row not found")
+	}
+
+	return nil
+}
+
+// FilteringConfig holds the filtering configuration from the typed table.
+type FilteringConfig struct {
+	Enabled         bool
+	LogBlocked      bool
+	LogAllowed      bool
+	RefreshInterval string
+}
+
+// GetFilteringConfig retrieves the full filtering configuration.
+func (db *DB) GetFilteringConfig() (FilteringConfig, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	var cfg FilteringConfig
+	err := db.conn.QueryRow(`
+		SELECT enabled, log_blocked, log_allowed, refresh_interval 
+		FROM config_filtering WHERE id = 1
+	`).Scan(&cfg.Enabled, &cfg.LogBlocked, &cfg.LogAllowed, &cfg.RefreshInterval)
+	if err != nil {
+		return FilteringConfig{}, fmt.Errorf("failed to get filtering config: %w", err)
+	}
+
+	return cfg, nil
+}

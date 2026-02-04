@@ -160,16 +160,16 @@ func (db *DB) exportLoggingConfig(cfg *config.Config) error {
 }
 
 func (db *DB) exportFilteringConfig(cfg *config.Config) error {
-	enabledStr := db.GetConfigWithDefault(ConfigKeyFilteringEnabled, "false")
-	cfg.Filtering.Enabled, _ = strconv.ParseBool(enabledStr)
+	// Get filtering config from typed table
+	filteringCfg, err := db.GetFilteringConfig()
+	if err != nil {
+		return fmt.Errorf("failed to get filtering config: %w", err)
+	}
 
-	logBlockedStr := db.GetConfigWithDefault(ConfigKeyFilteringLogBlocked, "true")
-	cfg.Filtering.LogBlocked, _ = strconv.ParseBool(logBlockedStr)
-
-	logAllowedStr := db.GetConfigWithDefault(ConfigKeyFilteringLogAllowed, "false")
-	cfg.Filtering.LogAllowed, _ = strconv.ParseBool(logAllowedStr)
-
-	cfg.Filtering.RefreshInterval = db.GetConfigWithDefault(ConfigKeyFilteringRefreshInterval, "24h")
+	cfg.Filtering.Enabled = filteringCfg.Enabled
+	cfg.Filtering.LogBlocked = filteringCfg.LogBlocked
+	cfg.Filtering.LogAllowed = filteringCfg.LogAllowed
+	cfg.Filtering.RefreshInterval = filteringCfg.RefreshInterval
 
 	// Get whitelist domains
 	whitelist, err := db.GetWhitelistDomains()

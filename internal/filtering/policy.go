@@ -65,7 +65,7 @@ type PolicyEngine struct {
 	mu          sync.RWMutex
 
 	// Configuration
-	enabled       bool
+	enabled       atomic.Bool
 	blockAction   Action
 	logBlocked    bool
 	logAllowed    bool
@@ -133,11 +133,11 @@ func NewPolicyEngine(cfg PolicyEngineConfig) *PolicyEngine {
 		whitelist:   NewDomainTrie(),
 		blacklist:   NewDomainTrie(),
 		listSources: make(map[string]ListSource),
-		enabled:     cfg.Enabled,
 		blockAction: cfg.BlockAction,
 		logBlocked:  cfg.LogBlocked,
 		logAllowed:  cfg.LogAllowed,
 	}
+	pe.enabled.Store(cfg.Enabled)
 
 	// Add configured whitelist domains
 	parser := NewParser()
@@ -246,7 +246,7 @@ func (pe *PolicyEngine) Evaluate(domain string) PolicyResult {
 	pe.queriesTotal.Add(1)
 
 	// If filtering is disabled, allow everything
-	if !pe.enabled {
+	if !pe.enabled.Load() {
 		pe.queriesAllowed.Add(1)
 		return PolicyResult{Action: ActionAllow}
 	}
@@ -320,7 +320,7 @@ func (pe *PolicyEngine) Stats() PolicyStats {
 		QueriesAllowed: pe.queriesAllowed.Load(),
 		WhitelistSize:  pe.whitelist.Size(),
 		BlacklistSize:  pe.blacklist.Size(),
-		Enabled:        pe.enabled,
+		Enabled:        pe.enabled.Load(),
 	}
 }
 
@@ -348,7 +348,7 @@ func (pe *PolicyEngine) ListInfo() []ListSource {
 
 // SetEnabled enables or disables filtering.
 func (pe *PolicyEngine) SetEnabled(enabled bool) {
-	pe.enabled = enabled
+	pe.enabled.Store(enabled)
 }
 
 // Close stops any background goroutines.

@@ -385,7 +385,10 @@ func (h *Handler) SetFilteringEnabled(c *gin.Context) {
 	// Persist to database if available
 	if h.db != nil {
 		if err := h.db.SetFilteringEnabled(req.Enabled); err != nil {
-			c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "failed to persist setting: " + err.Error()})
+			c.JSON(
+				http.StatusServiceUnavailable,
+				models.ErrorResponse{Error: "failed to persist setting: " + err.Error()},
+			)
 			return
 		}
 	}

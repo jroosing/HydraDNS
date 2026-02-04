@@ -57,9 +57,7 @@ func (h *Handler) Stats(c *gin.Context) {
 		StartTime:     h.startTime,
 		CPU:           cpuStats,
 		Memory:        memStats,
-		DNSStats: models.DNSStatsResponse{
-			QueriesTotal: 0,
-		},
+		DNSStats:      h.getDNSStats(),
 	}
 
 	pe := h.GetPolicyEngine()
@@ -77,4 +75,21 @@ func (h *Handler) Stats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+// getDNSStats returns the DNS statistics as a model response.
+func (h *Handler) getDNSStats() models.DNSStatsResponse {
+	fn := h.GetDNSStatsFunc()
+	if fn == nil {
+		return models.DNSStatsResponse{}
+	}
+	snapshot := fn()
+	return models.DNSStatsResponse{
+		QueriesTotal: snapshot.QueriesTotal,
+		QueriesUDP:   snapshot.QueriesUDP,
+		QueriesTCP:   snapshot.QueriesTCP,
+		ResponsesNX:  snapshot.ResponsesNX,
+		ResponsesErr: snapshot.ResponsesErr,
+		AvgLatencyMs: snapshot.AvgLatencyMs,
+	}
 }

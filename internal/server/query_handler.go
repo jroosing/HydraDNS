@@ -32,6 +32,7 @@ type QueryHandler struct {
 	Logger   *slog.Logger       // Optional logger for debug output
 	Resolver resolvers.Resolver // The resolver chain to process queries
 	Timeout  time.Duration      // Maximum time for query resolution (default: 4s)
+	Stats    *DNSStats          // Optional statistics collector
 }
 
 // HandleResult contains the outcome of query processing.
@@ -52,9 +53,19 @@ type HandleResult struct {
 //
 // The context is checked for cancellation (e.g., server shutdown).
 func (h *QueryHandler) Handle(ctx context.Context, transport string, src string, reqBytes []byte) HandleResult {
+	start := time.Now()
+
+	// Record query in stats
+	if h.Stats != nil {
+		h.Stats.RecordQuery(transport)
+	}
+
 	// Step 1: Parse request
 	parsed, err := dns.ParseRequestBounded(reqBytes)
 	if err != nil {
+		if h.Stats != nil {
+			h.Stats.RecordError()
+		}
 		return h.handleParseError(reqBytes)
 	}
 
@@ -64,7 +75,22 @@ func (h *QueryHandler) Handle(ctx context.Context, transport string, src string,
 	// Step 2: Resolve with timeout
 	result := h.resolveWithTimeout(ctx, parsed, reqBytes)
 
-	// Step 3: Log at debug level
+	// Step 3: Record response stats
+	if h.Stats != nil {
+		h.Stats.RecordLatency(time.Since(start).Nanoseconds())
+		// Check response code if we have response bytes
+		if len(result.ResponseBytes) >= 4 {
+			// RCODE is in the lower 4 bits of byte 3
+			rcode := result.ResponseBytes[3] & 0x0F
+			if rcode == uint8(dns.RCodeNXDomain) {
+				h.Stats.RecordNXDOMAIN()
+			} else if rcode != uint8(dns.RCodeNoError) {
+				h.Stats.RecordError()
+			}
+		}
+	}
+
+	// Step 4: Log at debug level
 	h.logRequest(ctx, transport, src, parsed, qname, qtype, len(reqBytes), result.Source)
 
 	return HandleResult{

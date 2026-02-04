@@ -20,11 +20,21 @@ import (
 type Runner struct {
 	logger       *slog.Logger
 	policyEngine *filtering.PolicyEngine
+	dnsStats     *DNSStats
 }
 
 // NewRunner creates a new server runner with the given logger.
 func NewRunner(logger *slog.Logger) *Runner {
-	return &Runner{logger: logger}
+	return &Runner{
+		logger:   logger,
+		dnsStats: NewDNSStats(),
+	}
+}
+
+// DNSStats returns the DNS statistics collector.
+// This can be used by the API to report query metrics.
+func (r *Runner) DNSStats() *DNSStats {
+	return r.dnsStats
 }
 
 // SetPolicyEngine injects a shared policy engine for both DNS resolution and the API.
@@ -83,7 +93,7 @@ func (r *Runner) RunWithContext(ctx context.Context, cfg *config.Config) error {
 	defer resolver.Close()
 
 	// Create server components
-	h := &QueryHandler{Logger: r.logger, Resolver: resolver, Timeout: 4 * time.Second}
+	h := &QueryHandler{Logger: r.logger, Resolver: resolver, Timeout: 4 * time.Second, Stats: r.dnsStats}
 	limiter := NewRateLimiter(RateLimitSettings{
 		CleanupSeconds:   cfg.RateLimit.CleanupSeconds,
 		MaxIPEntries:     cfg.RateLimit.MaxIPEntries,
@@ -205,7 +215,12 @@ func (r *Runner) initCustomDNS(cfg *config.Config) *resolvers.CustomDNSResolver 
 }
 
 // buildResolverChain creates the resolver chain: filtering -> custom DNS (if any) -> forwarding.
-func (r *Runner) buildResolverChain(cfg *config.Config, customResolver *resolvers.CustomDNSResolver, upPool int, policy *filtering.PolicyEngine) resolvers.Resolver {
+func (r *Runner) buildResolverChain(
+	cfg *config.Config,
+	customResolver *resolvers.CustomDNSResolver,
+	upPool int,
+	policy *filtering.PolicyEngine,
+) resolvers.Resolver {
 	resList := make([]resolvers.Resolver, 0, 2)
 
 	if customResolver != nil {

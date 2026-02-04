@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jroosing/hydradns/internal/api"
+	"github.com/jroosing/hydradns/internal/api/handlers"
 	"github.com/jroosing/hydradns/internal/database"
 	"github.com/jroosing/hydradns/internal/logging"
 	"github.com/jroosing/hydradns/internal/server"
@@ -108,9 +109,28 @@ func run() error {
 	// Build shared filtering policy engine (even if disabled) for API + DNS path
 	policy := server.BuildPolicyEngine(cfg, logger)
 
+	// Create runner early to get DNS stats collector
+	runner := server.NewRunner(logger)
+	runner.SetPolicyEngine(policy)
+
 	// API server is always enabled (web UI is mandatory)
 	apiSrv := api.New(cfg, db, logger)
 	apiSrv.Handler().SetPolicyEngine(policy)
+
+	// Wire DNS stats from runner to API handler
+	dnsStats := runner.DNSStats()
+	apiSrv.Handler().SetDNSStatsFunc(func() handlers.DNSStatsSnapshot {
+		snapshot := dnsStats.Snapshot()
+		return handlers.DNSStatsSnapshot{
+			QueriesTotal: snapshot.QueriesTotal,
+			QueriesUDP:   snapshot.QueriesUDP,
+			QueriesTCP:   snapshot.QueriesTCP,
+			ResponsesNX:  snapshot.ResponsesNX,
+			ResponsesErr: snapshot.ResponsesErr,
+			AvgLatencyMs: snapshot.AvgLatencyMs,
+		}
+	})
+
 	logger.Info("web UI and API starting", "addr", apiSrv.Addr())
 
 	go func() {
@@ -122,8 +142,6 @@ func run() error {
 		cancel()
 	}()
 
-	runner := server.NewRunner(logger)
-	runner.SetPolicyEngine(policy)
 	err = runner.RunWithContext(ctx, cfg)
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -61,6 +61,19 @@ import (
 	"github.com/jroosing/hydradns/internal/filtering"
 )
 
+// DNSStatsSnapshot contains a point-in-time snapshot of DNS statistics.
+type DNSStatsSnapshot struct {
+	QueriesTotal uint64
+	QueriesUDP   uint64
+	QueriesTCP   uint64
+	ResponsesNX  uint64
+	ResponsesErr uint64
+	AvgLatencyMs float64
+}
+
+// DNSStatsFunc is a function that returns DNS statistics.
+type DNSStatsFunc func() DNSStatsSnapshot
+
 // Handler contains dependencies for API handlers.
 type Handler struct {
 	cfg       *config.Config
@@ -70,7 +83,8 @@ type Handler struct {
 
 	// Runtime components (set after server starts)
 	policyEngine        *filtering.PolicyEngine
-	customDNSReloadFunc func() error // Callback to reload custom DNS resolver
+	customDNSReloadFunc func() error  // Callback to reload custom DNS resolver
+	dnsStatsFunc        DNSStatsFunc  // Function to get DNS query statistics
 	mu                  sync.RWMutex
 }
 
@@ -109,4 +123,18 @@ func (h *Handler) SetCustomDNSReloadFunc(reloadFunc func() error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.customDNSReloadFunc = reloadFunc
+}
+
+// SetDNSStatsFunc sets the function to retrieve DNS statistics.
+func (h *Handler) SetDNSStatsFunc(fn DNSStatsFunc) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.dnsStatsFunc = fn
+}
+
+// GetDNSStatsFunc retrieves the DNS statistics function.
+func (h *Handler) GetDNSStatsFunc() DNSStatsFunc {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.dnsStatsFunc
 }

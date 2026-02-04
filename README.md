@@ -496,18 +496,6 @@ curl -X PUT -H "X-Api-Key: secret" -H "Content-Type: application/json" \
   http://localhost:8080/api/v1/filtering/enabled
 ```
 
----
-
-## AI Assistance
-
-Using AI tools is fine for this project, but every AI output must be human-reviewed and validated before it ships:
-
-- AI-generated code, docs, and examples are allowed as long as a human maintainer reviews and validates them before merge.
-- AI-written comments are also fine, but treat them like code: **read and confirm** accuracy, clarity, and intent before accepting.
-- When unsure, follow the project standards (Go 1.25, RFC correctness, clarity-first code) instead of AI suggestions.
-
----
-
 ## License
 
 HydraDNS is licensed under the **MIT License** — a permissive, open-source license that allows you to:

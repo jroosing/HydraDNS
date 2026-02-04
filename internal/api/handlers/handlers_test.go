@@ -65,7 +65,7 @@ func TestHealth_ReturnsOK(t *testing.T) {
 	router := gin.New()
 	router.GET("/health", h.Health)
 
-	w := performRequest(router, "GET", "/health", "")
+	w := performRequest(router, http.MethodGet, "/health", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -84,7 +84,7 @@ func TestStats_ReturnsServerStats(t *testing.T) {
 	router := gin.New()
 	router.GET("/stats", h.Stats)
 
-	w := performRequest(router, "GET", "/stats", "")
+	w := performRequest(router, http.MethodGet, "/stats", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -106,7 +106,7 @@ func TestStats_WithPolicyEngine(t *testing.T) {
 	router := gin.New()
 	router.GET("/stats", h.Stats)
 
-	w := performRequest(router, "GET", "/stats", "")
+	w := performRequest(router, http.MethodGet, "/stats", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -127,7 +127,7 @@ func TestGetWhitelist_ReturnsList(t *testing.T) {
 	router := gin.New()
 	router.GET("/filtering/whitelist", h.GetWhitelist)
 
-	w := performRequest(router, "GET", "/filtering/whitelist", "")
+	w := performRequest(router, http.MethodGet, "/filtering/whitelist", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -145,7 +145,7 @@ func TestGetWhitelist_WithPolicyEngine(t *testing.T) {
 	router := gin.New()
 	router.GET("/filtering/whitelist", h.GetWhitelist)
 
-	w := performRequest(router, "GET", "/filtering/whitelist", "")
+	w := performRequest(router, http.MethodGet, "/filtering/whitelist", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -159,7 +159,7 @@ func TestAddWhitelist_NoPolicyEngine(t *testing.T) {
 	router := gin.New()
 	router.POST("/filtering/whitelist", h.AddWhitelist)
 
-	w := performRequest(router, "POST", "/filtering/whitelist", `{"domains":["example.com"]}`)
+	w := performRequest(router, http.MethodPost, "/filtering/whitelist", `{"domains":["example.com"]}`)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -178,7 +178,7 @@ func TestAddWhitelist_Success(t *testing.T) {
 	router := gin.New()
 	router.POST("/filtering/whitelist", h.AddWhitelist)
 
-	w := performRequest(router, "POST", "/filtering/whitelist", `{"domains":["example.com","test.com"]}`)
+	w := performRequest(router, http.MethodPost, "/filtering/whitelist", `{"domains":["example.com","test.com"]}`)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -197,7 +197,7 @@ func TestAddWhitelist_InvalidJSON(t *testing.T) {
 	router := gin.New()
 	router.POST("/filtering/whitelist", h.AddWhitelist)
 
-	w := performRequest(router, "POST", "/filtering/whitelist", `invalid json`)
+	w := performRequest(router, http.MethodPost, "/filtering/whitelist", `invalid json`)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
@@ -213,9 +213,9 @@ func TestRemoveWhitelist_Success(t *testing.T) {
 	router.DELETE("/filtering/whitelist", h.RemoveWhitelist)
 
 	// Add then remove
-	_ = performRequest(router, "POST", "/filtering/whitelist", `{"domains":["example.com"]}`)
+	_ = performRequest(router, http.MethodPost, "/filtering/whitelist", `{"domains":["example.com"]}`)
 
-	w := performRequest(router, "DELETE", "/filtering/whitelist", `{"domains":["example.com"]}`)
+	w := performRequest(router, http.MethodDelete, "/filtering/whitelist", `{"domains":["example.com"]}`)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -229,7 +229,7 @@ func TestGetBlacklist_ReturnsList(t *testing.T) {
 	router := gin.New()
 	router.GET("/filtering/blacklist", h.GetBlacklist)
 
-	w := performRequest(router, "GET", "/filtering/blacklist", "")
+	w := performRequest(router, http.MethodGet, "/filtering/blacklist", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 }
@@ -243,7 +243,7 @@ func TestGetBlacklist_WithPolicyEngine(t *testing.T) {
 	router := gin.New()
 	router.GET("/filtering/blacklist", h.GetBlacklist)
 
-	w := performRequest(router, "GET", "/filtering/blacklist", "")
+	w := performRequest(router, http.MethodGet, "/filtering/blacklist", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 }
@@ -257,7 +257,7 @@ func TestAddBlacklist_Success(t *testing.T) {
 	router := gin.New()
 	router.POST("/filtering/blacklist", h.AddBlacklist)
 
-	w := performRequest(router, "POST", "/filtering/blacklist", `{"domains":["ads.example.com"]}`)
+	w := performRequest(router, http.MethodPost, "/filtering/blacklist", `{"domains":["ads.example.com"]}`)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -276,9 +276,9 @@ func TestRemoveBlacklist_Success(t *testing.T) {
 	router.POST("/filtering/blacklist", h.AddBlacklist)
 	router.DELETE("/filtering/blacklist", h.RemoveBlacklist)
 
-	_ = performRequest(router, "POST", "/filtering/blacklist", `{"domains":["to.remove.example.com"]}`)
+	_ = performRequest(router, http.MethodPost, "/filtering/blacklist", `{"domains":["to.remove.example.com"]}`)
 
-	w := performRequest(router, "DELETE", "/filtering/blacklist", `{"domains":["to.remove.example.com"]}`)
+	w := performRequest(router, http.MethodDelete, "/filtering/blacklist", `{"domains":["to.remove.example.com"]}`)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -292,7 +292,7 @@ func TestFilteringStats_NoPolicyEngine(t *testing.T) {
 	router := gin.New()
 	router.GET("/filtering/stats", h.FilteringStats)
 
-	w := performRequest(router, "GET", "/filtering/stats", "")
+	w := performRequest(router, http.MethodGet, "/filtering/stats", "")
 
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
 }
@@ -302,7 +302,7 @@ func TestSetFilteringEnabled_NoPolicyEngine(t *testing.T) {
 	router := gin.New()
 	router.PUT("/filtering/enabled", h.SetFilteringEnabled)
 
-	w := performRequest(router, "PUT", "/filtering/enabled", `{"enabled":true}`)
+	w := performRequest(router, http.MethodPut, "/filtering/enabled", `{"enabled":true}`)
 
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
 }
@@ -316,7 +316,7 @@ func TestSetFilteringEnabled_Success(t *testing.T) {
 	router := gin.New()
 	router.PUT("/filtering/enabled", h.SetFilteringEnabled)
 
-	w := performRequest(router, "PUT", "/filtering/enabled", `{"enabled":false}`)
+	w := performRequest(router, http.MethodPut, "/filtering/enabled", `{"enabled":false}`)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -335,7 +335,7 @@ func TestGetConfig_Success(t *testing.T) {
 	router := gin.New()
 	router.GET("/config", h.GetConfig)
 
-	w := performRequest(router, "GET", "/config", "")
+	w := performRequest(router, http.MethodGet, "/config", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -351,7 +351,7 @@ func TestPutConfig_NotImplemented(t *testing.T) {
 	router := gin.New()
 	router.PUT("/config", h.PutConfig)
 
-	w := performRequest(router, "PUT", "/config", `{}`)
+	w := performRequest(router, http.MethodPut, "/config", `{}`)
 
 	assert.Equal(t, http.StatusNotImplemented, w.Code)
 }
@@ -361,7 +361,7 @@ func TestReloadConfig_NotImplemented(t *testing.T) {
 	router := gin.New()
 	router.POST("/config/reload", h.ReloadConfig)
 
-	w := performRequest(router, "POST", "/config/reload", "")
+	w := performRequest(router, http.MethodPost, "/config/reload", "")
 
 	assert.Equal(t, http.StatusNotImplemented, w.Code)
 }
@@ -388,7 +388,7 @@ func TestHandler_SetPolicyEngine(t *testing.T) {
 	router := gin.New()
 	router.GET("/stats", h.Stats)
 
-	w := performRequest(router, "GET", "/stats", "")
+	w := performRequest(router, http.MethodGet, "/stats", "")
 
 	var resp models.ServerStatsResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
@@ -408,7 +408,7 @@ func TestBlocklists_ToggleEnabled_And_Refresh(t *testing.T) {
 	router.POST("/filtering/blocklists/:name/refresh", h.RefreshBlocklist)
 
 	// Initial list fetch
-	w := performRequest(router, "GET", "/filtering/blocklists", "")
+	w := performRequest(router, http.MethodGet, "/filtering/blocklists", "")
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var list models.BlocklistsResponse
@@ -421,11 +421,11 @@ func TestBlocklists_ToggleEnabled_And_Refresh(t *testing.T) {
 	escName := url.PathEscape(name)
 
 	// Toggle enabled to false
-	w = performRequest(router, "PUT", "/filtering/blocklists/"+escName+"/enabled", `{"enabled":false}`)
+	w = performRequest(router, http.MethodPut, "/filtering/blocklists/"+escName+"/enabled", `{"enabled":false}`)
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Verify list shows disabled
-	w = performRequest(router, "GET", "/filtering/blocklists", "")
+	w = performRequest(router, http.MethodGet, "/filtering/blocklists", "")
 	var list2 models.BlocklistsResponse
 	err = json.Unmarshal(w.Body.Bytes(), &list2)
 	require.NoError(t, err)
@@ -442,10 +442,10 @@ func TestBlocklists_ToggleEnabled_And_Refresh(t *testing.T) {
 	assert.False(t, found.Enabled)
 
 	// Refresh should set last_fetched
-	w = performRequest(router, "POST", "/filtering/blocklists/"+escName+"/refresh", "")
+	w = performRequest(router, http.MethodPost, "/filtering/blocklists/"+escName+"/refresh", "")
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	w = performRequest(router, "GET", "/filtering/blocklists", "")
+	w = performRequest(router, http.MethodGet, "/filtering/blocklists", "")
 	var list3 models.BlocklistsResponse
 	err = json.Unmarshal(w.Body.Bytes(), &list3)
 	require.NoError(t, err)

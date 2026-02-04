@@ -5,7 +5,121 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jroosing/hydradns/internal/api/models"
+	"github.com/jroosing/hydradns/internal/filtering"
 )
+
+// listOps defines operations for a domain list (whitelist or blacklist).
+type listOps struct {
+	name             string
+	getFromDB        func() ([]string, error)
+	addToDB          func(string) error
+	deleteFromDB     func(string) error
+	addToEngine      func(*filtering.PolicyEngine, string)
+	removeFromEngine func(*filtering.PolicyEngine, string)
+}
+
+func (h *Handler) whitelistOps() listOps {
+	return listOps{
+		name:             "whitelist",
+		getFromDB:        h.db.GetWhitelistDomains,
+		addToDB:          h.db.AddWhitelistDomain,
+		deleteFromDB:     h.db.DeleteWhitelistDomain,
+		addToEngine:      func(pe *filtering.PolicyEngine, d string) { pe.AddToWhitelist(d) },
+		removeFromEngine: func(pe *filtering.PolicyEngine, d string) { pe.RemoveFromWhitelist(d) },
+	}
+}
+
+func (h *Handler) blacklistOps() listOps {
+	return listOps{
+		name:             "blacklist",
+		getFromDB:        h.db.GetBlacklistDomains,
+		addToDB:          h.db.AddBlacklistDomain,
+		deleteFromDB:     h.db.DeleteBlacklistDomain,
+		addToEngine:      func(pe *filtering.PolicyEngine, d string) { pe.AddToBlacklist(d) },
+		removeFromEngine: func(pe *filtering.PolicyEngine, d string) { pe.RemoveFromBlacklist(d) },
+	}
+}
+
+func (h *Handler) getDomainList(c *gin.Context, ops listOps) {
+	if h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "database not available"})
+		return
+	}
+
+	domains, err := ops.getFromDB()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.DomainListResponse{Domains: domains, Count: len(domains)})
+}
+
+func (h *Handler) addToDomainList(c *gin.Context, ops listOps) {
+	pe := h.GetPolicyEngine()
+	if h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "database not available"})
+		return
+	}
+
+	var req models.DomainRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	for _, domain := range req.Domains {
+		if err := ops.addToDB(domain); err != nil {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			return
+		}
+		if pe != nil {
+			ops.addToEngine(pe, domain)
+		}
+	}
+
+	if h.logger != nil {
+		h.logger.Info("added domains to "+ops.name, "count", len(req.Domains))
+	}
+
+	domains, err := ops.getFromDB()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, models.DomainListResponse{Domains: domains, Count: len(domains)})
+}
+
+func (h *Handler) removeFromDomainList(c *gin.Context, ops listOps) {
+	pe := h.GetPolicyEngine()
+	if h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "database not available"})
+		return
+	}
+
+	var req models.DomainDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	for _, domain := range req.Domains {
+		if err := ops.deleteFromDB(domain); err != nil {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			return
+		}
+		if pe != nil {
+			ops.removeFromEngine(pe, domain)
+		}
+	}
+
+	domains, err := ops.getFromDB()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, models.DomainListResponse{Domains: domains, Count: len(domains)})
+}
 
 // GetWhitelist godoc
 // @Summary Get whitelist domains
@@ -17,18 +131,7 @@ import (
 // @Security ApiKeyAuth
 // @Router /filtering/whitelist [get]
 func (h *Handler) GetWhitelist(c *gin.Context) {
-	if h.db == nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "database not available"})
-		return
-	}
-
-	domains, err := h.db.GetWhitelistDomains()
-	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, models.DomainListResponse{Domains: domains, Count: len(domains)})
+	h.getDomainList(c, h.whitelistOps())
 }
 
 // AddWhitelist godoc
@@ -44,38 +147,7 @@ func (h *Handler) GetWhitelist(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /filtering/whitelist [post]
 func (h *Handler) AddWhitelist(c *gin.Context) {
-	pe := h.GetPolicyEngine()
-	if h.db == nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "database not available"})
-		return
-	}
-
-	var req models.DomainRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
-	for _, domain := range req.Domains {
-		if err := h.db.AddWhitelistDomain(domain); err != nil {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-			return
-		}
-		if pe != nil {
-			pe.AddToWhitelist(domain)
-		}
-	}
-
-	if h.logger != nil {
-		h.logger.Info("added domains to whitelist", "count", len(req.Domains))
-	}
-
-	domains, err := h.db.GetWhitelistDomains()
-	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, models.DomainListResponse{Domains: domains, Count: len(domains)})
+	h.addToDomainList(c, h.whitelistOps())
 }
 
 // RemoveWhitelist godoc
@@ -91,34 +163,7 @@ func (h *Handler) AddWhitelist(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /filtering/whitelist [delete]
 func (h *Handler) RemoveWhitelist(c *gin.Context) {
-	pe := h.GetPolicyEngine()
-	if h.db == nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "database not available"})
-		return
-	}
-
-	var req models.DomainDeleteRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
-	for _, domain := range req.Domains {
-		if err := h.db.DeleteWhitelistDomain(domain); err != nil {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-			return
-		}
-		if pe != nil {
-			pe.RemoveFromWhitelist(domain)
-		}
-	}
-
-	domains, err := h.db.GetWhitelistDomains()
-	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, models.DomainListResponse{Domains: domains, Count: len(domains)})
+	h.removeFromDomainList(c, h.whitelistOps())
 }
 
 // GetBlacklist godoc
@@ -131,18 +176,7 @@ func (h *Handler) RemoveWhitelist(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /filtering/blacklist [get]
 func (h *Handler) GetBlacklist(c *gin.Context) {
-	if h.db == nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "database not available"})
-		return
-	}
-
-	domains, err := h.db.GetBlacklistDomains()
-	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, models.DomainListResponse{Domains: domains, Count: len(domains)})
+	h.getDomainList(c, h.blacklistOps())
 }
 
 // AddBlacklist godoc
@@ -158,38 +192,7 @@ func (h *Handler) GetBlacklist(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /filtering/blacklist [post]
 func (h *Handler) AddBlacklist(c *gin.Context) {
-	pe := h.GetPolicyEngine()
-	if h.db == nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "database not available"})
-		return
-	}
-
-	var req models.DomainRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
-	for _, domain := range req.Domains {
-		if err := h.db.AddBlacklistDomain(domain); err != nil {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-			return
-		}
-		if pe != nil {
-			pe.AddToBlacklist(domain)
-		}
-	}
-
-	if h.logger != nil {
-		h.logger.Info("added domains to blacklist", "count", len(req.Domains))
-	}
-
-	domains, err := h.db.GetBlacklistDomains()
-	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, models.DomainListResponse{Domains: domains, Count: len(domains)})
+	h.addToDomainList(c, h.blacklistOps())
 }
 
 // RemoveBlacklist godoc
@@ -205,34 +208,7 @@ func (h *Handler) AddBlacklist(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /filtering/blacklist [delete]
 func (h *Handler) RemoveBlacklist(c *gin.Context) {
-	pe := h.GetPolicyEngine()
-	if h.db == nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: "database not available"})
-		return
-	}
-
-	var req models.DomainDeleteRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
-	for _, domain := range req.Domains {
-		if err := h.db.DeleteBlacklistDomain(domain); err != nil {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-			return
-		}
-		if pe != nil {
-			pe.RemoveFromBlacklist(domain)
-		}
-	}
-
-	domains, err := h.db.GetBlacklistDomains()
-	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, models.DomainListResponse{Domains: domains, Count: len(domains)})
+	h.removeFromDomainList(c, h.blacklistOps())
 }
 
 // FilteringStats godoc

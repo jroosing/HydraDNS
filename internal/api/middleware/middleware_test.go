@@ -154,9 +154,9 @@ func TestSlogRequestLogger_DifferentMethods(t *testing.T) {
 		method     string
 		statusCode int
 	}{
-		{"POST", http.StatusCreated},
-		{"PUT", http.StatusOK},
-		{"DELETE", http.StatusNoContent},
+		{http.MethodPost, http.StatusCreated},
+		{http.MethodPut, http.StatusOK},
+		{http.MethodDelete, http.StatusNoContent},
 	}
 
 	for _, tt := range tests {

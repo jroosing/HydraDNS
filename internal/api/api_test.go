@@ -93,7 +93,7 @@ func TestRoutes_HealthEndpoint(t *testing.T) {
 	cfg := createTestConfig()
 	server := api.New(cfg, nil, nil)
 
-	w := performRequest(server.Engine(), "GET", "/api/v1/health", "")
+	w := performRequest(server.Engine(), http.MethodGet, "/api/v1/health", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -107,7 +107,7 @@ func TestRoutes_StatsEndpoint(t *testing.T) {
 	cfg := createTestConfig()
 	server := api.New(cfg, nil, nil)
 
-	w := performRequest(server.Engine(), "GET", "/api/v1/stats", "")
+	w := performRequest(server.Engine(), http.MethodGet, "/api/v1/stats", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -121,7 +121,7 @@ func TestRoutes_ConfigEndpoint(t *testing.T) {
 	cfg := createTestConfig()
 	server := api.New(cfg, nil, nil)
 
-	w := performRequest(server.Engine(), "GET", "/api/v1/config", "")
+	w := performRequest(server.Engine(), http.MethodGet, "/api/v1/config", "")
 
 	assert.Equal(t, http.StatusOK, w.Code)
 }
@@ -131,10 +131,10 @@ func TestRoutes_FilteringEndpoints(t *testing.T) {
 	server := api.New(cfg, nil, nil)
 
 	// Without PolicyEngine, filtering endpoints return 503
-	w := performRequest(server.Engine(), "GET", "/api/v1/filtering/whitelist", "")
+	w := performRequest(server.Engine(), http.MethodGet, "/api/v1/filtering/whitelist", "")
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
 
-	w = performRequest(server.Engine(), "GET", "/api/v1/filtering/blacklist", "")
+	w = performRequest(server.Engine(), http.MethodGet, "/api/v1/filtering/blacklist", "")
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
 }
 
@@ -222,7 +222,7 @@ func TestRoutes_SwaggerEndpoint(t *testing.T) {
 	cfg := createTestConfig()
 	server := api.New(cfg, nil, nil)
 
-	w := performRequest(server.Engine(), "GET", "/swagger/index.html", "")
+	w := performRequest(server.Engine(), http.MethodGet, "/swagger/index.html", "")
 
 	// Swagger UI should be accessible
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -236,7 +236,7 @@ func TestRoutes_NotFound(t *testing.T) {
 	cfg := createTestConfig()
 	server := api.New(cfg, nil, nil)
 
-	w := performRequest(server.Engine(), "GET", "/api/v1/nonexistent", "")
+	w := performRequest(server.Engine(), http.MethodGet, "/api/v1/nonexistent", "")
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
@@ -249,7 +249,7 @@ func TestRoutes_PutConfig_NotImplemented(t *testing.T) {
 	cfg := createTestConfig()
 	server := api.New(cfg, nil, nil)
 
-	w := performRequest(server.Engine(), "PUT", "/api/v1/config", `{}`)
+	w := performRequest(server.Engine(), http.MethodPut, "/api/v1/config", `{}`)
 
 	assert.Equal(t, http.StatusNotImplemented, w.Code)
 }

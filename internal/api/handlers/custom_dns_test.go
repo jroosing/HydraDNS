@@ -35,7 +35,7 @@ func TestListCustomDNS(t *testing.T) {
 	router.GET("/custom-dns", h.ListCustomDNS)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/custom-dns", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/custom-dns", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -73,7 +73,7 @@ func TestAddHost_Success(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/custom-dns/hosts", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPost, "/custom-dns/hosts", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -111,7 +111,7 @@ func TestAddHost_Conflict(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/custom-dns/hosts", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPost, "/custom-dns/hosts", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -139,7 +139,7 @@ func TestAddHost_InvalidIP(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/custom-dns/hosts", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPost, "/custom-dns/hosts", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -168,7 +168,7 @@ func TestUpdateHost_Success(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("PUT", "/custom-dns/hosts/test.local", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPut, "/custom-dns/hosts/test.local", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -198,7 +198,7 @@ func TestUpdateHost_NotFound(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("PUT", "/custom-dns/hosts/notfound.local", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPut, "/custom-dns/hosts/notfound.local", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -222,7 +222,7 @@ func TestDeleteHost_Success(t *testing.T) {
 	router.DELETE("/custom-dns/hosts/:name", h.DeleteHost)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/custom-dns/hosts/test.local", nil)
+	req, _ := http.NewRequest(http.MethodDelete, "/custom-dns/hosts/test.local", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -247,7 +247,7 @@ func TestDeleteHost_NotFound(t *testing.T) {
 	router.DELETE("/custom-dns/hosts/:name", h.DeleteHost)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/custom-dns/hosts/notfound.local", nil)
+	req, _ := http.NewRequest(http.MethodDelete, "/custom-dns/hosts/notfound.local", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -275,7 +275,7 @@ func TestAddCNAME_Success(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/custom-dns/cnames", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPost, "/custom-dns/cnames", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -308,7 +308,7 @@ func TestAddCNAME_Conflict(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/custom-dns/cnames", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPost, "/custom-dns/cnames", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -337,7 +337,7 @@ func TestUpdateCNAME_Success(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("PUT", "/custom-dns/cnames/www.test.local", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPut, "/custom-dns/cnames/www.test.local", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -367,7 +367,7 @@ func TestUpdateCNAME_NotFound(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("PUT", "/custom-dns/cnames/notfound.local", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPut, "/custom-dns/cnames/notfound.local", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -391,7 +391,7 @@ func TestDeleteCNAME_Success(t *testing.T) {
 	router.DELETE("/custom-dns/cnames/:alias", h.DeleteCNAME)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/custom-dns/cnames/www.test.local", nil)
+	req, _ := http.NewRequest(http.MethodDelete, "/custom-dns/cnames/www.test.local", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -416,7 +416,7 @@ func TestDeleteCNAME_NotFound(t *testing.T) {
 	router.DELETE("/custom-dns/cnames/:alias", h.DeleteCNAME)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/custom-dns/cnames/notfound.local", nil)
+	req, _ := http.NewRequest(http.MethodDelete, "/custom-dns/cnames/notfound.local", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)

@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jroosing/hydradns/internal/api/handlers"
 	"github.com/jroosing/hydradns/internal/api/models"
 	"github.com/jroosing/hydradns/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ func TestListCustomDNS(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.GET("/custom-dns", h.ListCustomDNS)
@@ -61,7 +62,7 @@ func TestAddHost_Success(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.POST("/custom-dns/hosts", h.AddHost)
@@ -99,7 +100,7 @@ func TestAddHost_Conflict(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.POST("/custom-dns/hosts", h.AddHost)
@@ -127,7 +128,7 @@ func TestAddHost_InvalidIP(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.POST("/custom-dns/hosts", h.AddHost)
@@ -157,7 +158,7 @@ func TestUpdateHost_Success(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.PUT("/custom-dns/hosts/:name", h.UpdateHost)
@@ -187,7 +188,7 @@ func TestUpdateHost_NotFound(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.PUT("/custom-dns/hosts/:name", h.UpdateHost)
@@ -216,7 +217,7 @@ func TestDeleteHost_Success(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.DELETE("/custom-dns/hosts/:name", h.DeleteHost)
@@ -241,7 +242,7 @@ func TestDeleteHost_NotFound(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.DELETE("/custom-dns/hosts/:name", h.DeleteHost)
@@ -263,7 +264,7 @@ func TestAddCNAME_Success(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.POST("/custom-dns/cnames", h.AddCNAME)
@@ -296,7 +297,7 @@ func TestAddCNAME_Conflict(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.POST("/custom-dns/cnames", h.AddCNAME)
@@ -326,7 +327,7 @@ func TestUpdateCNAME_Success(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.PUT("/custom-dns/cnames/:alias", h.UpdateCNAME)
@@ -356,7 +357,7 @@ func TestUpdateCNAME_NotFound(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.PUT("/custom-dns/cnames/:alias", h.UpdateCNAME)
@@ -385,7 +386,7 @@ func TestDeleteCNAME_Success(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.DELETE("/custom-dns/cnames/:alias", h.DeleteCNAME)
@@ -410,7 +411,7 @@ func TestDeleteCNAME_NotFound(t *testing.T) {
 		},
 	}
 
-	h := New(cfg, nil, nil)
+	h := handlers.New(cfg, nil, nil)
 
 	router := gin.New()
 	router.DELETE("/custom-dns/cnames/:alias", h.DeleteCNAME)

@@ -37,7 +37,7 @@ func (h *Handler) GetClusterStatus(c *gin.Context) {
 
 	// Get config version
 	if h.db != nil {
-		if version, err := h.db.GetVersion(); err == nil {
+		if version, err := h.db.GetVersion(c.Request.Context()); err == nil {
 			resp.ConfigVersion = version
 		}
 	}
@@ -92,7 +92,7 @@ func (h *Handler) GetClusterExport(c *gin.Context) {
 	}
 
 	// Get configuration version
-	version, err := h.db.GetVersion()
+	version, err := h.db.GetVersion(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error: "failed to get config version",
@@ -111,7 +111,7 @@ func (h *Handler) GetClusterExport(c *gin.Context) {
 	}
 
 	// Log the sync request
-	requestingNode := c.GetHeader("X-Node-ID")
+	requestingNode := c.GetHeader("X-Node-Id")
 	if requestingNode != "" {
 		h.logger.Info("cluster export requested",
 			"requesting_node", requestingNode,
@@ -225,7 +225,7 @@ func (h *Handler) PutClusterConfig(c *gin.Context) {
 	}
 
 	// Save to database
-	if err := h.db.SetClusterConfig(clusterCfg); err != nil {
+	if err := h.db.SetClusterConfig(c.Request.Context(), clusterCfg); err != nil {
 		h.logger.Error("failed to save cluster config", "err", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error: "failed to save cluster configuration",

@@ -50,6 +50,6 @@ type UpdateCNAMERequest struct {
 
 // CustomDNSOperationResponse is the generic success response for custom DNS operations.
 type CustomDNSOperationResponse struct {
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }

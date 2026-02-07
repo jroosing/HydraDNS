@@ -16,7 +16,9 @@
 package database
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -56,7 +58,7 @@ func Open(path string) (*DB, error) {
 
 	// Run migrations
 	if err := db.runMigrations(); err != nil {
-		conn.Close()
+		_ = conn.Close() // Ignore close error on failed migration
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -89,7 +91,7 @@ func (db *DB) runMigrations() error {
 	}
 
 	// Run migrations
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -98,9 +100,9 @@ func (db *DB) runMigrations() error {
 
 // GetVersion returns the current configuration version.
 // This version increments on every modification (via triggers).
-func (db *DB) GetVersion() (int64, error) {
+func (db *DB) GetVersion(ctx context.Context) (int64, error) {
 	var version int64
-	err := db.conn.QueryRow("SELECT version FROM config_version WHERE id = 1").Scan(&version)
+	err := db.conn.QueryRowContext(ctx, "SELECT version FROM config_version WHERE id = 1").Scan(&version)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get config version: %w", err)
 	}
@@ -108,11 +110,11 @@ func (db *DB) GetVersion() (int64, error) {
 }
 
 // BeginTx starts a transaction for atomic multi-table operations.
-func (db *DB) BeginTx() (*sql.Tx, error) {
-	return db.conn.Begin()
+func (db *DB) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return db.conn.BeginTx(ctx, nil)
 }
 
 // Health checks database connectivity.
-func (db *DB) Health() error {
-	return db.conn.Ping()
+func (db *DB) Health(ctx context.Context) error {
+	return db.conn.PingContext(ctx)
 }

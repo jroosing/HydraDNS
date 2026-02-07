@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/jroosing/hydradns/internal/config"
@@ -8,58 +9,58 @@ import (
 
 // ExportToConfig converts database configuration to a Config struct.
 // This is used for compatibility with existing code that expects config.Config.
-func (db *DB) ExportToConfig() (*config.Config, error) {
+func (db *DB) ExportToConfig(ctx context.Context) (*config.Config, error) {
 	cfg := &config.Config{}
 
 	// Export server config
-	if err := db.exportServerConfig(cfg); err != nil {
+	if err := db.exportServerConfig(ctx, cfg); err != nil {
 		return nil, err
 	}
 
 	// Export upstream config
-	if err := db.exportUpstreamConfig(cfg); err != nil {
+	if err := db.exportUpstreamConfig(ctx, cfg); err != nil {
 		return nil, err
 	}
 
 	// Export custom DNS
-	if err := db.exportCustomDNS(cfg); err != nil {
+	if err := db.exportCustomDNS(ctx, cfg); err != nil {
 		return nil, err
 	}
 
 	// Export logging config
-	if err := db.exportLoggingConfig(cfg); err != nil {
+	if err := db.exportLoggingConfig(ctx, cfg); err != nil {
 		return nil, err
 	}
 
 	// Export filtering config
-	if err := db.exportFilteringConfig(cfg); err != nil {
+	if err := db.exportFilteringConfig(ctx, cfg); err != nil {
 		return nil, err
 	}
 
 	// Export rate limit config
-	if err := db.exportRateLimitConfig(cfg); err != nil {
+	if err := db.exportRateLimitConfig(ctx, cfg); err != nil {
 		return nil, err
 	}
 
 	// Export API config
-	if err := db.exportAPIConfig(cfg); err != nil {
+	if err := db.exportAPIConfig(ctx, cfg); err != nil {
 		return nil, err
 	}
 
 	// Export cluster config
-	if err := db.exportClusterConfig(cfg); err != nil {
+	if err := db.exportClusterConfig(ctx, cfg); err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
 }
 
-func (db *DB) exportServerConfig(cfg *config.Config) error {
+func (db *DB) exportServerConfig(ctx context.Context, cfg *config.Config) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
 	var enableTCP, tcpFallback int
-	err := db.conn.QueryRow(`
+	err := db.conn.QueryRowContext(ctx, `
 		SELECT host, port, workers, max_concurrency, upstream_socket_pool_size, enable_tcp, tcp_fallback
 		FROM config_server WHERE id = 1
 	`).Scan(
@@ -85,11 +86,11 @@ func (db *DB) exportServerConfig(cfg *config.Config) error {
 	return nil
 }
 
-func (db *DB) exportUpstreamConfig(cfg *config.Config) error {
+func (db *DB) exportUpstreamConfig(ctx context.Context, cfg *config.Config) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	err := db.conn.QueryRow(`
+	err := db.conn.QueryRowContext(ctx, `
 		SELECT udp_timeout, tcp_timeout, max_retries
 		FROM config_upstream WHERE id = 1
 	`).Scan(&cfg.Upstream.UDPTimeout, &cfg.Upstream.TCPTimeout, &cfg.Upstream.MaxRetries)
@@ -99,7 +100,7 @@ func (db *DB) exportUpstreamConfig(cfg *config.Config) error {
 
 	// Get upstream servers (need to release lock first)
 	db.mu.RUnlock()
-	servers, err := db.GetUpstreamServers()
+	servers, err := db.GetUpstreamServers(ctx)
 	db.mu.RLock()
 	if err != nil {
 		return fmt.Errorf("failed to get upstream servers: %w", err)
@@ -113,9 +114,9 @@ func (db *DB) exportUpstreamConfig(cfg *config.Config) error {
 	return nil
 }
 
-func (db *DB) exportCustomDNS(cfg *config.Config) error {
+func (db *DB) exportCustomDNS(ctx context.Context, cfg *config.Config) error {
 	// Get all hosts
-	hosts, err := db.GetAllHosts()
+	hosts, err := db.GetAllHosts(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get custom DNS hosts: %w", err)
 	}
@@ -128,7 +129,7 @@ func (db *DB) exportCustomDNS(cfg *config.Config) error {
 	cfg.CustomDNS.Hosts = hostsMap
 
 	// Get all CNAMEs
-	cnames, err := db.GetAllCNAMEs()
+	cnames, err := db.GetAllCNAMEs(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get custom DNS CNAMEs: %w", err)
 	}
@@ -142,12 +143,12 @@ func (db *DB) exportCustomDNS(cfg *config.Config) error {
 	return nil
 }
 
-func (db *DB) exportLoggingConfig(cfg *config.Config) error {
+func (db *DB) exportLoggingConfig(ctx context.Context, cfg *config.Config) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
 	var structured, includePID int
-	err := db.conn.QueryRow(`
+	err := db.conn.QueryRowContext(ctx, `
 		SELECT level, structured, structured_format, include_pid
 		FROM config_logging WHERE id = 1
 	`).Scan(&cfg.Logging.Level, &structured, &cfg.Logging.StructuredFormat, &includePID)
@@ -164,9 +165,9 @@ func (db *DB) exportLoggingConfig(cfg *config.Config) error {
 	return nil
 }
 
-func (db *DB) exportFilteringConfig(cfg *config.Config) error {
+func (db *DB) exportFilteringConfig(ctx context.Context, cfg *config.Config) error {
 	// Get filtering config from typed table
-	filteringCfg, err := db.GetFilteringConfig()
+	filteringCfg, err := db.GetFilteringConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get filtering config: %w", err)
 	}
@@ -177,21 +178,21 @@ func (db *DB) exportFilteringConfig(cfg *config.Config) error {
 	cfg.Filtering.RefreshInterval = filteringCfg.RefreshInterval
 
 	// Get whitelist domains
-	whitelist, err := db.GetWhitelistDomains()
+	whitelist, err := db.GetWhitelistDomains(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get whitelist: %w", err)
 	}
 	cfg.Filtering.WhitelistDomains = whitelist
 
 	// Get blacklist domains
-	blacklist, err := db.GetBlacklistDomains()
+	blacklist, err := db.GetBlacklistDomains(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get blacklist: %w", err)
 	}
 	cfg.Filtering.BlacklistDomains = blacklist
 
 	// Get enabled blocklists only
-	blocklists, err := db.GetBlocklists()
+	blocklists, err := db.GetBlocklists(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get blocklists: %w", err)
 	}
@@ -213,11 +214,11 @@ func (db *DB) exportFilteringConfig(cfg *config.Config) error {
 	return nil
 }
 
-func (db *DB) exportRateLimitConfig(cfg *config.Config) error {
+func (db *DB) exportRateLimitConfig(ctx context.Context, cfg *config.Config) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	err := db.conn.QueryRow(`
+	err := db.conn.QueryRowContext(ctx, `
 		SELECT cleanup_seconds, max_ip_entries, max_prefix_entries,
 		       global_qps, global_burst, prefix_qps, prefix_burst, ip_qps, ip_burst
 		FROM config_rate_limit WHERE id = 1
@@ -239,12 +240,12 @@ func (db *DB) exportRateLimitConfig(cfg *config.Config) error {
 	return nil
 }
 
-func (db *DB) exportAPIConfig(cfg *config.Config) error {
+func (db *DB) exportAPIConfig(ctx context.Context, cfg *config.Config) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
 	var enabled int
-	err := db.conn.QueryRow(`
+	err := db.conn.QueryRowContext(ctx, `
 		SELECT enabled, host, port, api_key
 		FROM config_api WHERE id = 1
 	`).Scan(&enabled, &cfg.API.Host, &cfg.API.Port, &cfg.API.APIKey)
@@ -257,12 +258,12 @@ func (db *DB) exportAPIConfig(cfg *config.Config) error {
 	return nil
 }
 
-func (db *DB) exportClusterConfig(cfg *config.Config) error {
+func (db *DB) exportClusterConfig(ctx context.Context, cfg *config.Config) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
 	var modeStr string
-	err := db.conn.QueryRow(`
+	err := db.conn.QueryRowContext(ctx, `
 		SELECT mode, node_id, primary_url, shared_secret, sync_interval, sync_timeout
 		FROM config_cluster WHERE id = 1
 	`).Scan(

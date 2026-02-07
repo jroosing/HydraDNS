@@ -77,8 +77,8 @@ func TestServerStatsResponse_JSON(t *testing.T) {
 	assert.Equal(t, "1h30m", decoded.Uptime)
 	assert.Equal(t, int64(5400), decoded.UptimeSeconds)
 	assert.Equal(t, 8, decoded.CPU.NumCPU)
-	assert.Equal(t, 25.5, decoded.CPU.UsedPercent)
-	assert.Equal(t, 50.0, decoded.Memory.UsedPercent)
+	assert.InDelta(t, 25.5, decoded.CPU.UsedPercent, 0.001)
+	assert.InDelta(t, 50.0, decoded.Memory.UsedPercent, 0.001)
 	assert.Equal(t, uint64(1000), decoded.DNSStats.QueriesTotal)
 }
 

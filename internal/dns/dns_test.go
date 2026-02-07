@@ -138,23 +138,6 @@ func TestPacket_MarshalAndParse_MultipleRecordTypes(t *testing.T) {
 	}
 }
 
-func decodeTXTWire(b []byte) string {
-	out := make([]byte, 0, len(b))
-	for i := 0; i < len(b); {
-		ln := int(b[i])
-		i++
-		if ln == 0 {
-			continue
-		}
-		if i+ln > len(b) {
-			break
-		}
-		out = append(out, b[i:i+ln]...)
-		i += ln
-	}
-	return string(out)
-}
-
 // =============================================================================
 // DNS Header Flag Tests
 // =============================================================================

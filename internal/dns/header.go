@@ -14,6 +14,8 @@ import (
 //   - ANCount: Number of answer resource records
 //   - NSCount: Number of authority resource records
 //   - ARCount: Number of additional resource records
+//
+//nolint:recvcheck // Value receivers for getters, pointer receivers for setters is intentional
 type Header struct {
 	ID      uint16 // Transaction ID
 	Flags   uint16 // See enums.go for flag definitions

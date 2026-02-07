@@ -21,10 +21,10 @@ import (
 const (
 	socketRecvBufferSize = 4 * 1024 * 1024
 	socketSendBufferSize = 4 * 1024 * 1024
-
-	// Default UDP server configuration
-	DefaultWorkersPerSocket = 1024 // Default worker goroutines per UDP socket
 )
+
+// DefaultWorkersPerSocket is the default number of worker goroutines per UDP socket.
+const DefaultWorkersPerSocket = 1024
 
 // bufferPool reduces allocations for incoming UDP packets.
 // Each buffer is sized for the maximum expected DNS message.

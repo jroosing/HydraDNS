@@ -1,4 +1,4 @@
-package cluster
+package cluster_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jroosing/hydradns/internal/cluster"
 	"github.com/jroosing/hydradns/internal/config"
 )
 
@@ -22,7 +23,7 @@ func TestNewSyncer_RequiresSecondaryMode(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	_, err := NewSyncer(cfg, logger, nil, nil, nil)
+	_, err := cluster.NewSyncer(cfg, logger, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error for non-secondary mode")
 	}
@@ -36,7 +37,7 @@ func TestNewSyncer_RequiresPrimaryURL(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	_, err := NewSyncer(cfg, logger, nil, nil, nil)
+	_, err := cluster.NewSyncer(cfg, logger, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error for missing primary URL")
 	}
@@ -44,7 +45,7 @@ func TestNewSyncer_RequiresPrimaryURL(t *testing.T) {
 
 func TestSyncer_FetchesConfigFromPrimary(t *testing.T) {
 	// Set up mock primary server
-	exported := ExportData{
+	exported := cluster.ExportData{
 		Version:   42,
 		Timestamp: time.Now().UTC(),
 		NodeID:    "primary-1",
@@ -72,7 +73,7 @@ func TestSyncer_FetchesConfigFromPrimary(t *testing.T) {
 
 	// Track import calls
 	var importCalled atomic.Bool
-	var importedData *ExportData
+	var importedData *cluster.ExportData
 
 	cfg := &config.ClusterConfig{
 		Mode:         config.ClusterModeSecondary,
@@ -84,7 +85,7 @@ func TestSyncer_FetchesConfigFromPrimary(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	importFunc := func(data *ExportData) error {
+	importFunc := func(data *cluster.ExportData) error {
 		importCalled.Store(true)
 		importedData = data
 		return nil
@@ -94,7 +95,7 @@ func TestSyncer_FetchesConfigFromPrimary(t *testing.T) {
 		return 1, nil // Local version is lower than remote
 	}
 
-	syncer, err := NewSyncer(cfg, logger, importFunc, nil, versionFunc)
+	syncer, err := cluster.NewSyncer(cfg, logger, importFunc, nil, versionFunc)
 	if err != nil {
 		t.Fatalf("NewSyncer failed: %v", err)
 	}
@@ -119,13 +120,13 @@ func TestSyncer_FetchesConfigFromPrimary(t *testing.T) {
 }
 
 func TestSyncer_SkipsWhenVersionCurrent(t *testing.T) {
-	exported := ExportData{
+	exported := cluster.ExportData{
 		Version:   10,
 		Timestamp: time.Now().UTC(),
 		NodeID:    "primary-1",
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(exported)
 	}))
@@ -142,7 +143,7 @@ func TestSyncer_SkipsWhenVersionCurrent(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	importFunc := func(data *ExportData) error {
+	importFunc := func(_ *cluster.ExportData) error {
 		importCalled.Store(true)
 		return nil
 	}
@@ -151,7 +152,7 @@ func TestSyncer_SkipsWhenVersionCurrent(t *testing.T) {
 		return 15, nil // Local version is higher than remote
 	}
 
-	syncer, err := NewSyncer(cfg, logger, importFunc, nil, versionFunc)
+	syncer, err := cluster.NewSyncer(cfg, logger, importFunc, nil, versionFunc)
 	if err != nil {
 		t.Fatalf("NewSyncer failed: %v", err)
 	}
@@ -174,7 +175,7 @@ func TestSyncer_ValidatesSharedSecret(t *testing.T) {
 			return
 		}
 
-		exported := ExportData{Version: 1}
+		exported := cluster.ExportData{Version: 1}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(exported)
 	}))
@@ -190,10 +191,10 @@ func TestSyncer_ValidatesSharedSecret(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	syncer, err := NewSyncer(
+	syncer, err := cluster.NewSyncer(
 		cfg,
 		logger,
-		func(*ExportData) error { return nil },
+		func(*cluster.ExportData) error { return nil },
 		nil,
 		func() (int64, error) { return 0, nil },
 	)
@@ -219,10 +220,10 @@ func TestSyncer_Status(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	syncer, err := NewSyncer(
+	syncer, err := cluster.NewSyncer(
 		cfg,
 		logger,
-		func(*ExportData) error { return nil },
+		func(*cluster.ExportData) error { return nil },
 		nil,
 		func() (int64, error) { return 5, nil },
 	)

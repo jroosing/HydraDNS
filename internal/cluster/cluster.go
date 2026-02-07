@@ -13,6 +13,7 @@ package cluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -124,7 +125,7 @@ func NewSyncer(
 	}
 
 	if cfg.PrimaryURL == "" {
-		return nil, fmt.Errorf("primary_url is required for secondary mode")
+		return nil, errors.New("primary_url is required for secondary mode")
 	}
 
 	syncTimeout, err := time.ParseDuration(cfg.SyncTimeout)
@@ -151,7 +152,7 @@ func (s *Syncer) Start(ctx context.Context) error {
 	s.mu.Lock()
 	if s.running {
 		s.mu.Unlock()
-		return fmt.Errorf("syncer already running")
+		return errors.New("syncer already running")
 	}
 	s.running = true
 	s.mu.Unlock()
@@ -161,7 +162,7 @@ func (s *Syncer) Start(ctx context.Context) error {
 		syncInterval = 30 * time.Second
 	}
 
-	s.logger.Info("cluster syncer starting",
+	s.logger.InfoContext(ctx, "cluster syncer starting",
 		"primary_url", s.cfg.PrimaryURL,
 		"sync_interval", syncInterval,
 		"node_id", s.cfg.NodeID,
@@ -169,7 +170,7 @@ func (s *Syncer) Start(ctx context.Context) error {
 
 	// Do an initial sync immediately
 	if err := s.doSync(ctx); err != nil {
-		s.logger.Warn("initial sync failed, will retry", "err", err)
+		s.logger.WarnContext(ctx, "initial sync failed, will retry", "err", err)
 	}
 
 	go s.runLoop(ctx, syncInterval)
@@ -238,14 +239,14 @@ func (s *Syncer) runLoop(ctx context.Context, interval time.Duration) {
 			return
 		case <-ticker.C:
 			if err := s.doSync(ctx); err != nil {
-				s.logger.Warn("sync failed", "err", err)
+				s.logger.WarnContext(ctx, "sync failed", "err", err)
 			}
 		}
 	}
 }
 
 func (s *Syncer) doSync(ctx context.Context) error {
-	s.logger.Debug("starting config sync", "primary", s.cfg.PrimaryURL)
+	s.logger.DebugContext(ctx, "starting config sync", "primary", s.cfg.PrimaryURL)
 
 	// Fetch config from primary
 	data, err := s.fetchConfig(ctx)
@@ -257,7 +258,7 @@ func (s *Syncer) doSync(ctx context.Context) error {
 	// Check if we already have this version
 	currentVersion, _ := s.versionFunc()
 	if data.Version <= currentVersion {
-		s.logger.Debug("config already up to date",
+		s.logger.DebugContext(ctx, "config already up to date",
 			"local_version", currentVersion,
 			"remote_version", data.Version,
 		)
@@ -265,7 +266,7 @@ func (s *Syncer) doSync(ctx context.Context) error {
 		return nil
 	}
 
-	s.logger.Info("applying config from primary",
+	s.logger.InfoContext(ctx, "applying config from primary",
 		"remote_version", data.Version,
 		"local_version", currentVersion,
 		"primary_node", data.NodeID,
@@ -280,13 +281,13 @@ func (s *Syncer) doSync(ctx context.Context) error {
 	// Trigger reload of runtime components
 	if s.reloadFunc != nil {
 		if err := s.reloadFunc(); err != nil {
-			s.logger.Warn("reload after sync failed", "err", err)
+			s.logger.WarnContext(ctx, "reload after sync failed", "err", err)
 			// Don't fail the sync for reload errors
 		}
 	}
 
 	s.recordSuccess(data.Version)
-	s.logger.Info("config sync completed", "version", data.Version)
+	s.logger.InfoContext(ctx, "config sync completed", "version", data.Version)
 
 	return nil
 }
@@ -306,7 +307,7 @@ func (s *Syncer) fetchConfig(ctx context.Context) (*ExportData, error) {
 
 	req.Header.Set("Accept", "application/json")
 	if s.cfg.NodeID != "" {
-		req.Header.Set("X-Node-ID", s.cfg.NodeID)
+		req.Header.Set("X-Node-Id", s.cfg.NodeID)
 	}
 
 	resp, err := s.httpClient.Do(req)

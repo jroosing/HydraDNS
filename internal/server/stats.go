@@ -48,7 +48,7 @@ func (s *DNSStats) RecordLatency(ns int64) {
 	}
 }
 
-// Snapshot returns a point-in-time snapshot of the statistics.
+// DNSStatsSnapshot is a point-in-time snapshot of DNS server statistics.
 type DNSStatsSnapshot struct {
 	QueriesTotal uint64
 	QueriesUDP   uint64

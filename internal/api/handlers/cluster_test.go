@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -289,7 +290,7 @@ func TestGetClusterExport_Primary(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
@@ -441,7 +442,7 @@ func TestClusterConfig_PersistsToDatabase(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Verify it was persisted to database
-	savedCfg, err := db.GetClusterConfig()
+	savedCfg, err := db.GetClusterConfig(context.Background())
 	require.NoError(t, err)
 
 	assert.Equal(t, config.ClusterModePrimary, savedCfg.Mode)

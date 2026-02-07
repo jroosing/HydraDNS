@@ -28,14 +28,14 @@ func ClampInt(v, lowerLimit, upperLimit int) int {
 // Values below 0 become 0; values above math.MaxUint16 become math.MaxUint16.
 func ClampIntToUint16(v int) uint16 {
 	clamped := clampInt(v, 0, math.MaxUint16)
-	return uint16(clamped)
+	return uint16(clamped) //nolint:gosec // clamped to valid range
 }
 
 // ClampIntToUint32 converts v to uint32 with clamping.
 // Values below 0 become 0; values above math.MaxUint32 become math.MaxUint32.
 func ClampIntToUint32(v int) uint32 {
 	clamped := clampInt(v, 0, math.MaxUint32)
-	return uint32(clamped)
+	return uint32(clamped) //nolint:gosec // clamped to valid range
 }
 
 // ClampUint32ToUint8 converts v to uint8 with clamping.

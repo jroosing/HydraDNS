@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"maps"
 	"net/http"
 	"net/netip"
 	"strings"
@@ -24,13 +25,9 @@ func (h *Handler) ListCustomDNS(c *gin.Context) {
 
 	// Create deep copies of maps to avoid data races during JSON marshaling
 	hosts := make(map[string][]string)
-	for k, v := range h.cfg.CustomDNS.Hosts {
-		hosts[k] = v
-	}
+	maps.Copy(hosts, h.cfg.CustomDNS.Hosts)
 	cnames := make(map[string]string)
-	for k, v := range h.cfg.CustomDNS.CNAMEs {
-		cnames[k] = v
-	}
+	maps.Copy(cnames, h.cfg.CustomDNS.CNAMEs)
 
 	resp := models.CustomDNSRecordsResponse{
 		Hosts:  hosts,
@@ -392,19 +389,36 @@ func (e *ValidationError) Error() string {
 // triggerReload calls the reload function if one is registered.
 // This must be called WITHOUT holding any locks.
 func (h *Handler) triggerReload(reloadFunc func() error) {
-	if reloadFunc != nil {
-		if err := reloadFunc(); err != nil {
-			if h.logger != nil {
-				h.logger.Error("failed to reload custom DNS resolver", "err", err)
-			}
-		} else {
-			if h.logger != nil {
-				h.logger.Info("custom DNS resolver reloaded successfully")
-			}
-		}
-	} else {
-		if h.logger != nil {
-			h.logger.Warn("custom DNS configuration updated but no reload function registered")
-		}
+	if reloadFunc == nil {
+		h.logWarn("custom DNS configuration updated but no reload function registered")
+		return
+	}
+
+	if err := reloadFunc(); err != nil {
+		h.logError("failed to reload custom DNS resolver", err)
+		return
+	}
+
+	h.logInfo("custom DNS resolver reloaded successfully")
+}
+
+// logInfo logs an info message if a logger is available.
+func (h *Handler) logInfo(msg string) {
+	if h.logger != nil {
+		h.logger.Info(msg)
+	}
+}
+
+// logWarn logs a warning message if a logger is available.
+func (h *Handler) logWarn(msg string) {
+	if h.logger != nil {
+		h.logger.Warn(msg)
+	}
+}
+
+// logError logs an error message if a logger is available.
+func (h *Handler) logError(msg string, err error) {
+	if h.logger != nil {
+		h.logger.Error(msg, "err", err)
 	}
 }

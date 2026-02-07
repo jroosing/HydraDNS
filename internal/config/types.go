@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// WorkersAutoStr is the string constant for automatic worker mode.
+const WorkersAutoStr = "auto"
+
 // WorkersMode specifies how worker count is determined.
 type WorkersMode int
 
@@ -24,7 +27,7 @@ type WorkerSetting struct {
 // String returns the string representation of the worker setting.
 func (w WorkerSetting) String() string {
 	if w.Mode == WorkersAuto {
-		return "auto"
+		return WorkersAutoStr
 	}
 	return strconv.Itoa(w.Value)
 }
@@ -32,7 +35,7 @@ func (w WorkerSetting) String() string {
 // ParseWorkers parses a workers string into WorkerSetting.
 func (s *ServerConfig) ParseWorkers() error {
 	raw := strings.TrimSpace(strings.ToLower(s.WorkersRaw))
-	if raw == "" || raw == "auto" {
+	if raw == "" || raw == WorkersAutoStr {
 		s.Workers = WorkerSetting{Mode: WorkersAuto}
 		return nil
 	}

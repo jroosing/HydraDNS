@@ -21,12 +21,16 @@ const (
 	maxUpstreams             = 3         // Maximum number of upstream servers to use
 	upstreamRecoveryDuration = time.Hour // How long to wait before retrying a failed upstream
 
-	// Default configuration values
-	DefaultCacheMaxEntries = 20000 // Default maximum cached responses
-	DefaultUDPPoolSize     = 256   // Default UDP connections per upstream
-	DefaultUDPTimeout      = 3 * time.Second
-	DefaultTCPTimeout      = 5 * time.Second
-	DefaultMaxRetries      = 3 // Maximum query retries per upstream
+	// DefaultCacheMaxEntries is the default maximum number of cached responses.
+	DefaultCacheMaxEntries = 20000
+	// DefaultUDPPoolSize is the default number of UDP connections per upstream.
+	DefaultUDPPoolSize = 256
+	// DefaultUDPTimeout is the default UDP query timeout.
+	DefaultUDPTimeout = 3 * time.Second
+	// DefaultTCPTimeout is the default TCP query timeout.
+	DefaultTCPTimeout = 5 * time.Second
+	// DefaultMaxRetries is the maximum query retries per upstream.
+	DefaultMaxRetries = 3
 )
 
 // ForwardingResolver forwards DNS queries to upstream servers.

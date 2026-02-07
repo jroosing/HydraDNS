@@ -4,9 +4,9 @@ import "time"
 
 // CPUStats contains system CPU statistics.
 type CPUStats struct {
-	NumCPU       int     `json:"num_cpu"`
-	UsedPercent  float64 `json:"used_percent"`
-	IdlePercent  float64 `json:"idle_percent"`
+	NumCPU      int     `json:"num_cpu"`
+	UsedPercent float64 `json:"used_percent"`
+	IdlePercent float64 `json:"idle_percent"`
 }
 
 // MemoryStats contains system memory statistics.

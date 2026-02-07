@@ -117,7 +117,7 @@ func TestValidate_InvalidPort(t *testing.T) {
 	cfg := newConfig()
 	cfg.Server.Port = 0
 	err := cfg.Validate()
-	assert.Error(t, err, "Port 0 should be invalid")
+	require.Error(t, err, "Port 0 should be invalid")
 
 	cfg.Server.Port = 70000
 	err = cfg.Validate()
@@ -180,14 +180,14 @@ func TestValidate_WorkersAutoDefault(t *testing.T) {
 func TestSeedDefaults_RateLimitDefaults(t *testing.T) {
 	cfg := newConfig()
 
-	assert.Equal(t, 60.0, cfg.RateLimit.CleanupSeconds)
+	assert.InDelta(t, 60.0, cfg.RateLimit.CleanupSeconds, 0.001)
 	assert.Equal(t, 65536, cfg.RateLimit.MaxIPEntries)
 	assert.Equal(t, 16384, cfg.RateLimit.MaxPrefixEntries)
-	assert.Equal(t, 100000.0, cfg.RateLimit.GlobalQPS)
+	assert.InDelta(t, 100000.0, cfg.RateLimit.GlobalQPS, 0.001)
 	assert.Equal(t, 100000, cfg.RateLimit.GlobalBurst)
-	assert.Equal(t, 10000.0, cfg.RateLimit.PrefixQPS)
+	assert.InDelta(t, 10000.0, cfg.RateLimit.PrefixQPS, 0.001)
 	assert.Equal(t, 20000, cfg.RateLimit.PrefixBurst)
-	assert.Equal(t, 5000.0, cfg.RateLimit.IPQPS)
+	assert.InDelta(t, 5000.0, cfg.RateLimit.IPQPS, 0.001)
 	assert.Equal(t, 10000, cfg.RateLimit.IPBurst)
 }
 

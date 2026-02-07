@@ -1,4 +1,3 @@
-// Package dns provides DNS protocol parsing, encoding, and packet manipulation.
 package dns
 
 import (

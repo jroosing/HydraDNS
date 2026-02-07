@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,9 +12,9 @@ import (
 // listOps defines operations for a domain list (whitelist or blacklist).
 type listOps struct {
 	name             string
-	getFromDB        func() ([]string, error)
-	addToDB          func(string) error
-	deleteFromDB     func(string) error
+	getFromDB        func(context.Context) ([]string, error)
+	addToDB          func(context.Context, string) error
+	deleteFromDB     func(context.Context, string) error
 	addToEngine      func(*filtering.PolicyEngine, string)
 	removeFromEngine func(*filtering.PolicyEngine, string)
 }
@@ -46,7 +47,7 @@ func (h *Handler) getDomainList(c *gin.Context, ops listOps) {
 		return
 	}
 
-	domains, err := ops.getFromDB()
+	domains, err := ops.getFromDB(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
 		return
@@ -69,7 +70,7 @@ func (h *Handler) addToDomainList(c *gin.Context, ops listOps) {
 	}
 
 	for _, domain := range req.Domains {
-		if err := ops.addToDB(domain); err != nil {
+		if err := ops.addToDB(c.Request.Context(), domain); err != nil {
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
 			return
 		}
@@ -82,7 +83,7 @@ func (h *Handler) addToDomainList(c *gin.Context, ops listOps) {
 		h.logger.Info("added domains to "+ops.name, "count", len(req.Domains))
 	}
 
-	domains, err := ops.getFromDB()
+	domains, err := ops.getFromDB(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
 		return
@@ -104,7 +105,7 @@ func (h *Handler) removeFromDomainList(c *gin.Context, ops listOps) {
 	}
 
 	for _, domain := range req.Domains {
-		if err := ops.deleteFromDB(domain); err != nil {
+		if err := ops.deleteFromDB(c.Request.Context(), domain); err != nil {
 			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
 			return
 		}
@@ -113,7 +114,7 @@ func (h *Handler) removeFromDomainList(c *gin.Context, ops listOps) {
 		}
 	}
 
-	domains, err := ops.getFromDB()
+	domains, err := ops.getFromDB(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
 		return
@@ -256,7 +257,7 @@ func (h *Handler) GetBlocklists(c *gin.Context) {
 		return
 	}
 
-	bls, err := h.db.GetBlocklists()
+	bls, err := h.db.GetBlocklists(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
 		return
@@ -307,7 +308,7 @@ func (h *Handler) SetBlocklistEnabled(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.EnableBlocklist(name, req.Enabled); err != nil {
+	if err := h.db.EnableBlocklist(c.Request.Context(), name, req.Enabled); err != nil {
 		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -342,7 +343,7 @@ func (h *Handler) RefreshBlocklist(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.UpdateBlocklistFetchTime(name); err != nil {
+	if err := h.db.UpdateBlocklistFetchTime(c.Request.Context(), name); err != nil {
 		c.JSON(http.StatusServiceUnavailable, models.ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -384,7 +385,7 @@ func (h *Handler) SetFilteringEnabled(c *gin.Context) {
 
 	// Persist to database if available
 	if h.db != nil {
-		if err := h.db.SetFilteringEnabled(req.Enabled); err != nil {
+		if err := h.db.SetFilteringEnabled(c.Request.Context(), req.Enabled); err != nil {
 			c.JSON(
 				http.StatusServiceUnavailable,
 				models.ErrorResponse{Error: "failed to persist setting: " + err.Error()},

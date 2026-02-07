@@ -1,6 +1,8 @@
 package database
 
 import (
+	"context"
+	"errors"
 	"fmt"
 )
 
@@ -15,13 +17,13 @@ type Blocklist struct {
 }
 
 // AddWhitelistDomain adds a domain to the whitelist.
-func (db *DB) AddWhitelistDomain(domain string) error {
+func (db *DB) AddWhitelistDomain(ctx context.Context, domain string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	query := "INSERT OR IGNORE INTO filtering_whitelist (domain) VALUES (?)"
 
-	_, err := db.conn.Exec(query, domain)
+	_, err := db.conn.ExecContext(ctx, query, domain)
 	if err != nil {
 		return fmt.Errorf("failed to add whitelist domain %s: %w", domain, err)
 	}
@@ -30,11 +32,11 @@ func (db *DB) AddWhitelistDomain(domain string) error {
 }
 
 // GetWhitelistDomains retrieves all whitelisted domains.
-func (db *DB) GetWhitelistDomains() ([]string, error) {
+func (db *DB) GetWhitelistDomains(ctx context.Context) ([]string, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	rows, err := db.conn.Query("SELECT domain FROM filtering_whitelist ORDER BY domain")
+	rows, err := db.conn.QueryContext(ctx, "SELECT domain FROM filtering_whitelist ORDER BY domain")
 	if err != nil {
 		return nil, fmt.Errorf("failed to query whitelist: %w", err)
 	}
@@ -57,11 +59,11 @@ func (db *DB) GetWhitelistDomains() ([]string, error) {
 }
 
 // DeleteWhitelistDomain removes a domain from the whitelist.
-func (db *DB) DeleteWhitelistDomain(domain string) error {
+func (db *DB) DeleteWhitelistDomain(ctx context.Context, domain string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	result, err := db.conn.Exec("DELETE FROM filtering_whitelist WHERE domain = ?", domain)
+	result, err := db.conn.ExecContext(ctx, "DELETE FROM filtering_whitelist WHERE domain = ?", domain)
 	if err != nil {
 		return fmt.Errorf("failed to delete whitelist domain: %w", err)
 	}
@@ -79,13 +81,13 @@ func (db *DB) DeleteWhitelistDomain(domain string) error {
 }
 
 // AddBlacklistDomain adds a domain to the blacklist.
-func (db *DB) AddBlacklistDomain(domain string) error {
+func (db *DB) AddBlacklistDomain(ctx context.Context, domain string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	query := "INSERT OR IGNORE INTO filtering_blacklist (domain) VALUES (?)"
 
-	_, err := db.conn.Exec(query, domain)
+	_, err := db.conn.ExecContext(ctx, query, domain)
 	if err != nil {
 		return fmt.Errorf("failed to add blacklist domain %s: %w", domain, err)
 	}
@@ -94,11 +96,11 @@ func (db *DB) AddBlacklistDomain(domain string) error {
 }
 
 // GetBlacklistDomains retrieves all blacklisted domains.
-func (db *DB) GetBlacklistDomains() ([]string, error) {
+func (db *DB) GetBlacklistDomains(ctx context.Context) ([]string, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	rows, err := db.conn.Query("SELECT domain FROM filtering_blacklist ORDER BY domain")
+	rows, err := db.conn.QueryContext(ctx, "SELECT domain FROM filtering_blacklist ORDER BY domain")
 	if err != nil {
 		return nil, fmt.Errorf("failed to query blacklist: %w", err)
 	}
@@ -121,11 +123,11 @@ func (db *DB) GetBlacklistDomains() ([]string, error) {
 }
 
 // DeleteBlacklistDomain removes a domain from the blacklist.
-func (db *DB) DeleteBlacklistDomain(domain string) error {
+func (db *DB) DeleteBlacklistDomain(ctx context.Context, domain string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	result, err := db.conn.Exec("DELETE FROM filtering_blacklist WHERE domain = ?", domain)
+	result, err := db.conn.ExecContext(ctx, "DELETE FROM filtering_blacklist WHERE domain = ?", domain)
 	if err != nil {
 		return fmt.Errorf("failed to delete blacklist domain: %w", err)
 	}
@@ -143,7 +145,7 @@ func (db *DB) DeleteBlacklistDomain(domain string) error {
 }
 
 // AddBlocklist adds a remote blocklist source.
-func (db *DB) AddBlocklist(name, url, format string) error {
+func (db *DB) AddBlocklist(ctx context.Context, name, url, format string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -156,7 +158,7 @@ func (db *DB) AddBlocklist(name, url, format string) error {
 			updated_at = CURRENT_TIMESTAMP
 	`
 
-	_, err := db.conn.Exec(query, name, url, format)
+	_, err := db.conn.ExecContext(ctx, query, name, url, format)
 	if err != nil {
 		return fmt.Errorf("failed to add blocklist %s: %w", name, err)
 	}
@@ -165,7 +167,7 @@ func (db *DB) AddBlocklist(name, url, format string) error {
 }
 
 // GetBlocklists retrieves all blocklist sources.
-func (db *DB) GetBlocklists() ([]Blocklist, error) {
+func (db *DB) GetBlocklists(ctx context.Context) ([]Blocklist, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
@@ -175,7 +177,7 @@ func (db *DB) GetBlocklists() ([]Blocklist, error) {
 		ORDER BY name
 	`
 
-	rows, err := db.conn.Query(query)
+	rows, err := db.conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query blocklists: %w", err)
 	}
@@ -198,11 +200,11 @@ func (db *DB) GetBlocklists() ([]Blocklist, error) {
 }
 
 // DeleteBlocklist removes a blocklist source.
-func (db *DB) DeleteBlocklist(name string) error {
+func (db *DB) DeleteBlocklist(ctx context.Context, name string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	result, err := db.conn.Exec("DELETE FROM filtering_blocklists WHERE name = ?", name)
+	result, err := db.conn.ExecContext(ctx, "DELETE FROM filtering_blocklists WHERE name = ?", name)
 	if err != nil {
 		return fmt.Errorf("failed to delete blocklist: %w", err)
 	}
@@ -220,13 +222,13 @@ func (db *DB) DeleteBlocklist(name string) error {
 }
 
 // EnableBlocklist enables/disables a blocklist.
-func (db *DB) EnableBlocklist(name string, enabled bool) error {
+func (db *DB) EnableBlocklist(ctx context.Context, name string, enabled bool) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	query := "UPDATE filtering_blocklists SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?"
 
-	result, err := db.conn.Exec(query, enabled, name)
+	result, err := db.conn.ExecContext(ctx, query, enabled, name)
 	if err != nil {
 		return fmt.Errorf("failed to update blocklist: %w", err)
 	}
@@ -244,13 +246,13 @@ func (db *DB) EnableBlocklist(name string, enabled bool) error {
 }
 
 // UpdateBlocklistFetchTime updates the last_fetched timestamp for a blocklist.
-func (db *DB) UpdateBlocklistFetchTime(name string) error {
+func (db *DB) UpdateBlocklistFetchTime(ctx context.Context, name string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	query := "UPDATE filtering_blocklists SET last_fetched = CURRENT_TIMESTAMP WHERE name = ?"
 
-	result, err := db.conn.Exec(query, name)
+	result, err := db.conn.ExecContext(ctx, query, name)
 	if err != nil {
 		return fmt.Errorf("failed to update blocklist fetch time: %w", err)
 	}
@@ -268,12 +270,12 @@ func (db *DB) UpdateBlocklistFetchTime(name string) error {
 }
 
 // GetFilteringEnabled returns whether filtering is enabled.
-func (db *DB) GetFilteringEnabled() (bool, error) {
+func (db *DB) GetFilteringEnabled(ctx context.Context) (bool, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
 	var enabled bool
-	err := db.conn.QueryRow("SELECT enabled FROM config_filtering WHERE id = 1").Scan(&enabled)
+	err := db.conn.QueryRowContext(ctx, "SELECT enabled FROM config_filtering WHERE id = 1").Scan(&enabled)
 	if err != nil {
 		return false, fmt.Errorf("failed to get filtering enabled state: %w", err)
 	}
@@ -282,13 +284,13 @@ func (db *DB) GetFilteringEnabled() (bool, error) {
 }
 
 // SetFilteringEnabled sets whether filtering is enabled.
-func (db *DB) SetFilteringEnabled(enabled bool) error {
+func (db *DB) SetFilteringEnabled(ctx context.Context, enabled bool) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	query := "UPDATE config_filtering SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1"
 
-	result, err := db.conn.Exec(query, enabled)
+	result, err := db.conn.ExecContext(ctx, query, enabled)
 	if err != nil {
 		return fmt.Errorf("failed to set filtering enabled state: %w", err)
 	}
@@ -299,7 +301,7 @@ func (db *DB) SetFilteringEnabled(enabled bool) error {
 	}
 
 	if rows == 0 {
-		return fmt.Errorf("config_filtering row not found")
+		return errors.New("config_filtering row not found")
 	}
 
 	return nil
@@ -314,12 +316,12 @@ type FilteringConfig struct {
 }
 
 // GetFilteringConfig retrieves the full filtering configuration.
-func (db *DB) GetFilteringConfig() (FilteringConfig, error) {
+func (db *DB) GetFilteringConfig(ctx context.Context) (FilteringConfig, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
 	var cfg FilteringConfig
-	err := db.conn.QueryRow(`
+	err := db.conn.QueryRowContext(ctx, `
 		SELECT enabled, log_blocked, log_allowed, refresh_interval 
 		FROM config_filtering WHERE id = 1
 	`).Scan(&cfg.Enabled, &cfg.LogBlocked, &cfg.LogAllowed, &cfg.RefreshInterval)

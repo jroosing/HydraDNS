@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// This file implements pre-parse admission control using token bucket rate limiting.
+// RateLimiter implements pre-parse admission control using token bucket rate limiting.
 //
 // Design Philosophy:
 //

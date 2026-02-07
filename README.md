@@ -143,7 +143,7 @@ go run ./cmd/hydradns --host 0.0.0.0 --port 53
 ```
 
 On first run, HydraDNS creates a SQLite database (`hydradns.db`) with sensible defaults seeded by the migrations:
-- DNS server: `0.0.0.0:1053` (UDP + TCP)
+- DNS server: `0.0.0.0:53` (UDP + TCP)
 - Upstream servers: `9.9.9.9`, `1.1.1.1`, `8.8.8.8`
 - Web UI + API: `0.0.0.0:8080`
 - Filtering: Disabled by default
@@ -209,7 +209,7 @@ By default, the database is created as `hydradns.db` in the current directory. O
 | Setting | Default | Description |
 |---------|---------|-------------|
 | DNS Host | `0.0.0.0` | Bind address for DNS |
-| DNS Port | `1053` | DNS port (UDP + TCP) |
+| DNS Port | `53` | DNS port (UDP + TCP) |
 | Workers | `auto` | Number of worker goroutines |
 | TCP Enabled | `true` | Enable TCP server |
 | TCP Fallback | `true` | Retry truncated responses over TCP |

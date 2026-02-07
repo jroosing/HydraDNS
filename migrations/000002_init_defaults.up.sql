@@ -2,7 +2,7 @@
 
 -- Server defaults (typed)
 INSERT INTO config_server (id, host, port, workers, max_concurrency, upstream_socket_pool_size, enable_tcp, tcp_fallback, created_at, updated_at)
-VALUES (1, '0.0.0.0', 1053, 'auto', 0, 0, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+VALUES (1, '0.0.0.0', 53, 'auto', 0, 0, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT(id) DO UPDATE SET
 	host=excluded.host,
 	port=excluded.port,

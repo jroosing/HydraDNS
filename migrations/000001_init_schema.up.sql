@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS config_version (
 CREATE TABLE IF NOT EXISTS config_server (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     host TEXT NOT NULL DEFAULT '0.0.0.0',
-    port INTEGER NOT NULL DEFAULT 1053,
+    port INTEGER NOT NULL DEFAULT 53,
     workers TEXT NOT NULL DEFAULT 'auto',
     max_concurrency INTEGER NOT NULL DEFAULT 0,
     upstream_socket_pool_size INTEGER NOT NULL DEFAULT 0,

@@ -12,7 +12,7 @@ func newConfig() *config.Config {
 	return &config.Config{
 		Server: config.ServerConfig{
 			Host:                   "0.0.0.0",
-			Port:                   1053,
+			Port:                   53,
 			WorkersRaw:             "auto",
 			Workers:                config.WorkerSetting{Mode: config.WorkersAuto},
 			MaxConcurrency:         0,
@@ -76,7 +76,7 @@ func TestSeedDefaults_ReturnsValidConfig(t *testing.T) {
 
 	// Check server defaults
 	assert.Equal(t, "0.0.0.0", cfg.Server.Host, "Default host should be 0.0.0.0")
-	assert.Equal(t, 1053, cfg.Server.Port, "Default port should be 1053")
+	assert.Equal(t, 53, cfg.Server.Port, "Default port should be 53")
 	assert.True(t, cfg.Server.EnableTCP, "TCP should be enabled by default")
 	assert.True(t, cfg.Server.TCPFallback, "TCP fallback should be enabled by default")
 	assert.Equal(t, "auto", cfg.Server.WorkersRaw, "Workers should default to auto")

@@ -153,6 +153,45 @@ Access the web UI at **http://localhost:8080** to configure everything else.
 
 ---
 
+## Systemd Service (Debian/Ubuntu)
+
+Install HydraDNS as a system service directly from GitHub releases:
+
+```bash
+# Download and run the install script (downloads latest release)
+curl -fsSL https://raw.githubusercontent.com/jroosing/hydradns/main/scripts/install-service.sh | sudo bash
+
+# Or install a specific version
+curl -fsSL https://raw.githubusercontent.com/jroosing/hydradns/main/scripts/install-service.sh -o install.sh
+sudo bash install.sh v1.0.0
+
+# Start the service
+sudo systemctl start hydradns
+
+# Check status
+sudo systemctl status hydradns
+
+# View logs
+sudo journalctl -u hydradns -f
+```
+
+The install script:
+- Automatically detects your architecture (amd64, arm64, armv7)
+- Downloads the binary from GitHub releases with checksum verification
+- Creates a dedicated `hydradns` system user
+- Installs a hardened systemd service
+- Stores data in `/var/lib/hydradns/`
+
+To uninstall:
+
+```bash
+sudo ./scripts/uninstall-service.sh
+# Or download and run:
+curl -fsSL https://raw.githubusercontent.com/jroosing/hydradns/main/scripts/uninstall-service.sh | sudo bash
+```
+
+---
+
 ## Configuration
 
 HydraDNS stores all configuration in a SQLite database file. On first startup, the migrations create the schema and seed sensible defaults.

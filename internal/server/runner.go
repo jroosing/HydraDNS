@@ -18,16 +18,18 @@ import (
 
 // Runner orchestrates the DNS server startup, configuration, and shutdown.
 type Runner struct {
-	logger       *slog.Logger
-	policyEngine *filtering.PolicyEngine
-	dnsStats     *DNSStats
+	logger         *slog.Logger
+	policyEngine   *filtering.PolicyEngine
+	dnsStats       *DNSStats
+	customResolver *resolvers.ReloadableCustomDNSResolver
 }
 
 // NewRunner creates a new server runner with the given logger.
 func NewRunner(logger *slog.Logger) *Runner {
 	return &Runner{
-		logger:   logger,
-		dnsStats: NewDNSStats(),
+		logger:         logger,
+		dnsStats:       NewDNSStats(),
+		customResolver: resolvers.NewReloadableCustomDNSResolver(nil),
 	}
 }
 
@@ -78,8 +80,8 @@ func (r *Runner) RunWithContext(ctx context.Context, cfg *config.Config) error {
 	maxConc := r.calculateMaxConcurrency(cfg, desiredProcs)
 	upPool := r.calculateUpstreamPoolSize(cfg, maxConc)
 
-	// Initialize custom DNS resolver
-	customResolver := r.initCustomDNS(cfg)
+	// Initialize custom DNS resolver (loads into reloadable wrapper)
+	r.initCustomDNS(cfg)
 
 	// Build or reuse filtering policy
 	policy := r.policyEngine
@@ -89,7 +91,7 @@ func (r *Runner) RunWithContext(ctx context.Context, cfg *config.Config) error {
 	}
 
 	// Build resolver chain
-	resolver := r.buildResolverChain(cfg, customResolver, upPool, policy)
+	resolver := r.buildResolverChain(cfg, upPool, policy)
 	defer resolver.Close()
 
 	// Create server components
@@ -191,10 +193,12 @@ func (r *Runner) calculateUpstreamPoolSize(cfg *config.Config, maxConc int) int 
 	return upPool
 }
 
-// initCustomDNS creates a custom DNS resolver from configuration.
-func (r *Runner) initCustomDNS(cfg *config.Config) *resolvers.CustomDNSResolver {
+// initCustomDNS loads custom DNS configuration into the reloadable resolver.
+func (r *Runner) initCustomDNS(cfg *config.Config) {
 	if len(cfg.CustomDNS.Hosts) == 0 && len(cfg.CustomDNS.CNAMEs) == 0 {
-		return nil
+		// Empty config - clear the resolver
+		_ = r.customResolver.Reload(nil)
+		return
 	}
 
 	customResolver, err := resolvers.NewCustomDNSResolver(cfg.CustomDNS.Hosts, cfg.CustomDNS.CNAMEs)
@@ -202,7 +206,14 @@ func (r *Runner) initCustomDNS(cfg *config.Config) *resolvers.CustomDNSResolver 
 		if r.logger != nil {
 			r.logger.Error("failed to initialize custom DNS", "err", err)
 		}
-		return nil
+		return
+	}
+
+	if err := r.customResolver.Reload(customResolver); err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to reload custom DNS", "err", err)
+		}
+		return
 	}
 
 	if r.logger != nil {
@@ -211,21 +222,46 @@ func (r *Runner) initCustomDNS(cfg *config.Config) *resolvers.CustomDNSResolver 
 			"cnames", len(cfg.CustomDNS.CNAMEs),
 		)
 	}
-	return customResolver
 }
 
-// buildResolverChain creates the resolver chain: filtering -> custom DNS (if any) -> forwarding.
+// ReloadCustomDNS atomically replaces the custom DNS configuration.
+// This is safe to call while the server is running.
+func (r *Runner) ReloadCustomDNS(cfg *config.Config) error {
+	if len(cfg.CustomDNS.Hosts) == 0 && len(cfg.CustomDNS.CNAMEs) == 0 {
+		// Empty config - clear the resolver
+		return r.customResolver.Reload(nil)
+	}
+
+	newResolver, err := resolvers.NewCustomDNSResolver(cfg.CustomDNS.Hosts, cfg.CustomDNS.CNAMEs)
+	if err != nil {
+		return err
+	}
+
+	if err := r.customResolver.Reload(newResolver); err != nil {
+		return err
+	}
+
+	if r.logger != nil {
+		r.logger.Info("custom DNS reloaded",
+			"hosts", len(cfg.CustomDNS.Hosts),
+			"cnames", len(cfg.CustomDNS.CNAMEs),
+		)
+	}
+	return nil
+}
+
+// buildResolverChain creates the resolver chain: filtering -> custom DNS -> forwarding.
+// The custom DNS resolver is always included (it returns an error when empty,
+// allowing the chain to fall through to forwarding).
 func (r *Runner) buildResolverChain(
 	cfg *config.Config,
-	customResolver *resolvers.CustomDNSResolver,
 	upPool int,
 	policy *filtering.PolicyEngine,
 ) resolvers.Resolver {
 	resList := make([]resolvers.Resolver, 0, 2)
 
-	if customResolver != nil {
-		resList = append(resList, customResolver)
-	}
+	// Always include the reloadable custom DNS resolver
+	resList = append(resList, r.customResolver)
 
 	// Parse upstream timeouts
 	udpTimeout, _ := time.ParseDuration(cfg.Upstream.UDPTimeout)

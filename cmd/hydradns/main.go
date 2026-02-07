@@ -179,6 +179,16 @@ func run() error {
 		}
 	})
 
+	// Wire custom DNS reload function
+	apiSrv.Handler().SetCustomDNSReloadFunc(func() error {
+		// Re-export custom DNS from database to config
+		updatedCfg, err := db.ExportToConfig(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to export config: %w", err)
+		}
+		return runner.ReloadCustomDNS(updatedCfg)
+	})
+
 	logger.Info("web UI and API starting", "addr", apiSrv.Addr())
 
 	go func() {
@@ -193,7 +203,7 @@ func run() error {
 	// Start cluster syncer if in secondary mode
 	var syncer *cluster.Syncer
 	if cfg.Cluster.Mode == config.ClusterModeSecondary {
-		syncer = startClusterSyncer(ctx, cfg, db, logger, apiSrv.Handler())
+		syncer = startClusterSyncer(ctx, cfg, db, logger, apiSrv.Handler(), runner)
 	} else if cfg.Cluster.Mode != "" && cfg.Cluster.Mode != config.ClusterModeStandalone {
 		logger.Info("cluster mode", "mode", cfg.Cluster.Mode, "node_id", cfg.Cluster.NodeID)
 	}
@@ -223,6 +233,7 @@ func startClusterSyncer(
 	db *database.DB,
 	logger *slog.Logger,
 	h *handlers.Handler,
+	runner *server.Runner,
 ) *cluster.Syncer {
 	logger.InfoContext(ctx, "starting cluster syncer",
 		"primary_url", cfg.Cluster.PrimaryURL,
@@ -241,9 +252,15 @@ func startClusterSyncer(
 
 	// Reload function: refreshes runtime components after config import
 	reloadFunc := func() error {
-		// TODO: Trigger filtering engine reload, custom DNS reload, etc.
-		// For now, this is a no-op; full reload requires server restart
-		logger.DebugContext(ctx, "config imported, runtime reload pending")
+		// Re-export config from database and reload custom DNS
+		updatedCfg, err := db.ExportToConfig(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to export config: %w", err)
+		}
+		if err := runner.ReloadCustomDNS(updatedCfg); err != nil {
+			return fmt.Errorf("failed to reload custom DNS: %w", err)
+		}
+		logger.DebugContext(ctx, "config imported and reloaded")
 		return nil
 	}
 

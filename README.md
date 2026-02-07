@@ -517,7 +517,7 @@ curl -X PUT http://secondary-host:8080/api/v1/cluster/config \
     "node_id": "secondary-1",
     "primary_url": "http://primary-host:8080",
     "shared_secret": "your-secret-key",
-    "sync_interval": "30s"
+    "sync_interval": "5m"
   }'
 ```
 
@@ -592,8 +592,8 @@ curl -X POST http://localhost:8080/api/v1/cluster/sync
 | `node_id` | (auto) | Unique identifier for this node |
 | `primary_url` | — | URL of the primary node (secondary only) |
 | `shared_secret` | — | Authentication token between nodes |
-| `sync_interval` | `30s` | How often to poll for changes |
-| `sync_timeout` | `10s` | HTTP timeout for sync requests |
+| `sync_interval` | `5m` | How often to poll for changes |
+| `sync_timeout` | `30s` | HTTP timeout for sync requests |
 
 ### Docker Compose Example
 

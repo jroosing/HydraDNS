@@ -4,7 +4,7 @@ UPDATE config_cluster SET
     node_id = '',
     primary_url = '',
     shared_secret = '',
-    sync_interval = '30s',
-    sync_timeout = '10s',
+    sync_interval = '5m',
+    sync_timeout = '30s',
     updated_at = CURRENT_TIMESTAMP
 WHERE id = 1;

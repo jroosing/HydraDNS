@@ -130,7 +130,7 @@ func NewSyncer(
 
 	syncTimeout, err := time.ParseDuration(cfg.SyncTimeout)
 	if err != nil {
-		syncTimeout = 10 * time.Second
+		syncTimeout = 30 * time.Second
 	}
 
 	return &Syncer{
@@ -159,7 +159,7 @@ func (s *Syncer) Start(ctx context.Context) error {
 
 	syncInterval, err := time.ParseDuration(s.cfg.SyncInterval)
 	if err != nil {
-		syncInterval = 30 * time.Second
+		syncInterval = 5 * time.Minute
 	}
 
 	s.logger.InfoContext(ctx, "cluster syncer starting",

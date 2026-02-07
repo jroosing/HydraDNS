@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS config_cluster (
     node_id TEXT NOT NULL DEFAULT '',
     primary_url TEXT NOT NULL DEFAULT '',
     shared_secret TEXT NOT NULL DEFAULT '',
-    sync_interval TEXT NOT NULL DEFAULT '30s',
-    sync_timeout TEXT NOT NULL DEFAULT '10s',
+    sync_interval TEXT NOT NULL DEFAULT '5m',
+    sync_timeout TEXT NOT NULL DEFAULT '30s',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

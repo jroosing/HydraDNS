@@ -207,11 +207,11 @@ func (h *Handler) PutClusterConfig(c *gin.Context) {
 	// Set defaults for optional fields
 	syncInterval := req.SyncInterval
 	if syncInterval == "" {
-		syncInterval = "30s"
+		syncInterval = "5m"
 	}
 	syncTimeout := req.SyncTimeout
 	if syncTimeout == "" {
-		syncTimeout = "10s"
+		syncTimeout = "30s"
 	}
 
 	// Build cluster config

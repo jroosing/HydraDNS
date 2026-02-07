@@ -36,8 +36,8 @@ func createClusterTestHandler(t *testing.T, clusterMode config.ClusterMode) *han
 		Cluster: config.ClusterConfig{
 			Mode:         clusterMode,
 			NodeID:       "test-node-1",
-			SyncInterval: "30s",
-			SyncTimeout:  "10s",
+			SyncInterval: "5m",
+			SyncTimeout:  "30s",
 		},
 	}
 	dbPath := filepath.Join(t.TempDir(), "test.db")
@@ -127,8 +127,8 @@ func TestGetClusterConfig_ReturnsConfig(t *testing.T) {
 
 	assert.Equal(t, "primary", resp.Mode)
 	assert.Equal(t, "test-node-1", resp.NodeID)
-	assert.Equal(t, "30s", resp.SyncInterval)
-	assert.Equal(t, "10s", resp.SyncTimeout)
+	assert.Equal(t, "5m", resp.SyncInterval)
+	assert.Equal(t, "30s", resp.SyncTimeout)
 }
 
 func TestGetClusterConfig_RedactsSecret(t *testing.T) {
@@ -273,8 +273,8 @@ func TestPutClusterConfig_DefaultsSyncInterval(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
-	assert.Equal(t, "30s", resp.SyncInterval)
-	assert.Equal(t, "10s", resp.SyncTimeout)
+	assert.Equal(t, "5m", resp.SyncInterval)
+	assert.Equal(t, "30s", resp.SyncTimeout)
 }
 
 // ============================================================================

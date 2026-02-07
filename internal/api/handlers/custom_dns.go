@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"maps"
 	"net/http"
 	"net/netip"
@@ -94,6 +95,18 @@ func (h *Handler) AddHost(c *gin.Context) {
 	reloadFunc := h.customDNSReloadFunc
 	h.mu.Unlock()
 
+	// Persist to database
+	ctx := context.Background()
+	for _, ip := range req.IPs {
+		if err := h.db.AddHost(ctx, name, ip); err != nil {
+			c.JSON(
+				http.StatusInternalServerError,
+				models.ErrorResponse{Error: "Failed to persist host: " + err.Error()},
+			)
+			return
+		}
+	}
+
 	// Trigger resolver reload (outside of lock to avoid deadlock)
 	h.triggerReload(reloadFunc)
 
@@ -152,6 +165,22 @@ func (h *Handler) UpdateHost(c *gin.Context) {
 	reloadFunc := h.customDNSReloadFunc
 	h.mu.Unlock()
 
+	// Persist to database: delete existing and add new
+	ctx := context.Background()
+	if err := h.db.DeleteAllHostsForHostname(ctx, name); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "Failed to update host: " + err.Error()})
+		return
+	}
+	for _, ip := range req.IPs {
+		if err := h.db.AddHost(ctx, name, ip); err != nil {
+			c.JSON(
+				http.StatusInternalServerError,
+				models.ErrorResponse{Error: "Failed to persist host: " + err.Error()},
+			)
+			return
+		}
+	}
+
 	// Trigger resolver reload (outside of lock to avoid deadlock)
 	h.triggerReload(reloadFunc)
 
@@ -194,6 +223,13 @@ func (h *Handler) DeleteHost(c *gin.Context) {
 	// Get reload function before releasing lock
 	reloadFunc := h.customDNSReloadFunc
 	h.mu.Unlock()
+
+	// Persist to database
+	ctx := context.Background()
+	if err := h.db.DeleteAllHostsForHostname(ctx, name); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "Failed to delete host: " + err.Error()})
+		return
+	}
 
 	// Trigger resolver reload (outside of lock to avoid deadlock)
 	h.triggerReload(reloadFunc)
@@ -249,6 +285,13 @@ func (h *Handler) AddCNAME(c *gin.Context) {
 	// Get reload function before releasing lock
 	reloadFunc := h.customDNSReloadFunc
 	h.mu.Unlock()
+
+	// Persist to database
+	ctx := context.Background()
+	if err := h.db.AddCNAME(ctx, alias, target); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "Failed to persist CNAME: " + err.Error()})
+		return
+	}
 
 	// Trigger resolver reload (outside of lock to avoid deadlock)
 	h.triggerReload(reloadFunc)
@@ -308,6 +351,13 @@ func (h *Handler) UpdateCNAME(c *gin.Context) {
 	reloadFunc := h.customDNSReloadFunc
 	h.mu.Unlock()
 
+	// Persist to database (AddCNAME replaces existing)
+	ctx := context.Background()
+	if err := h.db.AddCNAME(ctx, alias, target); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "Failed to update CNAME: " + err.Error()})
+		return
+	}
+
 	// Trigger resolver reload (outside of lock to avoid deadlock)
 	h.triggerReload(reloadFunc)
 
@@ -350,6 +400,13 @@ func (h *Handler) DeleteCNAME(c *gin.Context) {
 	// Get reload function before releasing lock
 	reloadFunc := h.customDNSReloadFunc
 	h.mu.Unlock()
+
+	// Persist to database (best-effort: ignore "not found" since record may only exist in-memory)
+	ctx := context.Background()
+	if err := h.db.DeleteCNAME(ctx, alias); err != nil && !strings.Contains(err.Error(), "not found") {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "Failed to delete CNAME: " + err.Error()})
+		return
+	}
 
 	// Trigger resolver reload (outside of lock to avoid deadlock)
 	h.triggerReload(reloadFunc)

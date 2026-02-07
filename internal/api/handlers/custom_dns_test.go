@@ -5,15 +5,26 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jroosing/hydradns/internal/api/handlers"
 	"github.com/jroosing/hydradns/internal/api/models"
 	"github.com/jroosing/hydradns/internal/config"
+	"github.com/jroosing/hydradns/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// createCustomDNSTestHandler creates a handler with a temp database for custom DNS tests.
+func createCustomDNSTestHandler(t *testing.T, cfg *config.Config) *handlers.Handler {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	db, err := database.Open(dbPath)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	return handlers.New(cfg, db, nil)
+}
 
 func TestListCustomDNS(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -62,7 +73,7 @@ func TestAddHost_Success(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(cfg, nil, nil)
+	h := createCustomDNSTestHandler(t, cfg)
 
 	router := gin.New()
 	router.POST("/custom-dns/hosts", h.AddHost)
@@ -158,7 +169,7 @@ func TestUpdateHost_Success(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(cfg, nil, nil)
+	h := createCustomDNSTestHandler(t, cfg)
 
 	router := gin.New()
 	router.PUT("/custom-dns/hosts/:name", h.UpdateHost)
@@ -217,7 +228,7 @@ func TestDeleteHost_Success(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(cfg, nil, nil)
+	h := createCustomDNSTestHandler(t, cfg)
 
 	router := gin.New()
 	router.DELETE("/custom-dns/hosts/:name", h.DeleteHost)
@@ -264,7 +275,7 @@ func TestAddCNAME_Success(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(cfg, nil, nil)
+	h := createCustomDNSTestHandler(t, cfg)
 
 	router := gin.New()
 	router.POST("/custom-dns/cnames", h.AddCNAME)
@@ -327,7 +338,7 @@ func TestUpdateCNAME_Success(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(cfg, nil, nil)
+	h := createCustomDNSTestHandler(t, cfg)
 
 	router := gin.New()
 	router.PUT("/custom-dns/cnames/:alias", h.UpdateCNAME)
@@ -386,7 +397,7 @@ func TestDeleteCNAME_Success(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(cfg, nil, nil)
+	h := createCustomDNSTestHandler(t, cfg)
 
 	router := gin.New()
 	router.DELETE("/custom-dns/cnames/:alias", h.DeleteCNAME)

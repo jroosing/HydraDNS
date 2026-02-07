@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/jroosing/hydradns/internal/config"
 )
@@ -56,56 +55,52 @@ func (db *DB) ExportToConfig() (*config.Config, error) {
 }
 
 func (db *DB) exportServerConfig(cfg *config.Config) error {
-	cfg.Server.Host = db.GetConfigWithDefault(ConfigKeyServerHost, "0.0.0.0")
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
-	portStr := db.GetConfigWithDefault(ConfigKeyServerPort, "1053")
-	port, err := strconv.Atoi(portStr)
+	var enableTCP, tcpFallback int
+	err := db.conn.QueryRow(`
+		SELECT host, port, workers, max_concurrency, upstream_socket_pool_size, enable_tcp, tcp_fallback
+		FROM config_server WHERE id = 1
+	`).Scan(
+		&cfg.Server.Host,
+		&cfg.Server.Port,
+		&cfg.Server.WorkersRaw,
+		&cfg.Server.MaxConcurrency,
+		&cfg.Server.UpstreamSocketPoolSize,
+		&enableTCP,
+		&tcpFallback,
+	)
 	if err != nil {
-		return fmt.Errorf("invalid server.port: %w", err)
+		return fmt.Errorf("failed to read server config: %w", err)
 	}
-	cfg.Server.Port = port
 
-	cfg.Server.WorkersRaw = db.GetConfigWithDefault(ConfigKeyServerWorkers, "auto")
+	cfg.Server.EnableTCP = enableTCP != 0
+	cfg.Server.TCPFallback = tcpFallback != 0
+
 	if err := cfg.Server.ParseWorkers(); err != nil {
 		return fmt.Errorf("failed to parse workers: %w", err)
 	}
-
-	maxConcurrencyStr := db.GetConfigWithDefault(ConfigKeyServerMaxConcurrency, "0")
-	maxConcurrency, err := strconv.Atoi(maxConcurrencyStr)
-	if err != nil {
-		return fmt.Errorf("invalid max_concurrency: %w", err)
-	}
-	cfg.Server.MaxConcurrency = maxConcurrency
-
-	poolSizeStr := db.GetConfigWithDefault(ConfigKeyServerUpstreamSocketPool, "0")
-	poolSize, err := strconv.Atoi(poolSizeStr)
-	if err != nil {
-		return fmt.Errorf("invalid upstream_socket_pool_size: %w", err)
-	}
-	cfg.Server.UpstreamSocketPoolSize = poolSize
-
-	enableTCPStr := db.GetConfigWithDefault(ConfigKeyServerEnableTCP, "true")
-	cfg.Server.EnableTCP, _ = strconv.ParseBool(enableTCPStr)
-
-	tcpFallbackStr := db.GetConfigWithDefault(ConfigKeyServerTCPFallback, "true")
-	cfg.Server.TCPFallback, _ = strconv.ParseBool(tcpFallbackStr)
 
 	return nil
 }
 
 func (db *DB) exportUpstreamConfig(cfg *config.Config) error {
-	cfg.Upstream.UDPTimeout = db.GetConfigWithDefault(ConfigKeyUpstreamUDPTimeout, "3s")
-	cfg.Upstream.TCPTimeout = db.GetConfigWithDefault(ConfigKeyUpstreamTCPTimeout, "5s")
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
-	maxRetriesStr := db.GetConfigWithDefault(ConfigKeyUpstreamMaxRetries, "3")
-	maxRetries, err := strconv.Atoi(maxRetriesStr)
+	err := db.conn.QueryRow(`
+		SELECT udp_timeout, tcp_timeout, max_retries
+		FROM config_upstream WHERE id = 1
+	`).Scan(&cfg.Upstream.UDPTimeout, &cfg.Upstream.TCPTimeout, &cfg.Upstream.MaxRetries)
 	if err != nil {
-		return fmt.Errorf("invalid upstream.max_retries: %w", err)
+		return fmt.Errorf("failed to read upstream config: %w", err)
 	}
-	cfg.Upstream.MaxRetries = maxRetries
 
-	// Get upstream servers
+	// Get upstream servers (need to release lock first)
+	db.mu.RUnlock()
 	servers, err := db.GetUpstreamServers()
+	db.mu.RLock()
 	if err != nil {
 		return fmt.Errorf("failed to get upstream servers: %w", err)
 	}
@@ -148,15 +143,20 @@ func (db *DB) exportCustomDNS(cfg *config.Config) error {
 }
 
 func (db *DB) exportLoggingConfig(cfg *config.Config) error {
-	cfg.Logging.Level = db.GetConfigWithDefault(ConfigKeyLoggingLevel, "INFO")
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
-	structuredStr := db.GetConfigWithDefault(ConfigKeyLoggingStructured, "false")
-	cfg.Logging.Structured, _ = strconv.ParseBool(structuredStr)
+	var structured, includePID int
+	err := db.conn.QueryRow(`
+		SELECT level, structured, structured_format, include_pid
+		FROM config_logging WHERE id = 1
+	`).Scan(&cfg.Logging.Level, &structured, &cfg.Logging.StructuredFormat, &includePID)
+	if err != nil {
+		return fmt.Errorf("failed to read logging config: %w", err)
+	}
 
-	cfg.Logging.StructuredFormat = db.GetConfigWithDefault(ConfigKeyLoggingStructuredFormat, "json")
-
-	includePIDStr := db.GetConfigWithDefault(ConfigKeyLoggingIncludePID, "false")
-	cfg.Logging.IncludePID, _ = strconv.ParseBool(includePIDStr)
+	cfg.Logging.Structured = structured != 0
+	cfg.Logging.IncludePID = includePID != 0
 
 	// Extra fields not currently stored separately in DB
 	cfg.Logging.ExtraFields = make(map[string]string)
@@ -214,99 +214,70 @@ func (db *DB) exportFilteringConfig(cfg *config.Config) error {
 }
 
 func (db *DB) exportRateLimitConfig(cfg *config.Config) error {
-	cleanupSecondsStr := db.GetConfigWithDefault(ConfigKeyRateLimitCleanupSeconds, "60.0")
-	cleanupSeconds, err := strconv.ParseFloat(cleanupSecondsStr, 64)
-	if err != nil {
-		return fmt.Errorf("invalid rate_limit.cleanup_seconds: %w", err)
-	}
-	cfg.RateLimit.CleanupSeconds = cleanupSeconds
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
-	maxIPEntriesStr := db.GetConfigWithDefault(ConfigKeyRateLimitMaxIPEntries, "65536")
-	maxIPEntries, err := strconv.Atoi(maxIPEntriesStr)
+	err := db.conn.QueryRow(`
+		SELECT cleanup_seconds, max_ip_entries, max_prefix_entries,
+		       global_qps, global_burst, prefix_qps, prefix_burst, ip_qps, ip_burst
+		FROM config_rate_limit WHERE id = 1
+	`).Scan(
+		&cfg.RateLimit.CleanupSeconds,
+		&cfg.RateLimit.MaxIPEntries,
+		&cfg.RateLimit.MaxPrefixEntries,
+		&cfg.RateLimit.GlobalQPS,
+		&cfg.RateLimit.GlobalBurst,
+		&cfg.RateLimit.PrefixQPS,
+		&cfg.RateLimit.PrefixBurst,
+		&cfg.RateLimit.IPQPS,
+		&cfg.RateLimit.IPBurst,
+	)
 	if err != nil {
-		return fmt.Errorf("invalid rate_limit.max_ip_entries: %w", err)
+		return fmt.Errorf("failed to read rate limit config: %w", err)
 	}
-	cfg.RateLimit.MaxIPEntries = maxIPEntries
-
-	maxPrefixEntriesStr := db.GetConfigWithDefault(ConfigKeyRateLimitMaxPrefixEntries, "16384")
-	maxPrefixEntries, err := strconv.Atoi(maxPrefixEntriesStr)
-	if err != nil {
-		return fmt.Errorf("invalid rate_limit.max_prefix_entries: %w", err)
-	}
-	cfg.RateLimit.MaxPrefixEntries = maxPrefixEntries
-
-	globalQPSStr := db.GetConfigWithDefault(ConfigKeyRateLimitGlobalQPS, "100000.0")
-	globalQPS, err := strconv.ParseFloat(globalQPSStr, 64)
-	if err != nil {
-		return fmt.Errorf("invalid rate_limit.global_qps: %w", err)
-	}
-	cfg.RateLimit.GlobalQPS = globalQPS
-
-	globalBurstStr := db.GetConfigWithDefault(ConfigKeyRateLimitGlobalBurst, "100000")
-	globalBurst, err := strconv.Atoi(globalBurstStr)
-	if err != nil {
-		return fmt.Errorf("invalid rate_limit.global_burst: %w", err)
-	}
-	cfg.RateLimit.GlobalBurst = globalBurst
-
-	prefixQPSStr := db.GetConfigWithDefault(ConfigKeyRateLimitPrefixQPS, "10000.0")
-	prefixQPS, err := strconv.ParseFloat(prefixQPSStr, 64)
-	if err != nil {
-		return fmt.Errorf("invalid rate_limit.prefix_qps: %w", err)
-	}
-	cfg.RateLimit.PrefixQPS = prefixQPS
-
-	prefixBurstStr := db.GetConfigWithDefault(ConfigKeyRateLimitPrefixBurst, "20000")
-	prefixBurst, err := strconv.Atoi(prefixBurstStr)
-	if err != nil {
-		return fmt.Errorf("invalid rate_limit.prefix_burst: %w", err)
-	}
-	cfg.RateLimit.PrefixBurst = prefixBurst
-
-	ipQPSStr := db.GetConfigWithDefault(ConfigKeyRateLimitIPQPS, "5000.0")
-	ipQPS, err := strconv.ParseFloat(ipQPSStr, 64)
-	if err != nil {
-		return fmt.Errorf("invalid rate_limit.ip_qps: %w", err)
-	}
-	cfg.RateLimit.IPQPS = ipQPS
-
-	ipBurstStr := db.GetConfigWithDefault(ConfigKeyRateLimitIPBurst, "10000")
-	ipBurst, err := strconv.Atoi(ipBurstStr)
-	if err != nil {
-		return fmt.Errorf("invalid rate_limit.ip_burst: %w", err)
-	}
-	cfg.RateLimit.IPBurst = ipBurst
 
 	return nil
 }
 
 func (db *DB) exportAPIConfig(cfg *config.Config) error {
-	enabledStr := db.GetConfigWithDefault(ConfigKeyAPIEnabled, "true")
-	cfg.API.Enabled, _ = strconv.ParseBool(enabledStr)
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
-	cfg.API.Host = db.GetConfigWithDefault(ConfigKeyAPIHost, "127.0.0.1")
-
-	portStr := db.GetConfigWithDefault(ConfigKeyAPIPort, "8080")
-	port, err := strconv.Atoi(portStr)
+	var enabled int
+	err := db.conn.QueryRow(`
+		SELECT enabled, host, port, api_key
+		FROM config_api WHERE id = 1
+	`).Scan(&enabled, &cfg.API.Host, &cfg.API.Port, &cfg.API.APIKey)
 	if err != nil {
-		return fmt.Errorf("invalid api.port: %w", err)
+		return fmt.Errorf("failed to read API config: %w", err)
 	}
-	cfg.API.Port = port
 
-	cfg.API.APIKey = db.GetConfigWithDefault(ConfigKeyAPIKey, "")
+	cfg.API.Enabled = enabled != 0
 
 	return nil
 }
 
 func (db *DB) exportClusterConfig(cfg *config.Config) error {
-	modeStr := db.GetConfigWithDefault(ConfigKeyClusterMode, "standalone")
-	cfg.Cluster.Mode = config.ClusterMode(modeStr)
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
-	cfg.Cluster.NodeID = db.GetConfigWithDefault(ConfigKeyClusterNodeID, "")
-	cfg.Cluster.PrimaryURL = db.GetConfigWithDefault(ConfigKeyClusterPrimaryURL, "")
-	cfg.Cluster.SharedSecret = db.GetConfigWithDefault(ConfigKeyClusterSharedSecret, "")
-	cfg.Cluster.SyncInterval = db.GetConfigWithDefault(ConfigKeyClusterSyncInterval, "30s")
-	cfg.Cluster.SyncTimeout = db.GetConfigWithDefault(ConfigKeyClusterSyncTimeout, "10s")
+	var modeStr string
+	err := db.conn.QueryRow(`
+		SELECT mode, node_id, primary_url, shared_secret, sync_interval, sync_timeout
+		FROM config_cluster WHERE id = 1
+	`).Scan(
+		&modeStr,
+		&cfg.Cluster.NodeID,
+		&cfg.Cluster.PrimaryURL,
+		&cfg.Cluster.SharedSecret,
+		&cfg.Cluster.SyncInterval,
+		&cfg.Cluster.SyncTimeout,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to read cluster config: %w", err)
+	}
+
+	cfg.Cluster.Mode = config.ClusterMode(modeStr)
 
 	return nil
 }

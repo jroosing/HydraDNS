@@ -63,10 +63,96 @@ definitions:
       used_percent:
         type: number
     type: object
+  github_com_jroosing_hydradns_internal_api_models.ClusterConfigRequest:
+    properties:
+      mode:
+        description: 'Mode is the cluster mode: "standalone", "primary", or "secondary".'
+        enum:
+        - standalone
+        - primary
+        - secondary
+        type: string
+      node_id:
+        description: NodeID is a unique identifier for this node (auto-generated if
+          empty).
+        type: string
+      primary_url:
+        description: |-
+          PrimaryURL is the URL of the primary node's API (required for secondary mode).
+          Example: "http://primary.homelab.local:8080"
+        type: string
+      shared_secret:
+        description: SharedSecret is used to authenticate sync requests between nodes.
+        type: string
+      sync_interval:
+        description: |-
+          SyncInterval is how often secondary nodes poll for config changes.
+          Default: "30s". Example: "1m", "5m".
+        type: string
+      sync_timeout:
+        description: |-
+          SyncTimeout is the HTTP timeout for sync requests.
+          Default: "10s".
+        type: string
+    required:
+    - mode
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ClusterConfigResponse:
+    properties:
+      mode:
+        type: string
+      node_id:
+        type: string
+      primary_url:
+        type: string
+      sync_interval:
+        type: string
+      sync_timeout:
+        type: string
+    type: object
+  github_com_jroosing_hydradns_internal_api_models.ClusterStatusResponse:
+    properties:
+      config_version:
+        description: ConfigVersion is the current local configuration version.
+        type: integer
+      error_count:
+        description: ErrorCount is the total number of sync errors.
+        type: integer
+      last_sync_error:
+        description: LastSyncError is the error message from the last sync attempt
+          (if any).
+        type: string
+      last_sync_time:
+        description: LastSyncTime is when the last successful sync occurred (only
+          for secondary).
+        type: string
+      last_sync_version:
+        description: LastSyncVersion is the config version from the last successful
+          sync.
+        type: integer
+      mode:
+        description: 'Mode is the cluster mode: "standalone", "primary", or "secondary".'
+        type: string
+      next_sync_time:
+        description: NextSyncTime is when the next sync is scheduled (only for secondary).
+        type: string
+      node_id:
+        description: NodeID is this node's unique identifier.
+        type: string
+      primary_url:
+        description: PrimaryURL is the URL of the primary node (only for secondary
+          mode).
+        type: string
+      sync_count:
+        description: SyncCount is the total number of successful syncs.
+        type: integer
+    type: object
   github_com_jroosing_hydradns_internal_api_models.ConfigResponse:
     properties:
       api:
         $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.APIConfigResponse'
+      cluster:
+        $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ClusterConfigResponse'
       custom_dns:
         $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.CustomDNSConfig'
       filtering:
@@ -224,6 +310,26 @@ definitions:
       uptime_seconds:
         type: integer
     type: object
+  github_com_jroosing_hydradns_internal_api_models.SetClusterConfigResponse:
+    properties:
+      message:
+        description: Message provides additional information about the configuration
+          change.
+        type: string
+      mode:
+        description: Mode is the new cluster mode.
+        type: string
+      node_id:
+        description: NodeID is this node's identifier.
+        type: string
+      requires_restart:
+        description: RequiresRestart indicates if a restart is needed for changes
+          to take effect.
+        type: boolean
+      status:
+        description: Status indicates the result of the operation.
+        type: string
+    type: object
   github_com_jroosing_hydradns_internal_api_models.StatusResponse:
     properties:
       status:
@@ -245,6 +351,30 @@ definitions:
         type: array
     required:
     - ips
+    type: object
+  github_com_jroosing_hydradns_internal_cluster.ExportData:
+    properties:
+      custom_dns:
+        allOf:
+        - $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.CustomDNSConfig'
+        description: CustomDNS contains custom DNS records (hosts and CNAMEs).
+      filtering:
+        allOf:
+        - $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.FilteringConfig'
+        description: Filtering contains domain filtering configuration.
+      node_id:
+        description: NodeID is the primary node's identifier.
+        type: string
+      timestamp:
+        description: Timestamp is when this export was generated.
+        type: string
+      upstream:
+        allOf:
+        - $ref: '#/definitions/github_com_jroosing_hydradns_internal_config.UpstreamConfig'
+        description: Upstream contains upstream DNS server configuration.
+      version:
+        description: Version is the configuration version from the primary node.
+        type: integer
     type: object
   github_com_jroosing_hydradns_internal_config.BlocklistConfig:
     properties:
@@ -375,6 +505,120 @@ info:
   title: HydraDNS Management API
   version: "1.0"
 paths:
+  /cluster/config:
+    get:
+      description: Returns the current cluster configuration (secrets redacted)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ClusterConfigRequest'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get cluster configuration
+      tags:
+      - cluster
+    put:
+      consumes:
+      - application/json
+      description: Sets the cluster mode and configuration for this node
+      parameters:
+      - description: Cluster configuration
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ClusterConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.SetClusterConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Configure cluster settings
+      tags:
+      - cluster
+  /cluster/export:
+    get:
+      description: Returns configuration data for secondary nodes to import (primary
+        only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_cluster.ExportData'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      summary: Export configuration for cluster sync
+      tags:
+      - cluster
+  /cluster/status:
+    get:
+      description: Returns the current cluster mode and synchronization status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ClusterStatusResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get cluster status
+      tags:
+      - cluster
+  /cluster/sync:
+    post:
+      description: Triggers an immediate configuration sync from the primary node
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Force immediate sync (secondary only)
+      tags:
+      - cluster
   /config:
     get:
       description: Returns the current server configuration (sensitive fields redacted)

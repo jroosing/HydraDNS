@@ -188,16 +188,25 @@ func (db *DB) importFilteringTx(tx *sql.Tx, filtering config.FilteringConfig) er
 
 // SetClusterConfig updates cluster configuration settings.
 func (db *DB) SetClusterConfig(cfg *config.ClusterConfig) error {
-	configs := map[string]string{
-		ConfigKeyClusterMode:         string(cfg.Mode),
-		ConfigKeyClusterNodeID:       cfg.NodeID,
-		ConfigKeyClusterPrimaryURL:   cfg.PrimaryURL,
-		ConfigKeyClusterSharedSecret: cfg.SharedSecret,
-		ConfigKeyClusterSyncInterval: cfg.SyncInterval,
-		ConfigKeyClusterSyncTimeout:  cfg.SyncTimeout,
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	_, err := db.conn.Exec(`
+		UPDATE config_cluster SET
+			mode = ?,
+			node_id = ?,
+			primary_url = ?,
+			shared_secret = ?,
+			sync_interval = ?,
+			sync_timeout = ?,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = 1
+	`, string(cfg.Mode), cfg.NodeID, cfg.PrimaryURL, cfg.SharedSecret, cfg.SyncInterval, cfg.SyncTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to update cluster config: %w", err)
 	}
 
-	return db.SetMultipleConfig(configs)
+	return nil
 }
 
 // SetUpstreamConfigTyped updates the typed upstream configuration.
@@ -245,16 +254,29 @@ func (db *DB) SetFilteringConfigTyped(cfg *config.FilteringConfig) error {
 
 // GetClusterConfig retrieves the cluster configuration.
 func (db *DB) GetClusterConfig() (*config.ClusterConfig, error) {
-	modeStr := db.GetConfigWithDefault(ConfigKeyClusterMode, "standalone")
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
-	return &config.ClusterConfig{
-		Mode:         config.ClusterMode(modeStr),
-		NodeID:       db.GetConfigWithDefault(ConfigKeyClusterNodeID, ""),
-		PrimaryURL:   db.GetConfigWithDefault(ConfigKeyClusterPrimaryURL, ""),
-		SharedSecret: db.GetConfigWithDefault(ConfigKeyClusterSharedSecret, ""),
-		SyncInterval: db.GetConfigWithDefault(ConfigKeyClusterSyncInterval, "30s"),
-		SyncTimeout:  db.GetConfigWithDefault(ConfigKeyClusterSyncTimeout, "10s"),
-	}, nil
+	var modeStr string
+	cfg := &config.ClusterConfig{}
+
+	err := db.conn.QueryRow(`
+		SELECT mode, node_id, primary_url, shared_secret, sync_interval, sync_timeout
+		FROM config_cluster WHERE id = 1
+	`).Scan(
+		&modeStr,
+		&cfg.NodeID,
+		&cfg.PrimaryURL,
+		&cfg.SharedSecret,
+		&cfg.SyncInterval,
+		&cfg.SyncTimeout,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read cluster config: %w", err)
+	}
+
+	cfg.Mode = config.ClusterMode(modeStr)
+	return cfg, nil
 }
 
 // IncrementVersion manually increments the config version.

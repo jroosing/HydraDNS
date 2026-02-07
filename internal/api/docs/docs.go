@@ -22,6 +22,186 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/cluster/config": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns the current cluster configuration (secrets redacted)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cluster"
+                ],
+                "summary": "Get cluster configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ClusterConfigRequest"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Sets the cluster mode and configuration for this node",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cluster"
+                ],
+                "summary": "Configure cluster settings",
+                "parameters": [
+                    {
+                        "description": "Cluster configuration",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ClusterConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.SetClusterConfigResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cluster/export": {
+            "get": {
+                "description": "Returns configuration data for secondary nodes to import (primary only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cluster"
+                ],
+                "summary": "Export configuration for cluster sync",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_cluster.ExportData"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cluster/status": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns the current cluster mode and synchronization status",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cluster"
+                ],
+                "summary": "Get cluster status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ClusterStatusResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cluster/sync": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Triggers an immediate configuration sync from the primary node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cluster"
+                ],
+                "summary": "Force immediate sync (secondary only)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.StatusResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/config": {
             "get": {
                 "security": [
@@ -1112,11 +1292,116 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_jroosing_hydradns_internal_api_models.ClusterConfigRequest": {
+            "type": "object",
+            "required": [
+                "mode"
+            ],
+            "properties": {
+                "mode": {
+                    "description": "Mode is the cluster mode: \"standalone\", \"primary\", or \"secondary\".",
+                    "type": "string",
+                    "enum": [
+                        "standalone",
+                        "primary",
+                        "secondary"
+                    ]
+                },
+                "node_id": {
+                    "description": "NodeID is a unique identifier for this node (auto-generated if empty).",
+                    "type": "string"
+                },
+                "primary_url": {
+                    "description": "PrimaryURL is the URL of the primary node's API (required for secondary mode).\nExample: \"http://primary.homelab.local:8080\"",
+                    "type": "string"
+                },
+                "shared_secret": {
+                    "description": "SharedSecret is used to authenticate sync requests between nodes.",
+                    "type": "string"
+                },
+                "sync_interval": {
+                    "description": "SyncInterval is how often secondary nodes poll for config changes.\nDefault: \"30s\". Example: \"1m\", \"5m\".",
+                    "type": "string"
+                },
+                "sync_timeout": {
+                    "description": "SyncTimeout is the HTTP timeout for sync requests.\nDefault: \"10s\".",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.ClusterConfigResponse": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "primary_url": {
+                    "type": "string"
+                },
+                "sync_interval": {
+                    "type": "string"
+                },
+                "sync_timeout": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_api_models.ClusterStatusResponse": {
+            "type": "object",
+            "properties": {
+                "config_version": {
+                    "description": "ConfigVersion is the current local configuration version.",
+                    "type": "integer"
+                },
+                "error_count": {
+                    "description": "ErrorCount is the total number of sync errors.",
+                    "type": "integer"
+                },
+                "last_sync_error": {
+                    "description": "LastSyncError is the error message from the last sync attempt (if any).",
+                    "type": "string"
+                },
+                "last_sync_time": {
+                    "description": "LastSyncTime is when the last successful sync occurred (only for secondary).",
+                    "type": "string"
+                },
+                "last_sync_version": {
+                    "description": "LastSyncVersion is the config version from the last successful sync.",
+                    "type": "integer"
+                },
+                "mode": {
+                    "description": "Mode is the cluster mode: \"standalone\", \"primary\", or \"secondary\".",
+                    "type": "string"
+                },
+                "next_sync_time": {
+                    "description": "NextSyncTime is when the next sync is scheduled (only for secondary).",
+                    "type": "string"
+                },
+                "node_id": {
+                    "description": "NodeID is this node's unique identifier.",
+                    "type": "string"
+                },
+                "primary_url": {
+                    "description": "PrimaryURL is the URL of the primary node (only for secondary mode).",
+                    "type": "string"
+                },
+                "sync_count": {
+                    "description": "SyncCount is the total number of successful syncs.",
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_jroosing_hydradns_internal_api_models.ConfigResponse": {
             "type": "object",
             "properties": {
                 "api": {
                     "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.APIConfigResponse"
+                },
+                "cluster": {
+                    "$ref": "#/definitions/github_com_jroosing_hydradns_internal_api_models.ClusterConfigResponse"
                 },
                 "custom_dns": {
                     "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.CustomDNSConfig"
@@ -1359,6 +1644,31 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_jroosing_hydradns_internal_api_models.SetClusterConfigResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Message provides additional information about the configuration change.",
+                    "type": "string"
+                },
+                "mode": {
+                    "description": "Mode is the new cluster mode.",
+                    "type": "string"
+                },
+                "node_id": {
+                    "description": "NodeID is this node's identifier.",
+                    "type": "string"
+                },
+                "requires_restart": {
+                    "description": "RequiresRestart indicates if a restart is needed for changes to take effect.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "Status indicates the result of the operation.",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_jroosing_hydradns_internal_api_models.StatusResponse": {
             "type": "object",
             "properties": {
@@ -1390,6 +1700,47 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "github_com_jroosing_hydradns_internal_cluster.ExportData": {
+            "type": "object",
+            "properties": {
+                "custom_dns": {
+                    "description": "CustomDNS contains custom DNS records (hosts and CNAMEs).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.CustomDNSConfig"
+                        }
+                    ]
+                },
+                "filtering": {
+                    "description": "Filtering contains domain filtering configuration.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.FilteringConfig"
+                        }
+                    ]
+                },
+                "node_id": {
+                    "description": "NodeID is the primary node's identifier.",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "Timestamp is when this export was generated.",
+                    "type": "string"
+                },
+                "upstream": {
+                    "description": "Upstream contains upstream DNS server configuration.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_jroosing_hydradns_internal_config.UpstreamConfig"
+                        }
+                    ]
+                },
+                "version": {
+                    "description": "Version is the configuration version from the primary node.",
+                    "type": "integer"
                 }
             }
         },

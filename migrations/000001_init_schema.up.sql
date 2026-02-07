@@ -7,13 +7,6 @@ CREATE TABLE IF NOT EXISTS schema_version (
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Configuration metadata (server, upstream, logging, etc.)
-CREATE TABLE IF NOT EXISTS config (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Track overall config version for sync
 CREATE TABLE IF NOT EXISTS config_version (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -162,12 +155,6 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS trg_config_version_increment_records_delete
 AFTER DELETE ON custom_dns_records
-BEGIN
-    UPDATE config_version SET version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = 1;
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_config_version_increment_config
-AFTER UPDATE ON config
 BEGIN
     UPDATE config_version SET version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = 1;
 END;

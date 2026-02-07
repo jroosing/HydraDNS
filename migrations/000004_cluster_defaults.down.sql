@@ -1,5 +1,4 @@
--- Remove cluster config defaults (table stays, just clear data)
-DELETE FROM config WHERE key LIKE 'cluster.%';
+-- Remove cluster config defaults (reset to standalone)
 UPDATE config_cluster SET 
     mode = 'standalone',
     node_id = '',

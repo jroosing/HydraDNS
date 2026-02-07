@@ -9,11 +9,3 @@ ON CONFLICT(id) DO UPDATE SET
 	sync_interval=excluded.sync_interval,
 	sync_timeout=excluded.sync_timeout,
 	updated_at=CURRENT_TIMESTAMP;
-
--- Seed default cluster config into the generic config table for backward compat
-INSERT OR IGNORE INTO config (key, value) VALUES ('cluster.mode', 'standalone');
-INSERT OR IGNORE INTO config (key, value) VALUES ('cluster.node_id', '');
-INSERT OR IGNORE INTO config (key, value) VALUES ('cluster.primary_url', '');
-INSERT OR IGNORE INTO config (key, value) VALUES ('cluster.shared_secret', '');
-INSERT OR IGNORE INTO config (key, value) VALUES ('cluster.sync_interval', '30s');
-INSERT OR IGNORE INTO config (key, value) VALUES ('cluster.sync_timeout', '10s');

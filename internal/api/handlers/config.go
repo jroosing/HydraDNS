@@ -42,6 +42,13 @@ func (h *Handler) GetConfig(c *gin.Context) {
 			Host:    h.cfg.API.Host,
 			Port:    h.cfg.API.Port,
 		},
+		Cluster: models.ClusterConfigResponse{
+			Mode:         string(h.cfg.Cluster.Mode),
+			NodeID:       h.cfg.Cluster.NodeID,
+			PrimaryURL:   h.cfg.Cluster.PrimaryURL,
+			SyncInterval: h.cfg.Cluster.SyncInterval,
+			SyncTimeout:  h.cfg.Cluster.SyncTimeout,
+		},
 	}
 
 	c.JSON(http.StatusOK, resp)

@@ -56,6 +56,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jroosing/hydradns/internal/cluster"
 	"github.com/jroosing/hydradns/internal/config"
 	"github.com/jroosing/hydradns/internal/database"
 	"github.com/jroosing/hydradns/internal/filtering"
@@ -83,8 +84,9 @@ type Handler struct {
 
 	// Runtime components (set after server starts)
 	policyEngine        *filtering.PolicyEngine
-	customDNSReloadFunc func() error  // Callback to reload custom DNS resolver
-	dnsStatsFunc        DNSStatsFunc  // Function to get DNS query statistics
+	customDNSReloadFunc func() error    // Callback to reload custom DNS resolver
+	dnsStatsFunc        DNSStatsFunc    // Function to get DNS query statistics
+	clusterSyncer       *cluster.Syncer // Cluster syncer for secondary mode
 	mu                  sync.RWMutex
 }
 
@@ -137,4 +139,18 @@ func (h *Handler) GetDNSStatsFunc() DNSStatsFunc {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.dnsStatsFunc
+}
+
+// SetClusterSyncer sets the cluster syncer for secondary mode.
+func (h *Handler) SetClusterSyncer(syncer *cluster.Syncer) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.clusterSyncer = syncer
+}
+
+// GetClusterSyncer retrieves the cluster syncer.
+func (h *Handler) GetClusterSyncer() *cluster.Syncer {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.clusterSyncer
 }

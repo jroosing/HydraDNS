@@ -9,6 +9,15 @@ type APIConfigResponse struct {
 	Port    int    `json:"port"`
 }
 
+// ClusterConfigResponse is a redacted version of ClusterConfig (no shared_secret exposed).
+type ClusterConfigResponse struct {
+	Mode         string `json:"mode"`
+	NodeID       string `json:"node_id"`
+	PrimaryURL   string `json:"primary_url,omitempty"`
+	SyncInterval string `json:"sync_interval"`
+	SyncTimeout  string `json:"sync_timeout"`
+}
+
 // ServerConfigResponse wraps ServerConfig with workers as string.
 type ServerConfigResponse struct {
 	Host                   string `json:"host"`
@@ -29,4 +38,5 @@ type ConfigResponse struct {
 	Filtering config.FilteringConfig `json:"filtering"`
 	RateLimit config.RateLimitConfig `json:"rate_limit"`
 	API       APIConfigResponse      `json:"api"`
+	Cluster   ClusterConfigResponse  `json:"cluster"`
 }

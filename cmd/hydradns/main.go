@@ -5,14 +5,18 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jroosing/hydradns/internal/api"
 	"github.com/jroosing/hydradns/internal/api/handlers"
+	"github.com/jroosing/hydradns/internal/cluster"
+	"github.com/jroosing/hydradns/internal/config"
 	"github.com/jroosing/hydradns/internal/database"
 	"github.com/jroosing/hydradns/internal/logging"
 	"github.com/jroosing/hydradns/internal/server"
@@ -39,6 +43,16 @@ func run() error {
 		noTCP    = flag.Bool("no-tcp", false, "Disable TCP server")
 		jsonLogs = flag.Bool("json-logs", false, "Enable JSON structured logging")
 		debug    = flag.Bool("debug", false, "Enable debug logging")
+
+		// Cluster flags
+		clusterMode    = flag.String("cluster-mode", "", "Cluster mode: standalone, primary, or secondary")
+		clusterPrimary = flag.String(
+			"cluster-primary",
+			"",
+			"Primary node URL for secondary mode (e.g., http://primary:8080)",
+		)
+		clusterSecret = flag.String("cluster-secret", "", "Shared secret for cluster authentication")
+		clusterNodeID = flag.String("cluster-node-id", "", "Unique node ID (auto-generated if empty)")
 	)
 	flag.Parse()
 
@@ -75,6 +89,24 @@ func run() error {
 	}
 	if *debug {
 		cfg.Logging.Level = "DEBUG"
+	}
+
+	// Apply cluster overrides from CLI
+	if *clusterMode != "" {
+		cfg.Cluster.Mode = config.ClusterMode(*clusterMode)
+	}
+	if *clusterPrimary != "" {
+		cfg.Cluster.PrimaryURL = *clusterPrimary
+	}
+	if *clusterSecret != "" {
+		cfg.Cluster.SharedSecret = *clusterSecret
+	}
+	if *clusterNodeID != "" {
+		cfg.Cluster.NodeID = *clusterNodeID
+	}
+	// Generate node ID if not set
+	if cfg.Cluster.NodeID == "" {
+		cfg.Cluster.NodeID = uuid.New().String()[:8]
 	}
 
 	logger := logging.Configure(logging.Config{
@@ -142,7 +174,20 @@ func run() error {
 		cancel()
 	}()
 
+	// Start cluster syncer if in secondary mode
+	var syncer *cluster.Syncer
+	if cfg.Cluster.Mode == config.ClusterModeSecondary {
+		syncer = startClusterSyncer(ctx, cfg, db, logger, apiSrv.Handler())
+	} else if cfg.Cluster.Mode != "" && cfg.Cluster.Mode != config.ClusterModeStandalone {
+		logger.Info("cluster mode", "mode", cfg.Cluster.Mode, "node_id", cfg.Cluster.NodeID)
+	}
+
 	err = runner.RunWithContext(ctx, cfg)
+
+	// Stop cluster syncer if running
+	if syncer != nil {
+		syncer.Stop()
+	}
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	_ = apiSrv.Shutdown(shutdownCtx)
@@ -153,4 +198,57 @@ func run() error {
 		return fmt.Errorf("server exited with error: %w", err)
 	}
 	return nil
+}
+
+// startClusterSyncer initializes and starts the cluster syncer for secondary mode.
+func startClusterSyncer(
+	ctx context.Context,
+	cfg *config.Config,
+	db *database.DB,
+	logger *slog.Logger,
+	h *handlers.Handler,
+) *cluster.Syncer {
+	logger.Info("starting cluster syncer",
+		"primary_url", cfg.Cluster.PrimaryURL,
+		"node_id", cfg.Cluster.NodeID,
+		"sync_interval", cfg.Cluster.SyncInterval,
+	)
+
+	// Import function: imports config from primary into local database
+	importFunc := func(data *cluster.ExportData) error {
+		if err := db.ImportFromCluster(data); err != nil {
+			return err
+		}
+		// Update local version to match primary
+		return db.SetVersion(data.Version)
+	}
+
+	// Reload function: refreshes runtime components after config import
+	reloadFunc := func() error {
+		// TODO: Trigger filtering engine reload, custom DNS reload, etc.
+		// For now, this is a no-op; full reload requires server restart
+		logger.Debug("config imported, runtime reload pending")
+		return nil
+	}
+
+	// Version function: returns local config version
+	versionFunc := func() (int64, error) {
+		return db.GetVersion()
+	}
+
+	syncer, err := cluster.NewSyncer(&cfg.Cluster, logger, importFunc, reloadFunc, versionFunc)
+	if err != nil {
+		logger.Error("failed to create cluster syncer", "err", err)
+		return nil
+	}
+
+	// Set syncer on handler for API access
+	h.SetClusterSyncer(syncer)
+
+	if err := syncer.Start(ctx); err != nil {
+		logger.Error("failed to start cluster syncer", "err", err)
+		return nil
+	}
+
+	return syncer
 }

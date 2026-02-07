@@ -135,6 +135,45 @@ type APIConfig struct {
 	APIKey  string `json:"api_key,omitempty"`
 }
 
+// ClusterMode specifies the clustering mode for this instance.
+type ClusterMode string
+
+const (
+	// ClusterModeStandalone means no clustering (default).
+	ClusterModeStandalone ClusterMode = "standalone"
+	// ClusterModePrimary means this instance is the primary (master) node.
+	ClusterModePrimary ClusterMode = "primary"
+	// ClusterModeSecondary means this instance syncs config from a primary node.
+	ClusterModeSecondary ClusterMode = "secondary"
+)
+
+// ClusterConfig contains clustering settings for primary/secondary synchronization.
+// This enables a soft clustering mode where secondary nodes sync their configuration
+// from a primary node. Nodes still operate independently for DNS resolution.
+type ClusterConfig struct {
+	// Mode specifies clustering mode: "standalone", "primary", or "secondary".
+	Mode ClusterMode `json:"mode"`
+
+	// NodeID is a unique identifier for this node (auto-generated if empty).
+	NodeID string `json:"node_id,omitempty"`
+
+	// PrimaryURL is the URL of the primary node's API (only for secondary mode).
+	// Example: "http://primary.homelab.local:8080"
+	PrimaryURL string `json:"primary_url,omitempty"`
+
+	// SharedSecret is used to authenticate sync requests between nodes.
+	// Must match between primary and secondary nodes.
+	SharedSecret string `json:"shared_secret,omitempty"`
+
+	// SyncInterval is how often secondary nodes poll for config changes.
+	// Default: "30s". Example: "1m", "5m".
+	SyncInterval string `json:"sync_interval,omitempty"`
+
+	// SyncTimeout is the HTTP timeout for sync requests.
+	// Default: "10s".
+	SyncTimeout string `json:"sync_timeout,omitempty"`
+}
+
 // Config is the root configuration structure.
 type Config struct {
 	Server    ServerConfig    `json:"server"`
@@ -144,4 +183,5 @@ type Config struct {
 	Filtering FilteringConfig `json:"filtering"`
 	RateLimit RateLimitConfig `json:"rate_limit"`
 	API       APIConfig       `json:"api"`
+	Cluster   ClusterConfig   `json:"cluster"`
 }

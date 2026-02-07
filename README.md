@@ -44,6 +44,7 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It forwards
 
 ### Operations
 - **Custom DNS** — Simple hosts/CNAME configuration (dnsmasq-style)
+- **Primary/Secondary clustering** — Sync configuration across multiple instances
 - **Strict-order failover** — Primary upstream with automatic fallback
 - **Structured logging** — JSON or key-value format for log aggregation
 - **Graceful shutdown** — Drains in-flight requests before stopping
@@ -441,6 +442,239 @@ The filtering resolver sits at the front of the resolver chain, before custom DN
 
 ---
 
+## Clustering
+
+HydraDNS supports a simple primary/secondary clustering mode for configuration synchronization. This allows you to run multiple instances where secondary nodes automatically sync their configuration from a primary node.
+
+### How It Works
+
+```
+┌─────────────────────┐              ┌─────────────────────┐
+│   Primary Node      │              │  Secondary Node(s)  │
+│                     │              │                     │
+│  ┌───────────────┐  │   HTTP/API   │  ┌───────────────┐  │
+│  │ Configuration │◄─┼──────────────┼──│ Cluster Syncer│  │
+│  │   Database    │  │  (periodic)  │  │   (polling)   │  │
+│  └───────────────┘  │              │  └───────┬───────┘  │
+│                     │              │          │          │
+│  ┌───────────────┐  │              │  ┌───────▼───────┐  │
+│  │  DNS Server   │  │              │  │ Configuration │  │
+│  │  (standalone) │  │              │  │   Database    │  │
+│  └───────────────┘  │              │  └───────────────┘  │
+│                     │              │                     │
+│  ┌───────────────┐  │              │  ┌───────────────┐  │
+│  │    Web UI     │  │              │  │  DNS Server   │  │
+│  │  (management) │  │              │  │  (standalone) │  │
+│  └───────────────┘  │              │  └───────────────┘  │
+└─────────────────────┘              └─────────────────────┘
+```
+
+**Key characteristics:**
+- **One-way sync** — Secondary nodes pull configuration from the primary
+- **DNS independence** — Each node answers DNS queries independently
+- **Soft clustering** — No leader election, no consensus protocol
+- **Configuration only** — Only configuration is synced, not runtime state or cache
+
+### What Gets Synced
+
+| Synced | Not Synced |
+|--------|------------|
+| Upstream DNS servers | Server settings (host, port, workers) |
+| Custom DNS records (A, AAAA, CNAME) | API settings (port, API key) |
+| Filtering configuration | Rate limit settings |
+| Whitelist/Blacklist domains | Logging settings |
+| Blocklist definitions | Cluster settings |
+
+### Cluster Modes
+
+| Mode | Description |
+|------|-------------|
+| `standalone` | Default. No clustering, independent operation. |
+| `primary` | Serves configuration to secondary nodes via API. |
+| `secondary` | Polls primary node for configuration changes. |
+
+### Quick Start
+
+#### Via REST API (Recommended)
+
+**Configure the primary node:**
+```bash
+curl -X PUT http://primary-host:8080/api/v1/cluster/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "primary",
+    "node_id": "primary-1",
+    "shared_secret": "your-secret-key"
+  }'
+```
+
+**Configure secondary node(s):**
+```bash
+curl -X PUT http://secondary-host:8080/api/v1/cluster/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "secondary",
+    "node_id": "secondary-1",
+    "primary_url": "http://primary-host:8080",
+    "shared_secret": "your-secret-key",
+    "sync_interval": "30s"
+  }'
+```
+
+> **Note:** Secondary mode requires a restart for the syncer to start.
+
+#### Via Command Line
+
+```bash
+# Start primary node
+./hydradns --cluster-mode primary --cluster-secret "your-secret-key"
+
+# Start secondary node
+./hydradns --cluster-mode secondary \
+  --cluster-primary "http://primary-host:8080" \
+  --cluster-secret "your-secret-key" \
+  --db secondary.db
+```
+
+### Command-Line Options
+
+| Flag | Description |
+|------|-------------|
+| `--cluster-mode` | Cluster mode: `standalone`, `primary`, or `secondary` |
+| `--cluster-primary` | Primary node URL (required for secondary mode) |
+| `--cluster-secret` | Shared secret for authentication between nodes |
+| `--cluster-node-id` | Unique node identifier (auto-generated if empty) |
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/cluster/status` | GET | Get cluster status and sync information |
+| `/api/v1/cluster/config` | GET | Get cluster configuration (secret redacted) |
+| `/api/v1/cluster/config` | PUT | Configure cluster settings |
+| `/api/v1/cluster/export` | GET | Export configuration (primary/standalone only) |
+| `/api/v1/cluster/sync` | POST | Force immediate sync (secondary only) |
+
+### Example: Check Cluster Status
+
+```bash
+# On any node
+curl http://localhost:8080/api/v1/cluster/status
+```
+
+Response on a secondary node:
+```json
+{
+  "mode": "secondary",
+  "node_id": "secondary-1",
+  "config_version": 42,
+  "primary_url": "http://primary-host:8080",
+  "last_sync_time": "2026-02-07T10:30:00Z",
+  "last_sync_version": 42,
+  "next_sync_time": "2026-02-07T10:30:30Z",
+  "sync_count": 156,
+  "error_count": 0
+}
+```
+
+### Example: Force Sync
+
+```bash
+# On a secondary node
+curl -X POST http://localhost:8080/api/v1/cluster/sync
+```
+
+### Configuration Options
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `mode` | `standalone` | Cluster mode |
+| `node_id` | (auto) | Unique identifier for this node |
+| `primary_url` | — | URL of the primary node (secondary only) |
+| `shared_secret` | — | Authentication token between nodes |
+| `sync_interval` | `30s` | How often to poll for changes |
+| `sync_timeout` | `10s` | HTTP timeout for sync requests |
+
+### Docker Compose Example
+
+```yaml
+version: '3.8'
+
+services:
+  hydradns-primary:
+    image: hydradns
+    ports:
+      - "1053:1053/udp"
+      - "1053:1053/tcp"
+      - "8080:8080"
+    volumes:
+      - primary-data:/data
+    command: >
+      --db /data/hydradns.db
+      --cluster-mode primary
+      --cluster-secret "${CLUSTER_SECRET}"
+
+  hydradns-secondary-1:
+    image: hydradns
+    ports:
+      - "1054:1053/udp"
+      - "1054:1053/tcp"
+      - "8081:8080"
+    volumes:
+      - secondary1-data:/data
+    command: >
+      --db /data/hydradns.db
+      --cluster-mode secondary
+      --cluster-primary "http://hydradns-primary:8080"
+      --cluster-secret "${CLUSTER_SECRET}"
+    depends_on:
+      - hydradns-primary
+
+  hydradns-secondary-2:
+    image: hydradns
+    ports:
+      - "1055:1053/udp"
+      - "1055:1053/tcp"
+      - "8082:8080"
+    volumes:
+      - secondary2-data:/data
+    command: >
+      --db /data/hydradns.db
+      --cluster-mode secondary
+      --cluster-primary "http://hydradns-primary:8080"
+      --cluster-secret "${CLUSTER_SECRET}"
+    depends_on:
+      - hydradns-primary
+
+volumes:
+  primary-data:
+  secondary1-data:
+  secondary2-data:
+```
+
+### Security Considerations
+
+- **Shared secret** — Always configure a strong shared secret in production
+- **Network security** — The cluster export endpoint should not be exposed to the internet
+- **HTTPS** — Consider using a reverse proxy with TLS for production deployments
+- **API key** — The regular API key (`X-Api-Key`) is separate from the cluster secret
+
+### Use Cases
+
+1. **Redundancy** — Run multiple DNS servers that share the same configuration
+2. **Geographic distribution** — Deploy secondaries in different locations
+3. **Load balancing** — Use multiple instances behind a DNS load balancer
+4. **Staged rollout** — Test configuration changes on primary before syncing
+
+### Limitations
+
+- Secondary nodes require a restart to start syncing (hot-start not yet implemented)
+- No automatic failover if primary becomes unavailable
+- Cache is not synchronized between nodes
+- Rate limit counters are per-node
+
+---
+
 ## REST API
 
 HydraDNS includes a REST API for runtime management and monitoring. The API is built with Gin and includes interactive Swagger documentation.
@@ -467,6 +701,11 @@ http://localhost:8080/swagger/index.html
 | `/api/v1/filtering/whitelist` | POST | Add domains to whitelist |
 | `/api/v1/filtering/blacklist` | GET | List blacklist domains |
 | `/api/v1/filtering/blacklist` | POST | Add domains to blacklist |
+| `/api/v1/cluster/status` | GET | Cluster status and sync info |
+| `/api/v1/cluster/config` | GET | Cluster configuration |
+| `/api/v1/cluster/config` | PUT | Configure cluster settings |
+| `/api/v1/cluster/export` | GET | Export config for sync (primary only) |
+| `/api/v1/cluster/sync` | POST | Force sync (secondary only) |
 
 ### Authentication
 

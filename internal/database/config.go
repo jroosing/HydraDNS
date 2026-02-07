@@ -43,6 +43,14 @@ const (
 	ConfigKeyAPIHost    = "api.host"
 	ConfigKeyAPIPort    = "api.port"
 	ConfigKeyAPIKey     = "api.api_key"
+
+	// Cluster configuration keys
+	ConfigKeyClusterMode         = "cluster.mode"
+	ConfigKeyClusterNodeID       = "cluster.node_id"
+	ConfigKeyClusterPrimaryURL   = "cluster.primary_url"
+	ConfigKeyClusterSharedSecret = "cluster.shared_secret"
+	ConfigKeyClusterSyncInterval = "cluster.sync_interval"
+	ConfigKeyClusterSyncTimeout  = "cluster.sync_timeout"
 )
 
 // SetConfig sets a configuration value.

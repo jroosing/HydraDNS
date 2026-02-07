@@ -51,4 +51,11 @@ func RegisterRoutes(r *gin.Engine, h *handlers.Handler, cfg *config.Config) {
 	api.POST("/custom-dns/cnames", h.AddCNAME)
 	api.PUT("/custom-dns/cnames/:alias", h.UpdateCNAME)
 	api.DELETE("/custom-dns/cnames/:alias", h.DeleteCNAME)
+
+	// Cluster endpoints
+	api.GET("/cluster/status", h.GetClusterStatus)
+	api.GET("/cluster/config", h.GetClusterConfig)
+	api.PUT("/cluster/config", h.PutClusterConfig)
+	api.GET("/cluster/export", h.GetClusterExport)
+	api.POST("/cluster/sync", h.PostClusterSync)
 }

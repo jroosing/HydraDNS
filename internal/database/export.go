@@ -47,6 +47,11 @@ func (db *DB) ExportToConfig() (*config.Config, error) {
 		return nil, err
 	}
 
+	// Export cluster config
+	if err := db.exportClusterConfig(cfg); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
@@ -289,6 +294,19 @@ func (db *DB) exportAPIConfig(cfg *config.Config) error {
 	cfg.API.Port = port
 
 	cfg.API.APIKey = db.GetConfigWithDefault(ConfigKeyAPIKey, "")
+
+	return nil
+}
+
+func (db *DB) exportClusterConfig(cfg *config.Config) error {
+	modeStr := db.GetConfigWithDefault(ConfigKeyClusterMode, "standalone")
+	cfg.Cluster.Mode = config.ClusterMode(modeStr)
+
+	cfg.Cluster.NodeID = db.GetConfigWithDefault(ConfigKeyClusterNodeID, "")
+	cfg.Cluster.PrimaryURL = db.GetConfigWithDefault(ConfigKeyClusterPrimaryURL, "")
+	cfg.Cluster.SharedSecret = db.GetConfigWithDefault(ConfigKeyClusterSharedSecret, "")
+	cfg.Cluster.SyncInterval = db.GetConfigWithDefault(ConfigKeyClusterSyncInterval, "30s")
+	cfg.Cluster.SyncTimeout = db.GetConfigWithDefault(ConfigKeyClusterSyncTimeout, "10s")
 
 	return nil
 }

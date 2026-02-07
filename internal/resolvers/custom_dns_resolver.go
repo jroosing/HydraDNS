@@ -169,11 +169,10 @@ func matchesQueryType(addr netip.Addr, qtype uint16) bool {
 }
 
 // buildCustomDNSFlags constructs response flags for custom DNS responses.
-// Sets QR (response), AA (authoritative), and preserves RD.
-func buildCustomDNSFlags(reqFlags uint16) uint16 {
-	flags := dns.QRFlag | dns.AAFlag // Set as authoritative response
-	flags |= (reqFlags & dns.RDFlag) // Preserve RD flag
-	return flags
+// Sets QR (response) and AA (authoritative). Does not set RA or preserve RD
+// since these are authoritative responses, not recursive lookups.
+func buildCustomDNSFlags(_ uint16) uint16 {
+	return dns.QRFlag | dns.AAFlag
 }
 
 // normalizeName converts a domain name to lowercase and removes trailing dot.

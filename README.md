@@ -33,7 +33,6 @@ HydraDNS is designed for speed, reliability, and ease of deployment. It forwards
 - **3-tier rate limiting** — Global, per-prefix (/24), and per-IP token buckets
 - **Domain filtering** — Trie-based whitelist/blacklist with remote blocklist support
 - **Response validation** — Verifies upstream responses match requests
-- **Hardened Docker deployment** — Non-root user, minimal attack surface
 
 ### Configuration & Management
 - **SQLite database** — All configuration stored in a single database file
@@ -203,9 +202,6 @@ By default, the database is created as `hydradns.db` in the current directory. O
 ```bash
 # Command-line flag
 ./hydradns --db /var/lib/hydradns/config.db
-
-# Docker volume mount
-docker run -v hydradns-data:/data hydradns --db /data/hydradns.db
 ```
 
 ### Default Configuration
@@ -244,48 +240,6 @@ After starting HydraDNS, open **http://localhost:8080** in your browser to:
 - View server statistics and health
 
 All changes are persisted to the database immediately.
-
----
-
-## Docker
-
-### Quick Start
-
-```bash
-# Build and run with Docker Compose
-docker compose up --build
-
-# Or build manually
-docker build -f Dockerfile.ui -t hydradns .
-docker run -p 1053:1053/udp -p 1053:1053/tcp -p 8080:8080 \
-  -v hydradns-data:/data hydradns
-```
-
-### Persistent Storage
-
-The SQLite database should be stored on a volume:
-
-```yaml
-# docker-compose.yml
-services:
-  hydradns:
-    volumes:
-      - hydradns-data:/data
-    environment:
-      - HYDRADNS_DB=/data/hydradns.db
-
-volumes:
-  hydradns-data:
-```
-
-### Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `HYDRADNS_DB` | Path to SQLite database file |
-| `HYDRADNS_LOGGING_LEVEL` | Log level (DEBUG, INFO, WARN, ERROR) |
-
-The Docker image runs as a non-root user with minimal dependencies.
 
 ---
 
@@ -392,17 +346,6 @@ export HYDRADNS_RL_IP_QPS=0
 | `HYDRADNS_RL_MAX_IP_ENTRIES` | 65536 | Max tracked IP addresses |
 | `HYDRADNS_RL_MAX_PREFIX_ENTRIES` | 16384 | Max tracked /24 prefixes |
 | `HYDRADNS_RL_CLEANUP_SECONDS` | 60 | Stale entry cleanup interval |
-
-### Docker Configuration
-
-```yaml
-# docker-compose.yml
-services:
-  hydradns:
-    environment:
-      - HYDRADNS_RL_IP_QPS=10000    # Increase for higher throughput
-      - HYDRADNS_RL_IP_BURST=20000
-```
 
 ### Performance Notes
 
@@ -633,63 +576,6 @@ curl -X POST http://localhost:8080/api/v1/cluster/sync
 | `shared_secret` | — | Authentication token between nodes |
 | `sync_interval` | `5m` | How often to poll for changes |
 | `sync_timeout` | `30s` | HTTP timeout for sync requests |
-
-### Docker Compose Example
-
-```yaml
-version: '3.8'
-
-services:
-  hydradns-primary:
-    image: hydradns
-    ports:
-      - "1053:1053/udp"
-      - "1053:1053/tcp"
-      - "8080:8080"
-    volumes:
-      - primary-data:/data
-    command: >
-      --db /data/hydradns.db
-      --cluster-mode primary
-      --cluster-secret "${CLUSTER_SECRET}"
-
-  hydradns-secondary-1:
-    image: hydradns
-    ports:
-      - "1054:1053/udp"
-      - "1054:1053/tcp"
-      - "8081:8080"
-    volumes:
-      - secondary1-data:/data
-    command: >
-      --db /data/hydradns.db
-      --cluster-mode secondary
-      --cluster-primary "http://hydradns-primary:8080"
-      --cluster-secret "${CLUSTER_SECRET}"
-    depends_on:
-      - hydradns-primary
-
-  hydradns-secondary-2:
-    image: hydradns
-    ports:
-      - "1055:1053/udp"
-      - "1055:1053/tcp"
-      - "8082:8080"
-    volumes:
-      - secondary2-data:/data
-    command: >
-      --db /data/hydradns.db
-      --cluster-mode secondary
-      --cluster-primary "http://hydradns-primary:8080"
-      --cluster-secret "${CLUSTER_SECRET}"
-    depends_on:
-      - hydradns-primary
-
-volumes:
-  primary-data:
-  secondary1-data:
-  secondary2-data:
-```
 
 ### Security Considerations
 

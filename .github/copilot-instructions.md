@@ -4,7 +4,7 @@ These instructions guide GitHub Copilot when generating, modifying, or reviewing
 
 ## Context & Philosophy
 
-This project is a **DNS forwarding server** with **simple custom DNS support** for **homelab and small self-hosted environments**, running in **Docker, LXC, or bare metal**.
+This project is a **DNS forwarding server** with **simple custom DNS support** for **homelab and small self-hosted environments**, running on **bare metal, LXC, or VMs**.
 
 The server:
 - **Primary function**: Forward DNS queries to upstream servers

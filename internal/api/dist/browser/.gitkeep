@@ -1,0 +1,4 @@
+# Placeholder for go:embed
+
+This file ensures the dist/browser/ directory exists for the go:embed directive.
+During production builds, Angular UI files replace this placeholder.

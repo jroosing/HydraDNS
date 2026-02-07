@@ -303,9 +303,6 @@ make test build
 # Run benchmarks
 make benchmark
 
-# Build Docker image
-make docker-build
-
 # Run linter
 make lint
 

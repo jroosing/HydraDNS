@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - EDNS(0) support
 - DNSSEC-aware forwarding
 - REST API with Swagger documentation
-- Docker and bare metal deployment
+- Systemd service installation script
 - Comprehensive configuration options
 - Buffer pooling for performance
 - Singleflight deduplication

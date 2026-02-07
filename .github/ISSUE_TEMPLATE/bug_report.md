@@ -21,7 +21,7 @@ Steps to reproduce the behavior:
 - **OS**: (e.g., Linux, macOS, Windows)
 - **Go Version**: (output of `go version`)
 - **HydraDNS Version**: (git hash or release version)
-- **Deployment**: (Docker, bare metal, LXC, etc.)
+- **Deployment**: (bare metal, LXC, VM, etc.)
 
 ## Logs
 Please provide relevant logs with `--debug` flag enabled:

@@ -3,7 +3,7 @@
 # =============================================================================
 # Common development tasks for testing and code quality
 
-.PHONY: help test fmt vet build build-ui-embedded check clean docker-build docker-run docker-down docs ui-build ui-serve ui-clean docker-build-ui run
+.PHONY: help test fmt vet build build-ui-embedded check clean docs ui-build ui-serve ui-clean run
 
 # Default target
 help:
@@ -23,11 +23,6 @@ help:
 	@echo ""
 	@echo "Documentation:"
 	@echo "  make docs          Generate Swagger/OpenAPI docs"
-	@echo ""
-	@echo "Docker:"
-	@echo "  make docker-build  Build Docker image"
-	@echo "  make docker-run    Run with docker-compose"
-	@echo "  make docker-build-ui  Build Docker image with embedded UI (Dockerfile.ui)"
 	@echo ""
 	@echo "Frontend (Angular):"
 	@echo "  make ui-build      Fetch & Build Angular UI (from external repo)"
@@ -78,22 +73,6 @@ docs:
 	@echo "Generating Swagger/OpenAPI documentation..."
 	go run github.com/swaggo/swag/cmd/swag@latest init -g internal/api/handlers/base.go -o internal/api/docs --parseDependency --parseInternal
 	@echo "Docs generated in internal/api/docs/"
-
-# =============================================================================
-# Docker
-# =============================================================================
-
-docker-build:
-	docker build -t hydradns:latest .
-
-docker-run:
-	docker compose up
-
-docker-down:
-	docker compose down
-
-docker-build-ui: ui-fetch
-	docker build -f Dockerfile.ui -t hydradns:ui .
 
 # =============================================================================
 # Cleanup

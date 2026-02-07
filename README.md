@@ -177,9 +177,9 @@ sudo journalctl -u hydradns -f
 The install script:
 - Automatically detects your architecture (amd64, arm64, armv7)
 - Downloads the binary from GitHub releases with checksum verification
-- Creates a dedicated `hydradns` system user
+- Runs the service as the calling user (the one who ran sudo)
 - Installs a hardened systemd service
-- Stores data in `/var/lib/hydradns/`
+- Stores data in `/opt/hydradns/`
 
 To uninstall:
 

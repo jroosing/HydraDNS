@@ -8,11 +8,18 @@
 set -euo pipefail
 
 GITHUB_REPO="jroosing/hydradns"
-INSTALL_DIR="/usr/local/bin"
-DATA_DIR="/var/lib/hydradns"
+INSTALL_DIR="/opt/hydradns"
+DATA_DIR="/opt/hydradns"
 SERVICE_FILE="/etc/systemd/system/hydradns.service"
-USER="hydradns"
-GROUP="hydradns"
+
+# Detect the calling user (the one who ran sudo)
+if [[ -n "${SUDO_USER:-}" ]]; then
+    INSTALL_USER="$SUDO_USER"
+    INSTALL_GROUP=$(id -gn "$SUDO_USER")
+else
+    INSTALL_USER=$(whoami)
+    INSTALL_GROUP=$(id -gn)
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -37,6 +44,8 @@ if [[ $EUID -ne 0 ]]; then
     log_error "This script must be run as root (use sudo)"
     exit 1
 fi
+
+log_info "Installing for user: $INSTALL_USER"
 
 # Detect architecture
 ARCH=$(uname -m)
@@ -98,26 +107,11 @@ log_info "Checksum verified"
 log_info "Extracting binary..."
 tar -xzf "$TMP_DIR/hydradns.tar.gz" -C "$TMP_DIR"
 
-# Create system user and group
-if ! getent group "$GROUP" > /dev/null 2>&1; then
-    log_info "Creating group: $GROUP"
-    groupadd --system "$GROUP"
-else
-    log_info "Group $GROUP already exists"
-fi
-
-if ! getent passwd "$USER" > /dev/null 2>&1; then
-    log_info "Creating user: $USER"
-    useradd --system --gid "$GROUP" --home-dir "$DATA_DIR" --shell /usr/sbin/nologin "$USER"
-else
-    log_info "User $USER already exists"
-fi
-
-# Create data directory
-log_info "Creating data directory: $DATA_DIR"
-mkdir -p "$DATA_DIR"
-chown "$USER:$GROUP" "$DATA_DIR"
-chmod 750 "$DATA_DIR"
+# Create install directory
+log_info "Creating install directory: $INSTALL_DIR"
+mkdir -p "$INSTALL_DIR"
+chown "$INSTALL_USER:$INSTALL_GROUP" "$INSTALL_DIR"
+chmod 750 "$INSTALL_DIR"
 
 # Install binary
 log_info "Installing binary to $INSTALL_DIR/hydradns"
@@ -125,7 +119,7 @@ install -m 755 "$TMP_DIR/hydradns-${SUFFIX}" "$INSTALL_DIR/hydradns"
 
 # Create systemd service file
 log_info "Creating systemd service"
-cat > "$SERVICE_FILE" << 'EOF'
+cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=HydraDNS - DNS Forwarding Server
 Documentation=https://github.com/jroosing/hydradns
@@ -134,10 +128,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=hydradns
-Group=hydradns
-ExecStart=/usr/local/bin/hydradns --db /var/lib/hydradns/hydradns.db
-WorkingDirectory=/var/lib/hydradns
+User=${INSTALL_USER}
+Group=${INSTALL_GROUP}
+ExecStart=${INSTALL_DIR}/hydradns --db ${DATA_DIR}/hydradns.db
+WorkingDirectory=${DATA_DIR}
 Restart=on-failure
 RestartSec=5
 
@@ -150,7 +144,7 @@ PrivateDevices=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
-ReadWritePaths=/var/lib/hydradns
+ReadWritePaths=${DATA_DIR}
 
 # Allow binding to privileged ports (53)
 AmbientCapabilities=CAP_NET_BIND_SERVICE
@@ -183,7 +177,8 @@ echo "  2. Check status:          sudo systemctl status hydradns"
 echo "  3. View logs:             sudo journalctl -u hydradns -f"
 echo ""
 echo "Configuration:"
-echo "  - Data directory:         $DATA_DIR"
+echo "  - User:                   $INSTALL_USER"
+echo "  - Install directory:      $INSTALL_DIR"
 echo "  - Database:               $DATA_DIR/hydradns.db"
 echo "  - Binary:                 $INSTALL_DIR/hydradns"
 echo ""

@@ -7,11 +7,8 @@
 #
 set -euo pipefail
 
-INSTALL_DIR="/usr/local/bin"
-DATA_DIR="/var/lib/hydradns"
+INSTALL_DIR="/opt/hydradns"
 SERVICE_FILE="/etc/systemd/system/hydradns.service"
-USER="hydradns"
-GROUP="hydradns"
 
 # Colors for output
 RED='\033[0;31m'
@@ -35,6 +32,12 @@ log_error() {
 if [[ $EUID -ne 0 ]]; then
     log_error "This script must be run as root (use sudo)"
     exit 1
+fi
+
+# Try to detect data directory from service file
+DATA_DIR=""
+if [[ -f "$SERVICE_FILE" ]]; then
+    DATA_DIR=$(grep "^WorkingDirectory=" "$SERVICE_FILE" 2>/dev/null | cut -d= -f2 || true)
 fi
 
 # Stop service if running
@@ -63,7 +66,7 @@ if [[ -f "$INSTALL_DIR/hydradns" ]]; then
 fi
 
 # Ask about data directory
-if [[ -d "$DATA_DIR" ]]; then
+if [[ -n "$DATA_DIR" ]] && [[ -d "$DATA_DIR" ]]; then
     echo ""
     read -p "Remove data directory $DATA_DIR? This will delete the database! [y/N] " -n 1 -r
     echo ""
@@ -72,27 +75,6 @@ if [[ -d "$DATA_DIR" ]]; then
         rm -rf "$DATA_DIR"
     else
         log_info "Keeping data directory: $DATA_DIR"
-    fi
-fi
-
-# Ask about user/group
-if getent passwd "$USER" > /dev/null 2>&1; then
-    echo ""
-    read -p "Remove system user $USER? [y/N] " -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log_info "Removing user: $USER"
-        userdel "$USER"
-    fi
-fi
-
-if getent group "$GROUP" > /dev/null 2>&1; then
-    echo ""
-    read -p "Remove system group $GROUP? [y/N] " -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log_info "Removing group: $GROUP"
-        groupdel "$GROUP"
     fi
 fi
 
